@@ -297,12 +297,36 @@ class InformationPersonnelle(TimeStampModel):
     quartier = models.TextField(null=True, blank=True)
     telephone = models.CharField(max_length=50, null=True, blank=True)
     email = models.EmailField(null=True, blank=True)
+    # 🔹 Photo de l'employé
+    photo = models.ImageField(
+        upload_to='photos_employes/',
+        null=True,
+        blank=True,
+        validators=[FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png'])]
+    )
+
+
+    # 🔹 Paramètres pour suivre la photo
+    photo_taille = models.PositiveIntegerField(null=True, blank=True, help_text="Taille du fichier en octets")
+    photo_type = models.CharField(max_length=10, null=True, blank=True, help_text="Extension du fichier")
+    photo_largeur = models.PositiveIntegerField(null=True, blank=True, help_text="Largeur en pixels")
+    photo_hauteur = models.PositiveIntegerField(null=True, blank=True, help_text="Hauteur en pixels")
+    photo_validee = models.BooleanField(default=False, help_text="Statut de validation de la photo")
     #mobile_money = models.CharField(max_length=50, null=True, blank=True)
     #photo = models.ImageField(upload_to='photos/', null=True, blank=True)
     #photo_1 = models.ImageField(upload_to='photos/', null=True, blank=True)
 
     def __str__(self):
         return f"{self.numero_matricule} - {self.nom} {self.prenoms}"
+    
+    def save(self, *args, **kwargs):
+        if self.photo:
+            self.photo_taille = self.photo.size
+            self.photo_type = self.photo.name.split('.')[-1].lower()
+            from PIL import Image
+            img = Image.open(self.photo)
+            self.photo_largeur, self.photo_hauteur = img.size
+        super().save(*args, **kwargs)
     
 #class vaovao start
 class DossierPersonnel(TimeStampModel):
@@ -362,22 +386,6 @@ class DossierPersonnel(TimeStampModel):
 #class vaovao end
 
 
-# class InformationProfessionnelle(TimeStampModel):
-#     employe = models.OneToOneField(InformationPersonnelle, on_delete=models.CASCADE, related_name='professionnelle')
-#     #fonction = models.CharField(max_length=100, null=True, blank=True)
-#     #section = models.CharField(max_length=100, null=True, blank=True)
-#     #appellation = models.CharField(max_length=100, null=True, blank=True)
-#     date_embauche = models.DateField(null=True, blank=True)
-#     date_debauche = models.DateField(null=True, blank=True)
-#     #ancien_numero = models.CharField(max_length=50, null=True, blank=True)
-#     titre_poste = models.CharField(max_length=100, null=True, blank=True)
-#     departement = models.CharField(max_length=100, null=True, blank=True)
-#     secteur = models.CharField(max_length=100, null=True, blank=True)
-#     code_fonction = models.CharField(max_length=50, null=True, blank=True)
-#     section_temporaire = models.CharField(max_length=100, null=True, blank=True)
-#     pour_responsable = models.CharField(max_length=100, null=True, blank=True)
-#     depart = models.CharField(max_length=100, null=True, blank=True)
-#     motif_depart = models.TextField(null=True, blank=True)
 
 
 class InformationBancaire(TimeStampModel):
@@ -413,30 +421,31 @@ class InformationFamiliale(TimeStampModel):
 
 
 # 🔹 Informations sur les enfants
+# class Enfant(TimeStampModel):
+#     familiale = models.ForeignKey(InformationFamiliale, on_delete=models.CASCADE, related_name='enfants')
+#     nom_prenoms = models.CharField(max_length=150)
+#     sexe = models.CharField(max_length=10, choices=[('Masculin', 'Masculin'), ('Féminin', 'Féminin')])
+#     date_naissance = models.DateField(null=True, blank=True)
+#     lieu_naissance = models.CharField(max_length=100, null=True, blank=True)
+
+#     def __str__(self):
+#         return f"{self.nom_prenoms} ({self.sexe})"
+
 class Enfant(TimeStampModel):
     familiale = models.ForeignKey(InformationFamiliale, on_delete=models.CASCADE, related_name='enfants')
     nom_prenoms = models.CharField(max_length=150)
-    sexe = models.CharField(max_length=10, choices=[('Masculin', 'Masculin'), ('Féminin', 'Féminin')])
+    sexe = models.CharField(
+        max_length=10, 
+        choices=[('Masculin', 'Masculin'), ('Féminin', 'Féminin')],
+        null=True,        
+        blank=True,       
+    )
     date_naissance = models.DateField(null=True, blank=True)
     lieu_naissance = models.CharField(max_length=100, null=True, blank=True)
 
     def __str__(self):
-        return f"{self.nom_prenoms} ({self.sexe})"
-
-
-
-# class InformationComplementaire(TimeStampModel):
-#     employe = models.OneToOneField(InformationPersonnelle, on_delete=models.CASCADE, related_name='complementaire')
-#     note = models.TextField(null=True, blank=True)
-#     maison = models.CharField(max_length=100, null=True, blank=True)
-#     contact_rapide = models.CharField(max_length=100, null=True, blank=True)
-#     dernier_aug_indice = models.CharField(max_length=50, null=True, blank=True)
-#     pour_30 = models.CharField(max_length=50, null=True, blank=True)
-#     T1_17 = models.CharField(max_length=50, null=True, blank=True)
-#     obs_prime = models.TextField(null=True, blank=True)
-#     enquete = models.TextField(null=True, blank=True)
-#     categorie = models.CharField(max_length=50, null=True, blank=True)
-
+        sexe_display = self.sexe if self.sexe else "Non spécifié"
+        return f"{self.nom_prenoms} ({sexe_display})"
 
 class InformationSalairePersonnel(TimeStampModel):
     employe = models.OneToOneField('InformationPersonnelle', on_delete=models.CASCADE, related_name='salaire_personnel')
