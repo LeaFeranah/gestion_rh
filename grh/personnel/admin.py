@@ -13,5 +13,5 @@ class DossierPersonnelInline(admin.StackedInline):
 # Admin de l'employé
 @admin.register(InformationPersonnelle)
 class InformationPersonnelleAdmin(admin.ModelAdmin):
-    list_display = ('numero_matricule', 'nom', 'prenoms')
+    list_display = ('numero_matricule', 'nom_complet')
     inlines = [DossierPersonnelInline]  # on ajoute l'inline ici

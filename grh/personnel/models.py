@@ -422,8 +422,8 @@ class InformationPersonnelle(TimeStampModel):
     ]
 
     numero_matricule = models.CharField(max_length=50, unique=True)
-    nom = models.CharField(max_length=100)
-    prenoms = models.CharField(max_length=100)
+    nom_complet = models.CharField(max_length=100)
+    #prenoms = models.CharField(max_length=100)
     sexe = models.CharField(max_length=10, choices=SEXE_CHOICES, null=True, blank=True)
     appellation = models.CharField(max_length=100, null=True, blank=True)
     section = models.CharField(
@@ -444,7 +444,7 @@ class InformationPersonnelle(TimeStampModel):
     pere = models.CharField(max_length=100, null=True, blank=True)
     mere = models.CharField(max_length=100, null=True, blank=True)
     adresse = models.TextField(null=True, blank=True)
-    quartier = models.TextField(null=True, blank=True)
+    #quartier = models.TextField(null=True, blank=True)
     telephone = models.CharField(max_length=50, null=True, blank=True)
     email = models.EmailField(null=True, blank=True)
     
@@ -558,7 +558,7 @@ class DossierPersonnel(TimeStampModel):
     )
 
     def __str__(self):
-        return f"Dossier de {self.employe.nom} {self.employe.prenoms}"
+        return f"Dossier de {self.employe.nom_complet}"
 #class vaovao end
 
 
@@ -588,7 +588,7 @@ class InformationFamiliale(TimeStampModel):
     epoux_fonction = models.CharField(max_length=100, null=True, blank=True)
 
     def __str__(self):
-        return f"Famille de {self.employe.nom} {self.employe.prenoms}"
+        return f"Famille de {self.employe.nom_complet}"
 
 
 
@@ -672,4 +672,4 @@ class InformationSalairePersonnel(TimeStampModel):
     salaire_total = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, help_text="Salaire total calculé en Ariary")
 
     def __str__(self):
-        return f"Salaire de {self.employe.nom} {self.employe.prenoms}"
+        return f"Salaire de {self.employe.nom_complet}"
