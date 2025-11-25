@@ -524,3 +524,15 @@ class InformationPersonnellePUTSerializer(serializers.ModelSerializer):
     
     def get_retraite(self, obj):
         return obj.retraite  # 🔹 Retourne directement la valeur calculée
+    
+
+
+class HistoriqueSalaireSerializer(serializers.ModelSerializer):
+    modifie_par_nom = serializers.CharField(source='modifie_par.get_full_name', read_only=True)
+    employe_nom = serializers.CharField(source='employe.nom_complet', read_only=True)
+    action_display = serializers.CharField(source='get_action_display', read_only=True)
+    
+    class Meta:
+        model = HistoriqueSalaire
+        fields = '__all__'
+        read_only_fields = ['modifie_par']

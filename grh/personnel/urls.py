@@ -1,16 +1,3 @@
-# from django.urls import path, include
-# from rest_framework.routers import DefaultRouter
-# from .views import EmployeViewSet, DocumentViewSet
-
-# router = DefaultRouter()
-# router.register(r'employes', EmployeViewSet)
-# router.register(r'documents', DocumentViewSet)
-
-# urlpatterns = [
-#     path('', include(router.urls)),
-# ]
-
-
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from rest_framework.authtoken.views import obtain_auth_token
@@ -28,6 +15,11 @@ router.register(r'enfants', EnfantViewSet)
 router.register(r'salaire', InformationSalairePersonnelViewSet)
 
 
+# 🔹 NOUVEAU : Routes pour l'historique
+router.register(r'historique-salaire', HistoriqueSalaireViewSet, basename='historique-salaire') 
+
+
+
 urlpatterns = [
     path('', include(router.urls)),
     
@@ -39,4 +31,5 @@ urlpatterns = [
     path('mes-employes/', mes_employes, name='mes_employes'),
     path('mes-statistiques/', mes_statistiques, name='mes_statistiques'),
     path('profil/', profil_utilisateur, name='profil'),
+ 
 ]
