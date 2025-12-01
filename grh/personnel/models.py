@@ -70,6 +70,15 @@ class InformationPersonnelle(TimeStampModel):
         ('SECURITE', 'SECURITE'),
     ]
 
+    RESPONSABLE_CHOICES = [
+        ('', 'Sélectionnez un responsable'),
+        ('RESPONSABLE 0', 'Responsable 0'),
+        ('RESPONSABLE 1', 'Responsable 1'),
+        ('RESPONSABLE 2', 'Responsable 2'),
+        ('RESPONSABLE 3', 'Responsable 3'),
+        ('RESPONSABLE RAPHIA', 'Responsable Raphia'),
+    ]
+
     numero_matricule = models.CharField(max_length=50, unique=True)
     nom_complet = models.CharField(max_length=100)
     #prenoms = models.CharField(max_length=100)
@@ -82,6 +91,15 @@ class InformationPersonnelle(TimeStampModel):
         blank=True,
         help_text="Section de l'employé"
     )
+
+    responsable = models.CharField(
+        max_length=50, 
+        choices=RESPONSABLE_CHOICES, 
+        null=True, 
+        blank=True,
+        help_text="Responsable de la section"
+    )
+
     fonction = models.CharField(max_length=100, null=True, blank=True)
     date_naissance = models.DateField(null=True, blank=True)
     lieu_naissance = models.CharField(max_length=100, null=True, blank=True)
@@ -216,7 +234,7 @@ class DossierPersonnel(TimeStampModel):
 class InformationBancaire(TimeStampModel):
     employe = models.OneToOneField(InformationPersonnelle, on_delete=models.CASCADE, related_name='bancaire')
     nom_banque = models.CharField(max_length=100, null=True, blank=True)
-    cle_rib = models.CharField(max_length=10, null=True, blank=True)
+    cle_rib = models.CharField(max_length=100, null=True, blank=True)
 
 
 class InformationSociale(TimeStampModel):
