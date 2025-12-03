@@ -2,6 +2,17 @@ from rest_framework import serializers
 from .models import *
 from datetime import date
 
+
+# ----------------- Information Professionnelle -----------------
+class InformationProfessionnelleSerializer(serializers.ModelSerializer):
+    
+    class Meta:
+        model = InformationProfessionnelle
+        fields = '__all__'
+        extra_kwargs = {field: {'required': False} for field in fields}
+    
+    
+
 # ----------------- Dossier Personnel -----------------
 class DossierPersonnelSerializer(serializers.ModelSerializer):
     class Meta:
@@ -76,6 +87,7 @@ class InformationPersonnelleSerializer(serializers.ModelSerializer):
     sociale = InformationSocialeSerializer(read_only=True)
     familiale = InformationFamilialeSerializer(read_only=True)
     salaire_personnel = InformationSalairePersonnelSerializer(read_only=True)
+    information_professionnelle = InformationProfessionnelleSerializer(read_only=True)
     age = serializers.SerializerMethodField()
     retraite = serializers.SerializerMethodField()  
     created_by_name = serializers.CharField(source='created_by.get_full_name', read_only=True)  # 
@@ -131,3 +143,6 @@ class HistoriqueSalaireSerializer(serializers.ModelSerializer):
         model = HistoriqueSalaire
         fields = '__all__'
         read_only_fields = ['modifie_par']
+
+
+

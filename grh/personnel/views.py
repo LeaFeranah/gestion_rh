@@ -10,6 +10,25 @@ from .serializers import *
 
 # ========== ViewSets avec authentification et filtrage par utilisateur ==========
 
+class InformationProfessionnelleViewSet(viewsets.ModelViewSet):
+    queryset = InformationProfessionnelle.objects.all()
+    serializer_class = InformationProfessionnelleSerializer
+    authentication_classes = [SessionAuthentication, TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        """Chaque RH ne voit que les informations professionnelles des employés qu'elle a créés"""
+        return InformationProfessionnelle.objects.filter(employe__created_by=self.request.user)
+    
+    def perform_create(self, serializer):
+        """Vérifier que l'employé appartient bien au RH connecté"""
+        employe = serializer.validated_data.get('employe')
+        if employe.created_by != self.request.user:
+            raise serializers.ValidationError(
+                {"employe": "Vous ne pouvez pas créer d'informations professionnelles pour cet employé."}
+            )
+        serializer.save()
+
 class DossierPersonnelViewSet(viewsets.ModelViewSet):
     queryset = DossierPersonnel.objects.all()
     serializer_class = DossierPersonnelSerializer
@@ -105,7 +124,7 @@ class InformationSalairePersonnelViewSet(viewsets.ModelViewSet):
             action='CREATE',
             modifie_par=self.request.user,
             # Anciennes valeurs = None pour création
-            ancienne_categorie=None,
+            #ancienne_categorie=None,
             ancienne_indice=None,
             ancien_taux_horaire=None,
             ancien_salaire_base=None,
@@ -114,7 +133,7 @@ class InformationSalairePersonnelViewSet(viewsets.ModelViewSet):
             ancienne_indemnite_deplacement=None,
             ancien_salaire_total=None,
             # Nouvelles valeurs = valeurs créées
-            nouvelle_categorie=salaire.categorie,
+            #nouvelle_categorie=salaire.categorie,
             nouvelle_indice=salaire.indice,
             nouveau_taux_horaire=salaire.taux_horaire,
             nouveau_salaire_base=salaire.salaire_base,
@@ -134,7 +153,7 @@ class InformationSalairePersonnelViewSet(viewsets.ModelViewSet):
         
         # Sauvegarder les ANCIENNES valeurs
         anciennes_valeurs = {
-            'ancienne_categorie': instance.categorie,
+            
             'ancienne_indice': instance.indice,
             'ancien_taux_horaire': instance.taux_horaire,
             'ancien_salaire_base': instance.salaire_base,
@@ -149,7 +168,7 @@ class InformationSalairePersonnelViewSet(viewsets.ModelViewSet):
         # Maintenant on sauvegarde les nouvelles valeurs
         salaire = serializer.save()
         
-        print(f"📝 Nouvelles valeurs : categorie={salaire.categorie}, salaire_base={salaire.salaire_base}")
+        #print(f"📝 Nouvelles valeurs : categorie={salaire.categorie}, salaire_base={salaire.salaire_base}")
         
         # Créer l'historique de modification avec TOUTES les valeurs
         historique = HistoriqueSalaire.objects.create(
@@ -157,7 +176,7 @@ class InformationSalairePersonnelViewSet(viewsets.ModelViewSet):
             action='UPDATE',
             modifie_par=self.request.user,
             # Anciennes valeurs
-            ancienne_categorie=anciennes_valeurs['ancienne_categorie'],
+            #ancienne_categorie=anciennes_valeurs['ancienne_categorie'],
             ancienne_indice=anciennes_valeurs['ancienne_indice'],
             ancien_taux_horaire=anciennes_valeurs['ancien_taux_horaire'],
             ancien_salaire_base=anciennes_valeurs['ancien_salaire_base'],
@@ -166,7 +185,7 @@ class InformationSalairePersonnelViewSet(viewsets.ModelViewSet):
             ancienne_indemnite_deplacement=anciennes_valeurs['ancienne_indemnite_deplacement'],
             ancien_salaire_total=anciennes_valeurs['ancien_salaire_total'],
             # Nouvelles valeurs
-            nouvelle_categorie=salaire.categorie,
+            #nouvelle_categorie=salaire.categorie,
             nouvelle_indice=salaire.indice,
             nouveau_taux_horaire=salaire.taux_horaire,
             nouveau_salaire_base=salaire.salaire_base,

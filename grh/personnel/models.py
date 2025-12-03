@@ -20,93 +20,16 @@ class InformationPersonnelle(TimeStampModel):
         ('Féminin', 'Féminin'),
     ]
 
-    SECTION_CHOICES = [
-        ('ADMINISTRATION', 'ADMINISTRATION'),
-        ('BRODERIE MACHINE', 'BRODERIE MACHINE'),
-        ('BRODERIE MAIN AK17', 'BRODERIE MAIN AK17'),
-        ('BRODERIE MAIN DEV', 'BRODERIE MAIN DEV'),
-        ('BUREAU DE METHODE', 'BUREAU DE METHODE'),
-        ('CONTROLE QUALITE AS', 'CONTROLE QUALITE AS'),
-        ('CHAINE 1', 'CHAINE 1'),
-        ('CHAINE 2', 'CHAINE 2'),
-        ('CHAINE 3', 'CHAINE 3'),
-        ('CHAINE 4', 'CHAINE 4'),
-        ('CHAINE 5', 'CHAINE 5'),
-        ('CHAINE 6', 'CHAINE 6'),
-        ('CHAINE 7', 'CHAINE 7'),
-        ('CHAINE 8', 'CHAINE 8'),
-        ('CHAINE 9', 'CHAINE 9'),
-        ('CHAINE 10', 'CHAINE 10'),
-        ('CHAINE 11', 'CHAINE 11'),
-        ('CHAINE 12', 'CHAINE 12'),
-        ('CHAINE CUIR', 'CHAINE CUIR'),
-        ('COLLECTION', 'COLLECTION'),
-        ('COUPE', 'COUPE'),
-        ('COUPE COLLECTION', 'COUPE COLLECTION'),
-        ('FINITION D', 'FINITION D'),
-        ('FINITION M', 'FINITION M'),
-        ('FINITION P', 'FINITION P'),
-        ('FINITION Q', 'FINITION Q'),
-        ('FINITION R', 'FINITION R'),
-        ('LECTRA', 'LECTRA'),
-        ('LEMARIE HVA', 'LEMARIE HVA'),
-        ('MAINTENANCE', 'MAINTENANCE'),
-        ('MAISON', 'MAISON'),
-        ('PACKING/EXPEDITION', 'PACKING/EXPEDITION'),
-        ('PLISSE', 'PLISSE'),
-        ('POLE QUALITE 1', 'POLE QUALITE 1'),
-        ('POLE QUALITE 2', 'POLE QUALITE 2'),
-        ('RAPHIA 1', 'RAPHIA 1'),
-        ('RAPHIA 2', 'RAPHIA 2'),
-        ('RAPHIA 3', 'RAPHIA 3'),
-        ('RAPHIA 4', 'RAPHIA 4'),
-        ('RAPHIA 5', 'RAPHIA 5'),
-        ('RAPHIA 6', 'RAPHIA 6'),
-        ('RESPONSABLE 0', 'RESPONSABLE 0'),
-        ('RESPONSABLE 1', 'RESPONSABLE 1'),
-        ('RESPONSABLE 2', 'RESPONSABLE 2'),
-        ('RESPONSABLE 3', 'RESPONSABLE 3'),
-        ('RESPONSABLE RAPHIA', 'RESPONSABLE RAPHIA'),
-        ('SECURITE', 'SECURITE'),
-    ]
-
-    RESPONSABLE_CHOICES = [
-        ('', 'Sélectionnez un responsable'),
-        ('RESPONSABLE 0', 'Responsable 0'),
-        ('RESPONSABLE 1', 'Responsable 1'),
-        ('RESPONSABLE 2', 'Responsable 2'),
-        ('RESPONSABLE 3', 'Responsable 3'),
-        ('RESPONSABLE RAPHIA', 'Responsable Raphia'),
-    ]
-
     numero_matricule = models.CharField(max_length=50, unique=True)
     nom_complet = models.CharField(max_length=100)
     #prenoms = models.CharField(max_length=100)
     sexe = models.CharField(max_length=10, choices=SEXE_CHOICES, null=True, blank=True)
     appellation = models.CharField(max_length=100, null=True, blank=True)
-    section = models.CharField(
-        max_length=50, 
-        choices=SECTION_CHOICES, 
-        null=True, 
-        blank=True,
-        help_text="Section de l'employé"
-    )
-
-    responsable = models.CharField(
-        max_length=50, 
-        choices=RESPONSABLE_CHOICES, 
-        null=True, 
-        blank=True,
-        help_text="Responsable de la section"
-    )
-
-    fonction = models.CharField(max_length=100, null=True, blank=True)
     date_naissance = models.DateField(null=True, blank=True)
     lieu_naissance = models.CharField(max_length=100, null=True, blank=True)
     CIN = models.CharField(max_length=50, null=True, blank=True)
     date_CIN = models.DateField(null=True, blank=True)
     lieu_CIN = models.CharField(max_length=100, null=True, blank=True)
-    numero_cnaps = models.CharField(max_length=50, null=True, blank=True)
     ancien_numero_journaliere = models.CharField(max_length=50, null=True, blank=True)
     pere = models.CharField(max_length=100, null=True, blank=True)
     mere = models.CharField(max_length=100, null=True, blank=True)
@@ -114,6 +37,7 @@ class InformationPersonnelle(TimeStampModel):
     #quartier = models.TextField(null=True, blank=True)
     telephone = models.CharField(max_length=50, null=True, blank=True)
     email = models.EmailField(null=True, blank=True)
+    
     
     # 🔹 NOUVEAU : Lien avec l'utilisateur RH qui a créé l'employé
     created_by = models.ForeignKey(
@@ -287,30 +211,8 @@ class Enfant(TimeStampModel):
         return f"{self.nom_prenoms} ({sexe_display}, {age_display})"
 
 class InformationSalairePersonnel(TimeStampModel):
-    CATEGORIE_CHOICES = [
-        ('M1', 'M1'),
-        ('M2', 'M2'),
-        ('0S1', '0S1'),
-        ('0S2', '0S2'),
-        ('0S3', '0S3'),
-        ('0P1A', '0P1A'),
-        ('0P1B', '0P1B'),
-        ('0P2A', '0P2A'),
-        ('0P2B', '0P2B'),
-        ('0P3', '0P3'),
-        ('H.C', 'H.C'),
-    ]
 
     employe = models.OneToOneField('InformationPersonnelle', on_delete=models.CASCADE, related_name='salaire_personnel')
-    date_embauche = models.DateField(null=True, blank=True)
-    responsable_section = models.CharField(max_length=100, null=True, blank=True)
-    categorie = models.CharField(
-        max_length=10, 
-        choices=CATEGORIE_CHOICES, 
-        null=True, 
-        blank=True,
-        help_text="Catégorie de l'employé"
-    )
     indice = models.CharField(max_length=20, null=True, blank=True, help_text="Indice de l'employé")
     taux_horaire = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text="Taux horaire en Ariary")
     salaire_base = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, help_text="Salaire de base en Ariary")
@@ -350,7 +252,7 @@ class HistoriqueSalaire(TimeStampModel):
     )
     
     # Anciennes valeurs (avant modification)
-    ancienne_categorie = models.CharField(max_length=10, null=True, blank=True)
+    #ancienne_categorie = models.CharField(max_length=10, null=True, blank=True)
     ancienne_indice = models.CharField(max_length=20, null=True, blank=True)
     ancien_taux_horaire = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     ancien_salaire_base = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
@@ -360,7 +262,7 @@ class HistoriqueSalaire(TimeStampModel):
     ancien_salaire_total = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     
     # Nouvelles valeurs (après modification)
-    nouvelle_categorie = models.CharField(max_length=10, null=True, blank=True)
+    #nouvelle_categorie = models.CharField(max_length=10, null=True, blank=True)
     nouvelle_indice = models.CharField(max_length=20, null=True, blank=True)
     nouveau_taux_horaire = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     nouveau_salaire_base = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
@@ -379,3 +281,137 @@ class HistoriqueSalaire(TimeStampModel):
     
     def __str__(self):
         return f"{self.get_action_display()} - {self.employe.nom_complet} - {self.created_at.strftime('%d/%m/%Y %H:%M')}"
+    
+
+class InformationProfessionnelle(TimeStampModel):
+    CATEGORIE_CHOICES = [
+        ('M1', 'M1'),
+        ('M2', 'M2'),
+        ('0S1', '0S1'),
+        ('0S2', '0S2'),
+        ('0S3', '0S3'),
+        ('0P1A', '0P1A'),
+        ('0P1B', '0P1B'),
+        ('0P2A', '0P2A'),
+        ('0P2B', '0P2B'),
+        ('0P3', '0P3'),
+        ('H.C', 'H.C'),
+    ]
+
+    SECTION_CHOICES = [
+        ('ADMINISTRATION', 'ADMINISTRATION'),
+        ('BRODERIE MACHINE', 'BRODERIE MACHINE'),
+        ('BRODERIE MAIN AK17', 'BRODERIE MAIN AK17'),
+        ('BRODERIE MAIN DEV', 'BRODERIE MAIN DEV'),
+        ('BUREAU DE METHODE', 'BUREAU DE METHODE'),
+        ('CONTROLE QUALITE AS', 'CONTROLE QUALITE AS'),
+        ('CHAINE 1', 'CHAINE 1'),
+        ('CHAINE 2', 'CHAINE 2'),
+        ('CHAINE 3', 'CHAINE 3'),
+        ('CHAINE 4', 'CHAINE 4'),
+        ('CHAINE 5', 'CHAINE 5'),
+        ('CHAINE 6', 'CHAINE 6'),
+        ('CHAINE 7', 'CHAINE 7'),
+        ('CHAINE 8', 'CHAINE 8'),
+        ('CHAINE 9', 'CHAINE 9'),
+        ('CHAINE 10', 'CHAINE 10'),
+        ('CHAINE 11', 'CHAINE 11'),
+        ('CHAINE 12', 'CHAINE 12'),
+        ('CHAINE CUIR', 'CHAINE CUIR'),
+        ('COLLECTION', 'COLLECTION'),
+        ('COUPE', 'COUPE'),
+        ('COUPE COLLECTION', 'COUPE COLLECTION'),
+        ('FINITION D', 'FINITION D'),
+        ('FINITION M', 'FINITION M'),
+        ('FINITION P', 'FINITION P'),
+        ('FINITION Q', 'FINITION Q'),
+        ('FINITION R', 'FINITION R'),
+        ('LECTRA', 'LECTRA'),
+        ('LEMARIE HVA', 'LEMARIE HVA'),
+        ('MAINTENANCE', 'MAINTENANCE'),
+        ('MAISON', 'MAISON'),
+        ('PACKING/EXPEDITION', 'PACKING/EXPEDITION'),
+        ('PLISSE', 'PLISSE'),
+        ('POLE QUALITE 1', 'POLE QUALITE 1'),
+        ('POLE QUALITE 2', 'POLE QUALITE 2'),
+        ('RAPHIA 1', 'RAPHIA 1'),
+        ('RAPHIA 2', 'RAPHIA 2'),
+        ('RAPHIA 3', 'RAPHIA 3'),
+        ('RAPHIA 4', 'RAPHIA 4'),
+        ('RAPHIA 5', 'RAPHIA 5'),
+        ('RAPHIA 6', 'RAPHIA 6'),
+        ('RESPONSABLE 0', 'RESPONSABLE 0'),
+        ('RESPONSABLE 1', 'RESPONSABLE 1'),
+        ('RESPONSABLE 2', 'RESPONSABLE 2'),
+        ('RESPONSABLE 3', 'RESPONSABLE 3'),
+        ('RESPONSABLE RAPHIA', 'RESPONSABLE RAPHIA'),
+        ('SECURITE', 'SECURITE'),
+    ]
+
+    RESPONSABLE_CHOICES = [
+        ('', 'Sélectionnez un responsable'),
+        ('RESPONSABLE 0', 'Responsable 0'),
+        ('RESPONSABLE 1', 'Responsable 1'),
+        ('RESPONSABLE 2', 'Responsable 2'),
+        ('RESPONSABLE 3', 'Responsable 3'),
+        ('RESPONSABLE RAPHIA', 'Responsable Raphia'),
+    ]
+
+    employe = models.OneToOneField(
+        InformationPersonnelle, 
+        on_delete=models.CASCADE, 
+        related_name='information_professionnelle'
+    )
+    
+    date_embauche = models.DateField(
+        null=True, 
+        blank=True,
+        help_text="Date d'embauche de l'employé"
+    )
+    
+    fonction = models.CharField(
+        max_length=100, 
+        null=True, 
+        blank=True,
+        help_text="Fonction ou poste occupé"
+    )
+    
+    categorie = models.CharField(
+        max_length=10, 
+        choices=CATEGORIE_CHOICES, 
+        null=True, 
+        blank=True,
+        help_text="Catégorie professionnelle de l'employé"
+    )
+    
+    section = models.CharField(
+        max_length=50, 
+        choices=SECTION_CHOICES, 
+        null=True, 
+        blank=True,
+        help_text="Section/département de l'employé"
+    )
+    
+    responsable_section = models.CharField(
+        max_length=100, 
+        null=True, 
+        blank=True,
+        help_text="Nom du responsable de la section"
+    )
+    
+    numero_cnaps = models.CharField(
+        max_length=50, 
+        null=True, 
+        blank=True,
+        help_text="Numéro CNAPS (Caisse Nationale de Prévoyance Sociale)",
+        verbose_name="Numéro CNAPS"
+    )
+    
+    numero_ostie = models.CharField(
+        max_length=50, 
+        null=True, 
+        blank=True,
+        help_text="Numéro OSTIE (Organisme de Santé et de Travail pour les Indépendants et Employés)",
+        verbose_name="Numéro OSTIE"
+    )
+    
