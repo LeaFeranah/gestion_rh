@@ -12,9 +12,6 @@ router.register(r'dossier', DossierPersonnelViewSet)
 router.register(r'familiale', InformationFamilialeViewSet)
 router.register(r'enfants', EnfantViewSet)  
 router.register(r'salaire', InformationSalairePersonnelViewSet)
-
-
-# 🔹 NOUVEAU : Routes pour l'historique
 router.register(r'historique-salaire', HistoriqueSalaireViewSet, basename='historique-salaire') 
 
 

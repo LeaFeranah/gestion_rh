@@ -148,7 +148,7 @@ class InformationSalairePersonnelViewSet(viewsets.ModelViewSet):
     
     def perform_update(self, serializer):
         """Mettre à jour un salaire et enregistrer l'historique"""
-        # 🔥 IMPORTANT : Récupérer l'instance AVANT la modification
+        # IMPORTANT : Récupérer l'instance AVANT la modification
         instance = self.get_object()
         
         # Sauvegarder les ANCIENNES valeurs

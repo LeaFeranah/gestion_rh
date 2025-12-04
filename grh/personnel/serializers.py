@@ -113,7 +113,7 @@ class InformationPersonnelleSerializer(serializers.ModelSerializer):
 
 class InformationPersonnellePUTSerializer(serializers.ModelSerializer):
     age = serializers.SerializerMethodField(read_only=True)
-    retraite = serializers.SerializerMethodField(read_only=True)  # 🔹 Nouveau champ
+    retraite = serializers.SerializerMethodField(read_only=True)  
 
     class Meta:
         model = InformationPersonnelle
@@ -130,7 +130,7 @@ class InformationPersonnellePUTSerializer(serializers.ModelSerializer):
         return "Non spécifié"
     
     def get_retraite(self, obj):
-        return obj.retraite  # 🔹 Retourne directement la valeur calculée
+        return obj.retraite  
     
 
 

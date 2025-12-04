@@ -22,7 +22,6 @@ class InformationPersonnelle(TimeStampModel):
 
     numero_matricule = models.CharField(max_length=50, unique=True)
     nom_complet = models.CharField(max_length=100)
-    #prenoms = models.CharField(max_length=100)
     sexe = models.CharField(max_length=10, choices=SEXE_CHOICES, null=True, blank=True)
     appellation = models.CharField(max_length=100, null=True, blank=True)
     date_naissance = models.DateField(null=True, blank=True)
@@ -34,7 +33,6 @@ class InformationPersonnelle(TimeStampModel):
     pere = models.CharField(max_length=100, null=True, blank=True)
     mere = models.CharField(max_length=100, null=True, blank=True)
     adresse = models.TextField(null=True, blank=True)
-    #quartier = models.TextField(null=True, blank=True)
     telephone = models.CharField(max_length=50, null=True, blank=True)
     email = models.EmailField(null=True, blank=True)
     
@@ -133,7 +131,6 @@ class InformationPersonnelle(TimeStampModel):
         return categories
     
 
-    
     def save(self, *args, **kwargs):
         if self.photo:
             self.photo_taille = self.photo.size
