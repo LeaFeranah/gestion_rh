@@ -39,6 +39,27 @@ class InformationPersonnelle(TimeStampModel):
     email = models.EmailField(null=True, blank=True)
     
     
+
+     # 🔹 DUPLICATA CIN
+    date_duplicata = models.DateField(null=True, blank=True, verbose_name="Date du duplicata")
+    lieu_duplicata = models.CharField(max_length=100, null=True, blank=True, verbose_name="Lieu du duplicata")
+    
+    # 🔹 PASSPORT
+    code_pays_passport = models.CharField(max_length=3, null=True, blank=True, verbose_name="Code pays", help_text="Code pays du passport (ex: MDG, FRA)")
+    type_passport = models.CharField(max_length=20, null=True, blank=True, verbose_name="Type de passport", help_text="Type de passport (ex: Ordinaire, Diplomatique)")
+    numero_passport = models.CharField(max_length=50, null=True, blank=True, verbose_name="Numéro de passport")
+    date_expiration_passport = models.DateField(null=True, blank=True, verbose_name="Date d'expiration du passport")
+    
+    # 🔹 PERMIS DE CONDUIRE - Catégories avec dates
+    permis_categorie_a = models.DateField(null=True, blank=True, verbose_name="Permis Catégorie A", help_text="Date d'obtention du permis A")
+    permis_categorie_b = models.DateField(null=True, blank=True, verbose_name="Permis Catégorie B", help_text="Date d'obtention du permis B")
+    permis_categorie_c = models.DateField(null=True, blank=True, verbose_name="Permis Catégorie C", help_text="Date d'obtention du permis C")
+    permis_categorie_d = models.DateField(null=True, blank=True, verbose_name="Permis Catégorie D", help_text="Date d'obtention du permis D")
+    permis_categorie_e = models.DateField(null=True, blank=True, verbose_name="Permis Catégorie E", help_text="Date d'obtention du permis E")
+    permis_categorie_f = models.DateField(null=True, blank=True, verbose_name="Permis Catégorie F", help_text="Date d'obtention du permis F")
+    
+
+
     # 🔹 NOUVEAU : Lien avec l'utilisateur RH qui a créé l'employé
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, 
@@ -85,6 +106,34 @@ class InformationPersonnelle(TimeStampModel):
             return "Oui" if age >= 60 else "Non"
         return "Non spécifié"
     
+
+    @property
+    def passport_valide(self):
+        """Vérifie si le passport est encore valide"""
+        if self.date_expiration_passport:
+            return date.today() <= self.date_expiration_passport
+        return None
+    
+    @property
+    def categories_permis(self):
+        """Retourne la liste des catégories de permis obtenues"""
+        categories = []
+        if self.permis_categorie_a:
+            categories.append('A')
+        if self.permis_categorie_b:
+            categories.append('B')
+        if self.permis_categorie_c:
+            categories.append('C')
+        if self.permis_categorie_d:
+            categories.append('D')
+        if self.permis_categorie_e:
+            categories.append('E')
+        if self.permis_categorie_f:
+            categories.append('F')
+        return categories
+    
+
+    
     def save(self, *args, **kwargs):
         if self.photo:
             self.photo_taille = self.photo.size
@@ -95,64 +144,18 @@ class InformationPersonnelle(TimeStampModel):
         super().save(*args, **kwargs)
 
 
-#class vaovao start
 class DossierPersonnel(TimeStampModel):
     employe = models.OneToOneField(InformationPersonnelle, on_delete=models.CASCADE, related_name='dossier_personnel')
-
-    cv = models.FileField(
-        upload_to='dossiers/cv/',
-        null=True,
-        blank=True,
-        validators=[FileExtensionValidator(allowed_extensions=['pdf', 'jpg', 'jpeg', 'png'])]
-    )
-    lettre_motivation = models.FileField(
-        upload_to='dossiers/lettres/',
-        null=True,
-        blank=True,
-        validators=[FileExtensionValidator(allowed_extensions=['pdf', 'jpg', 'jpeg', 'png'])]
-    )
-    residence = models.FileField(
-        upload_to='dossiers/residences/',
-        null=True,
-        blank=True,
-        validators=[FileExtensionValidator(allowed_extensions=['pdf', 'jpg', 'jpeg', 'png'])]
-    )
-    cin = models.FileField(
-        upload_to='dossiers/cin/',
-        null=True,
-        blank=True,
-        validators=[FileExtensionValidator(allowed_extensions=['pdf', 'jpg', 'jpeg', 'png'])]
-    )
-    carte_cnaps = models.FileField(
-        upload_to='dossiers/cnaps/',
-        null=True,
-        blank=True,
-        validators=[FileExtensionValidator(allowed_extensions=['pdf', 'jpg', 'jpeg', 'png'])]
-    )
-    rib = models.FileField(
-        upload_to='dossiers/rib/',
-        null=True,
-        blank=True,
-        validators=[FileExtensionValidator(allowed_extensions=['pdf', 'jpg', 'jpeg', 'png'])]
-    )
-    photo_identite = models.FileField(
-        upload_to='dossiers/photos/',
-        null=True,
-        blank=True,
-        validators=[FileExtensionValidator(allowed_extensions=['pdf', 'jpg', 'jpeg', 'png'])]
-    )
-    certificat_travail = models.FileField(
-        upload_to='dossiers/certificats/',
-        null=True,
-        blank=True,
-        validators=[FileExtensionValidator(allowed_extensions=['pdf', 'jpg', 'jpeg', 'png'])]
-    )
-
+    cv = models.FileField(upload_to='dossiers/cv/',null=True,blank=True,validators=[FileExtensionValidator(allowed_extensions=['pdf', 'jpg', 'jpeg', 'png'])])
+    lettre_motivation = models.FileField(upload_to='dossiers/lettres/',null=True,blank=True,validators=[FileExtensionValidator(allowed_extensions=['pdf', 'jpg', 'jpeg', 'png'])])
+    residence = models.FileField(upload_to='dossiers/residences/',null=True,blank=True,validators=[FileExtensionValidator(allowed_extensions=['pdf', 'jpg', 'jpeg', 'png'])])
+    cin = models.FileField(upload_to='dossiers/cin/',null=True,blank=True,validators=[FileExtensionValidator(allowed_extensions=['pdf', 'jpg', 'jpeg', 'png'])])
+    carte_cnaps = models.FileField(upload_to='dossiers/cnaps/',null=True,blank=True,validators=[FileExtensionValidator(allowed_extensions=['pdf', 'jpg', 'jpeg', 'png'])])
+    rib = models.FileField(upload_to='dossiers/rib/',null=True,blank=True,validators=[FileExtensionValidator(allowed_extensions=['pdf', 'jpg', 'jpeg', 'png'])])
+    photo_identite = models.FileField(upload_to='dossiers/photos/',null=True,blank=True,validators=[FileExtensionValidator(allowed_extensions=['pdf', 'jpg', 'jpeg', 'png'])])
+    certificat_travail = models.FileField(upload_to='dossiers/certificats/',null=True,blank=True,validators=[FileExtensionValidator(allowed_extensions=['pdf', 'jpg', 'jpeg', 'png'])])
     def __str__(self):
         return f"Dossier de {self.employe.nom_complet}"
-#class vaovao end
-
-
 
 
 class InformationBancaire(TimeStampModel):
@@ -169,8 +172,6 @@ class InformationSociale(TimeStampModel):
 
 class InformationFamiliale(TimeStampModel):
     employe = models.OneToOneField(InformationPersonnelle, on_delete=models.CASCADE, related_name='familiale')
-
-    # Informations sur l'époux(se)
     epoux_nom = models.CharField(max_length=100, null=True, blank=True)
     epoux_prenoms = models.CharField(max_length=100, null=True, blank=True)
     epoux_date_naissance = models.DateField(null=True, blank=True)
@@ -180,8 +181,6 @@ class InformationFamiliale(TimeStampModel):
 
     def __str__(self):
         return f"Famille de {self.employe.nom_complet}"
-
-
 
 
 class Enfant(TimeStampModel):
@@ -227,23 +226,14 @@ class InformationSalairePersonnel(TimeStampModel):
     
 
 class HistoriqueSalaire(TimeStampModel):
-  
-    
     ACTION_CHOICES = [
         ('CREATE', 'Création'),
         ('UPDATE', 'Modification'),
     ]
     
-    employe = models.ForeignKey(
-        InformationPersonnelle, 
-        on_delete=models.CASCADE, 
-        related_name='historiques_salaire'
-    )
-    
-    # Action effectuée
+    employe = models.ForeignKey(InformationPersonnelle, on_delete=models.CASCADE, related_name='historiques_salaire')
     action = models.CharField(max_length=10, choices=ACTION_CHOICES)
     
-    # Utilisateur qui a effectué l'action
     modifie_par = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -251,8 +241,6 @@ class HistoriqueSalaire(TimeStampModel):
         related_name='modifications_salaire'
     )
     
-    # Anciennes valeurs (avant modification)
-    #ancienne_categorie = models.CharField(max_length=10, null=True, blank=True)
     ancienne_indice = models.CharField(max_length=20, null=True, blank=True)
     ancien_taux_horaire = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     ancien_salaire_base = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
@@ -260,9 +248,6 @@ class HistoriqueSalaire(TimeStampModel):
     ancienne_prime_anciennete = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     ancienne_indemnite_deplacement = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     ancien_salaire_total = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
-    
-    # Nouvelles valeurs (après modification)
-    #nouvelle_categorie = models.CharField(max_length=10, null=True, blank=True)
     nouvelle_indice = models.CharField(max_length=20, null=True, blank=True)
     nouveau_taux_horaire = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     nouveau_salaire_base = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
@@ -270,8 +255,6 @@ class HistoriqueSalaire(TimeStampModel):
     nouvelle_prime_anciennete = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     nouvelle_indemnite_deplacement = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     nouveau_salaire_total = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
-    
-    # Commentaire optionnel
     commentaire = models.TextField(null=True, blank=True)
     
     class Meta:
@@ -357,61 +340,12 @@ class InformationProfessionnelle(TimeStampModel):
         ('RESPONSABLE RAPHIA', 'Responsable Raphia'),
     ]
 
-    employe = models.OneToOneField(
-        InformationPersonnelle, 
-        on_delete=models.CASCADE, 
-        related_name='information_professionnelle'
-    )
-    
-    date_embauche = models.DateField(
-        null=True, 
-        blank=True,
-        help_text="Date d'embauche de l'employé"
-    )
-    
-    fonction = models.CharField(
-        max_length=100, 
-        null=True, 
-        blank=True,
-        help_text="Fonction ou poste occupé"
-    )
-    
-    categorie = models.CharField(
-        max_length=10, 
-        choices=CATEGORIE_CHOICES, 
-        null=True, 
-        blank=True,
-        help_text="Catégorie professionnelle de l'employé"
-    )
-    
-    section = models.CharField(
-        max_length=50, 
-        choices=SECTION_CHOICES, 
-        null=True, 
-        blank=True,
-        help_text="Section/département de l'employé"
-    )
-    
-    responsable_section = models.CharField(
-        max_length=100, 
-        null=True, 
-        blank=True,
-        help_text="Nom du responsable de la section"
-    )
-    
-    numero_cnaps = models.CharField(
-        max_length=50, 
-        null=True, 
-        blank=True,
-        help_text="Numéro CNAPS (Caisse Nationale de Prévoyance Sociale)",
-        verbose_name="Numéro CNAPS"
-    )
-    
-    numero_ostie = models.CharField(
-        max_length=50, 
-        null=True, 
-        blank=True,
-        help_text="Numéro OSTIE (Organisme de Santé et de Travail pour les Indépendants et Employés)",
-        verbose_name="Numéro OSTIE"
-    )
+    employe = models.OneToOneField(InformationPersonnelle, on_delete=models.CASCADE, related_name='information_professionnelle')
+    date_embauche = models.DateField(null=True, blank=True,help_text="Date d'embauche de l'employé")
+    fonction = models.CharField(max_length=100, null=True, blank=True,help_text="Fonction ou poste occupé")
+    categorie = models.CharField(max_length=10, choices=CATEGORIE_CHOICES, null=True, blank=True,help_text="Catégorie professionnelle de l'employé")
+    section = models.CharField(max_length=50, choices=SECTION_CHOICES, null=True, blank=True,help_text="Section/département de l'employé")
+    responsable_section = models.CharField(max_length=100, null=True, blank=True,help_text="Nom du responsable de la section")
+    numero_cnaps = models.CharField(max_length=50, null=True, blank=True,help_text="Numéro CNAPS (Caisse Nationale de Prévoyance Sociale)",verbose_name="Numéro CNAPS")
+    numero_ostie = models.CharField(max_length=50, null=True, blank=True,help_text="Numéro OSTIE (Organisme de Santé et de Travail pour les Indépendants et Employés)",verbose_name="Numéro OSTIE")
     
