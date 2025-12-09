@@ -124,7 +124,7 @@ class InformationSalairePersonnelViewSet(viewsets.ModelViewSet):
             action='CREATE',
             modifie_par=self.request.user,
             # Anciennes valeurs = None pour création
-            #ancienne_categorie=None,
+            ancienne_categorie=None,
             ancienne_indice=None,
             ancien_taux_horaire=None,
             ancien_salaire_base=None,
@@ -133,7 +133,7 @@ class InformationSalairePersonnelViewSet(viewsets.ModelViewSet):
             ancienne_indemnite_deplacement=None,
             ancien_salaire_total=None,
             # Nouvelles valeurs = valeurs créées
-            #nouvelle_categorie=salaire.categorie,
+            nouvelle_categorie=salaire.categorie,
             nouvelle_indice=salaire.indice,
             nouveau_taux_horaire=salaire.taux_horaire,
             nouveau_salaire_base=salaire.salaire_base,
@@ -153,7 +153,7 @@ class InformationSalairePersonnelViewSet(viewsets.ModelViewSet):
         
         # Sauvegarder les ANCIENNES valeurs
         anciennes_valeurs = {
-            
+            'ancienne_categorie' : instance.categorie,
             'ancienne_indice': instance.indice,
             'ancien_taux_horaire': instance.taux_horaire,
             'ancien_salaire_base': instance.salaire_base,
@@ -168,7 +168,7 @@ class InformationSalairePersonnelViewSet(viewsets.ModelViewSet):
         # Maintenant on sauvegarde les nouvelles valeurs
         salaire = serializer.save()
         
-        #print(f"📝 Nouvelles valeurs : categorie={salaire.categorie}, salaire_base={salaire.salaire_base}")
+        print(f"📝 Nouvelles valeurs : categorie={salaire.categorie}, salaire_base={salaire.salaire_base}")
         
         # Créer l'historique de modification avec TOUTES les valeurs
         historique = HistoriqueSalaire.objects.create(
@@ -176,7 +176,7 @@ class InformationSalairePersonnelViewSet(viewsets.ModelViewSet):
             action='UPDATE',
             modifie_par=self.request.user,
             # Anciennes valeurs
-            #ancienne_categorie=anciennes_valeurs['ancienne_categorie'],
+            ancienne_categorie=anciennes_valeurs['ancienne_categorie'],
             ancienne_indice=anciennes_valeurs['ancienne_indice'],
             ancien_taux_horaire=anciennes_valeurs['ancien_taux_horaire'],
             ancien_salaire_base=anciennes_valeurs['ancien_salaire_base'],
@@ -185,7 +185,7 @@ class InformationSalairePersonnelViewSet(viewsets.ModelViewSet):
             ancienne_indemnite_deplacement=anciennes_valeurs['ancienne_indemnite_deplacement'],
             ancien_salaire_total=anciennes_valeurs['ancien_salaire_total'],
             # Nouvelles valeurs
-            #nouvelle_categorie=salaire.categorie,
+            nouvelle_categorie=salaire.categorie,
             nouvelle_indice=salaire.indice,
             nouveau_taux_horaire=salaire.taux_horaire,
             nouveau_salaire_base=salaire.salaire_base,
@@ -208,7 +208,7 @@ class InformationSalairePersonnelViewSet(viewsets.ModelViewSet):
             employe=salaire.employe
         ).order_by('-created_at')  # Du plus récent au plus ancien
         
-        print(f"📊 Nombre d'historiques trouvés : {historiques.count()}")
+        print(f"Nombre d'historiques trouvés : {historiques.count()}")
         
         serializer = HistoriqueSalaireSerializer(historiques, many=True)
         
@@ -357,3 +357,9 @@ def profil_utilisateur(request):
         'last_name': user.last_name,
         'is_staff': user.is_staff,
     })
+
+
+
+
+
+

@@ -207,8 +207,37 @@ class Enfant(TimeStampModel):
         return f"{self.nom_prenoms} ({sexe_display}, {age_display})"
 
 class InformationSalairePersonnel(TimeStampModel):
+    # CATEGORIE_CHOICES = [
+    #     ('M1', 'M1'),
+    #     ('M2', 'M2'),
+    #     ('0S1', '0S1'),
+    #     ('0S2', '0S2'),
+    #     ('0S3', '0S3'),
+    #     ('0P1A', '0P1A'),
+    #     ('0P1B', '0P1B'),
+    #     ('0P2A', '0P2A'),
+    #     ('0P2B', '0P2B'),
+    #     ('0P3', '0P3'),
+    #     ('H.C', 'H.C'),
+    # ]
 
     employe = models.OneToOneField('InformationPersonnelle', on_delete=models.CASCADE, related_name='salaire_personnel')
+    @property
+    def categorie(self):
+        """Récupère la catégorie depuis InformationProfessionnelle en lecture seule"""
+        try:
+            if hasattr(self.employe, 'information_professionnelle'):
+                return self.employe.information_professionnelle.categorie
+        except:
+            pass
+        return None
+    
+    @categorie.setter
+    def categorie(self, value):
+        """Empêche la modification directe de la catégorie"""
+        raise AttributeError("La catégorie ne peut pas être modifiée directement. "
+                           "Utilisez InformationProfessionnelle.categorie à la place.")
+    #categorie = models.CharField(max_length=10, choices=CATEGORIE_CHOICES, null=True, blank=True,help_text="Catégorie professionnelle de l'employé")
     indice = models.CharField(max_length=20, null=True, blank=True, help_text="Indice de l'employé")
     taux_horaire = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text="Taux horaire en Ariary")
     salaire_base = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, help_text="Salaire de base en Ariary")
@@ -237,7 +266,7 @@ class HistoriqueSalaire(TimeStampModel):
         null=True,
         related_name='modifications_salaire'
     )
-    
+    ancienne_categorie = models.CharField(max_length=10, null=True, blank=True)
     ancienne_indice = models.CharField(max_length=20, null=True, blank=True)
     ancien_taux_horaire = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     ancien_salaire_base = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
@@ -245,6 +274,7 @@ class HistoriqueSalaire(TimeStampModel):
     ancienne_prime_anciennete = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     ancienne_indemnite_deplacement = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     ancien_salaire_total = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    nouvelle_categorie = models.CharField(max_length=10, null=True, blank=True)
     nouvelle_indice = models.CharField(max_length=20, null=True, blank=True)
     nouveau_taux_horaire = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     nouveau_salaire_base = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
@@ -340,9 +370,20 @@ class InformationProfessionnelle(TimeStampModel):
     employe = models.OneToOneField(InformationPersonnelle, on_delete=models.CASCADE, related_name='information_professionnelle')
     date_embauche = models.DateField(null=True, blank=True,help_text="Date d'embauche de l'employé")
     fonction = models.CharField(max_length=100, null=True, blank=True,help_text="Fonction ou poste occupé")
-    categorie = models.CharField(max_length=10, choices=CATEGORIE_CHOICES, null=True, blank=True,help_text="Catégorie professionnelle de l'employé")
+    #categorie = models.CharField(max_length=10, choices=CATEGORIE_CHOICES, null=True, blank=True,help_text="Catégorie professionnelle de l'employé")
     section = models.CharField(max_length=50, choices=SECTION_CHOICES, null=True, blank=True,help_text="Section/département de l'employé")
+    categorie = models.CharField(max_length=10, choices=CATEGORIE_CHOICES, null=True, blank=True,help_text="Catégorie professionnelle de l'employé")
+    responsable = models.CharField(max_length=100, choices=RESPONSABLE_CHOICES, null=True, blank=True)
     responsable_section = models.CharField(max_length=100, null=True, blank=True,help_text="Nom du responsable de la section")
     numero_cnaps = models.CharField(max_length=50, null=True, blank=True,help_text="Numéro CNAPS (Caisse Nationale de Prévoyance Sociale)",verbose_name="Numéro CNAPS")
     numero_ostie = models.CharField(max_length=50, null=True, blank=True,help_text="Numéro OSTIE (Organisme de Santé et de Travail pour les Indépendants et Employés)",verbose_name="Numéro OSTIE")
     
+
+
+
+
+
+
+
+
+

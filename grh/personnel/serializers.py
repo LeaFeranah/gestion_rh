@@ -146,3 +146,10 @@ class HistoriqueSalaireSerializer(serializers.ModelSerializer):
 
 
 
+
+
+
+
+
+
+
