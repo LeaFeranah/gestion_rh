@@ -13,9 +13,7 @@ router.register(r'familiale', InformationFamilialeViewSet)
 router.register(r'enfants', EnfantViewSet)  
 router.register(r'salaire', InformationSalairePersonnelViewSet)
 router.register(r'historique-salaire', HistoriqueSalaireViewSet, basename='historique-salaire') 
-
-
-
+router.register(r'evolutions-poste', EvolutionPosteViewSet, basename='evolutions-poste')
 
 urlpatterns = [
     path('', include(router.urls)),
