@@ -1,41 +1,95 @@
-# from rest_framework import serializers
-
-# class PresenceSerializer(serializers.Serializer):
-#     badgenumber = serializers.CharField()
-#     name = serializers.CharField()
-#     date = serializers.DateField()
-#     heure_entree = serializers.TimeField(allow_null=True)
-#     heure_sortie = serializers.TimeField(allow_null=True)
-#     evenement = serializers.CharField()
-
-
-# presence/serializers.py
 from rest_framework import serializers
-from .models import Date
+from .models import Date, HoraireSection
+
 
 class DateSerializer(serializers.ModelSerializer):
-    code_affichage = serializers.CharField(read_only=True)  # 11F ou 11
-    mois_nom = serializers.SerializerMethodField()
+    code_affichage = serializers.ReadOnlyField()
     
     class Meta:
         model = Date
-        fields = ['date', 'code_date', 'hors_periode', 'code_affichage', 'mois_reference', 'mois_nom']
+        fields = ['date', 'code_date', 'code_affichage', 'hors_periode', 'mois_reference']
+
+
+class HoraireSectionSerializer(serializers.ModelSerializer):
+    heure_entree_normale = serializers.ReadOnlyField()
+    heure_sortie_normale = serializers.ReadOnlyField()
+    sortie_samedi_normale = serializers.ReadOnlyField()
     
-    def get_mois_nom(self, obj):
-        mois_fr = [
-            'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
-            'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
+    class Meta:
+        model = HoraireSection
+        fields = [
+            'section', 
+            'heure_entree', 
+            'heure_sortie', 
+            'sortie_samedi',
+            'heure_entree_normale',
+            'heure_sortie_normale',
+            'sortie_samedi_normale'
         ]
-        return f"{mois_fr[obj.mois_reference.month - 1]} {obj.mois_reference.year}"
+    
+    def validate_heure_entree(self, value):
+        """Valide que l'heure d'entrée est entre 0 et 24"""
+        if not (0 <= value < 24):
+            raise serializers.ValidationError("L'heure d'entrée doit être entre 0 et 24")
+        return value
+    
+    def validate_heure_sortie(self, value):
+        """Valide que l'heure de sortie est entre 0 et 24"""
+        if not (0 <= value < 24):
+            raise serializers.ValidationError("L'heure de sortie doit être entre 0 et 24")
+        return value
+    
+    def validate_sortie_samedi(self, value):
+        """Valide que l'heure de sortie samedi est entre 0 et 24"""
+        if not (0 <= value < 24):
+            raise serializers.ValidationError("L'heure de sortie samedi doit être entre 0 et 24")
+        return value
+    
 
 
-class PresenceSerializer(serializers.Serializer):
-    badgenumber = serializers.CharField()
-    name = serializers.CharField()
-    date = serializers.DateField()
-    code_date = serializers.CharField()  # 11, 12, etc.
-    code_affichage = serializers.CharField()  # 11F ou 11
-    hors_periode = serializers.BooleanField()
-    heure_entree = serializers.TimeField(allow_null=True)
-    heure_sortie = serializers.TimeField(allow_null=True)
-    evenement = serializers.CharField()
+
+
+
+
+
+# Ajouter dans serializers.py
+
+from .models import Evenement
+
+class EvenementSerializer(serializers.ModelSerializer):
+    type_evenement_display = serializers.CharField(source='get_type_evenement_display', read_only=True)
+    user_name = serializers.SerializerMethodField()
+    badgenumber = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Evenement
+        fields = [
+            'id',
+            'userid',
+            'user_name',
+            'badgenumber',
+            'date',
+            'type_evenement',
+            'type_evenement_display',
+            'commentaire',
+            'cree_le',
+            'modifie_le'
+        ]
+        read_only_fields = ['id', 'cree_le', 'modifie_le']
+    
+    def get_user_name(self, obj):
+        """Récupère le nom de l'utilisateur"""
+        user = obj.user
+        return user.name if user else f"User {obj.userid}"
+    
+    def get_badgenumber(self, obj):
+        """Récupère le badgenumber"""
+        user = obj.user
+        return user.badgenumber if user else None
+    
+    def validate_type_evenement(self, value):
+        """Valide que le type d'événement est valide"""
+        valid_types = [choice[0] for choice in Evenement.TYPES_EVENEMENT]
+        if value not in valid_types:
+            raise serializers.ValidationError(f"Type d'événement invalide. Choix: {', '.join(valid_types)}")
+        return value

@@ -1,279 +1,19 @@
-# # # from rest_framework.views import APIView
-# # # from rest_framework.response import Response
-# # # from rest_framework.permissions import AllowAny
-# # # from django.db.models import Min, Max
-# # # from .models import CheckInOut
-
-
-# # # class PresenceAPIView(APIView):
-# # #     """
-# # #     API de gestion de présence
-# # #     - Groupement par date
-# # #     - Première heure = entrée
-# # #     - Dernière heure = sortie
-# # #     """
-# # #     permission_classes = [AllowAny]
-
-# # #     def get(self, request, user_id):
-# # #         """
-# # #         user_id = valeur de la colonne checkinout.userid
-# # #         """
-
-# # #         # 🔹 Regrouper les pointages par date
-# # #         pointages = (
-# # #             CheckInOut.objects
-# # #             .filter(user_id=user_id)  # IMPORTANT
-# # #             .values('checktime__date')
-# # #             .annotate(
-# # #                 heure_entree=Min('checktime'),
-# # #                 heure_sortie=Max('checktime')
-# # #             )
-# # #             .order_by('checktime__date')
-# # #         )
-
-# # #         resultat = []
-
-# # #         for p in pointages:
-# # #             resultat.append({
-# # #                 "date": p["checktime__date"],
-# # #                 "heure_entree": p["heure_entree"].time() if p["heure_entree"] else None,
-# # #                 "heure_sortie": p["heure_sortie"].time() if p["heure_sortie"] else None,
-# # #                 "evenement": "X"  # Travail normal par défaut
-# # #             })
-
-# # #         return Response(resultat)
-
-
-# # from rest_framework.views import APIView
-# # from rest_framework.response import Response
-# # from rest_framework.permissions import AllowAny
-# # from django.db.models import Min, Max
-# # from .models import CheckInOut, UserInfo
-
-
-# # class PresenceAPIView(APIView):
-# #     """
-# #     API de gestion de présence
-# #     - Groupement par date
-# #     - Première heure = entrée
-# #     - Dernière heure = sortie
-# #     - Affiche badgenumber et name de l'utilisateur
-# #     """
-# #     permission_classes = [AllowAny]
-
-# #     def get(self, request, user_id):
-# #         """
-# #         user_id = valeur de la colonne checkinout.userid
-# #         """
-        
-# #         # 🔹 Récupérer les infos de l'utilisateur
-# #         try:
-# #             user_info = UserInfo.objects.get(userid=user_id)
-# #         except UserInfo.DoesNotExist:
-# #             return Response(
-# #                 {"error": f"Utilisateur avec userid={user_id} non trouvé"}, 
-# #                 status=404
-# #             )
-
-# #         # 🔹 Regrouper les pointages par date
-# #         pointages = (
-# #             CheckInOut.objects
-# #             .filter(user_id=user_id)
-# #             .values('checktime__date')
-# #             .annotate(
-# #                 heure_entree=Min('checktime'),
-# #                 heure_sortie=Max('checktime')
-# #             )
-# #             .order_by('checktime__date')
-# #         )
-
-# #         resultat = []
-
-# #         for p in pointages:
-# #             resultat.append({
-# #                 "badgenumber": user_info.badgenumber,
-# #                 "name": user_info.name,
-# #                 "date": p["checktime__date"],
-# #                 "heure_entree": p["heure_entree"].time() if p["heure_entree"] else None,
-# #                 "heure_sortie": p["heure_sortie"].time() if p["heure_sortie"] else None,
-# #                 "evenement": "X"  # Travail normal par défaut
-# #             })
-
-# #         return Response(resultat)
-
-
-# # from rest_framework.views import APIView
-# # from rest_framework.response import Response
-# # from rest_framework.permissions import AllowAny
-# # from django.db.models import Min, Max
-# # from .models import CheckInOut, UserInfo
-
-
-# # class PresenceAPIView(APIView):
-# #     """
-# #     API de gestion de présence
-# #     - Groupement par date
-# #     - Première heure = entrée
-# #     - Dernière heure = sortie
-# #     - Affiche badgenumber et name de l'utilisateur
-# #     """
-# #     permission_classes = [AllowAny]
-
-# #     def get(self, request, badgenumber):
-# #         """
-# #         badgenumber = numéro de badge de l'utilisateur
-# #         """
-        
-# #         # 🔹 Récupérer les infos de l'utilisateur via badgenumber
-# #         try:
-# #             user_info = UserInfo.objects.get(badgenumber=badgenumber)
-# #         except UserInfo.DoesNotExist:
-# #             return Response(
-# #                 {"error": f"Utilisateur avec badgenumber={badgenumber} non trouvé"}, 
-# #                 status=404
-# #             )
-
-# #         # 🔹 Regrouper les pointages par date
-# #         pointages = (
-# #             CheckInOut.objects
-# #             .filter(user__badgenumber=badgenumber)  # 🔹 Filtrer par badgenumber
-# #             .values('checktime__date')
-# #             .annotate(
-# #                 heure_entree=Min('checktime'),
-# #                 heure_sortie=Max('checktime')
-# #             )
-# #             .order_by('checktime__date')
-# #         )
-
-# #         resultat = []
-
-# #         for p in pointages:
-# #             resultat.append({
-# #                 "userid": user_info.userid,
-# #                 "badgenumber": user_info.badgenumber,
-# #                 "name": user_info.name,
-# #                 "date": p["checktime__date"],
-# #                 "heure_entree": p["heure_entree"].time() if p["heure_entree"] else None,
-# #                 "heure_sortie": p["heure_sortie"].time() if p["heure_sortie"] else None,
-# #                 "evenement": "X"  # Travail normal par défaut
-# #             })
-
-# #         return Response(resultat)
-
-
-# from rest_framework.views import APIView
-# from rest_framework.response import Response
-# from rest_framework.permissions import AllowAny
-# from django.db.models import Min, Max
-# from .models import CheckInOut, UserInfo
-
-
-# class PresenceListAPIView(APIView):
-#     """
-#     API pour afficher toutes les présences de tous les utilisateurs
-#     """
-#     permission_classes = [AllowAny]
-
-#     def get(self, request):
-#         """
-#         Retourne toutes les présences groupées par utilisateur et par date
-#         """
-        
-#         # 🔹 Regrouper les pointages par utilisateur et par date
-#         pointages = (
-#             CheckInOut.objects
-#             .select_related('user')  # Optimisation pour éviter les requêtes multiples
-#             .values('user__userid', 'user__badgenumber', 'user__name', 'checktime__date')
-#             .annotate(
-#                 heure_entree=Min('checktime'),
-#                 heure_sortie=Max('checktime')
-#             )
-#             .order_by('user__badgenumber', 'checktime__date')
-#         )
-
-#         resultat = []
-
-#         for p in pointages:
-#             resultat.append({
-#                 "userid": p["user__userid"],
-#                 "badgenumber": p["user__badgenumber"],
-#                 "name": p["user__name"],
-#                 "date": p["checktime__date"],
-#                 "heure_entree": p["heure_entree"].time() if p["heure_entree"] else None,
-#                 "heure_sortie": p["heure_sortie"].time() if p["heure_sortie"] else None,
-#                 "evenement": "X"  # Travail normal par défaut
-#             })
-
-#         return Response(resultat)
-
-
-# class PresenceAPIView(APIView):
-#     """
-#     API de gestion de présence par badgenumber
-#     - Groupement par date
-#     - Première heure = entrée
-#     - Dernière heure = sortie
-#     - Affiche badgenumber et name de l'utilisateur
-#     """
-#     permission_classes = [AllowAny]
-
-#     def get(self, request, badgenumber):
-#         """
-#         badgenumber = numéro de badge de l'utilisateur
-#         """
-        
-#         # 🔹 Récupérer les infos de l'utilisateur via badgenumber
-#         try:
-#             user_info = UserInfo.objects.get(badgenumber=badgenumber)
-#         except UserInfo.DoesNotExist:
-#             return Response(
-#                 {"error": f"Utilisateur avec badgenumber={badgenumber} non trouvé"}, 
-#                 status=404
-#             )
-
-#         # 🔹 Regrouper les pointages par date
-#         pointages = (
-#             CheckInOut.objects
-#             .filter(user__badgenumber=badgenumber)
-#             .values('checktime__date')
-#             .annotate(
-#                 heure_entree=Min('checktime'),
-#                 heure_sortie=Max('checktime')
-#             )
-#             .order_by('checktime__date')
-#         )
-
-#         resultat = []
-
-#         for p in pointages:
-#             resultat.append({
-#                 "userid": user_info.userid,
-#                 "badgenumber": user_info.badgenumber,
-#                 "name": user_info.name,
-#                 "date": p["checktime__date"],
-#                 "heure_entree": p["heure_entree"].time() if p["heure_entree"] else None,
-#                 "heure_sortie": p["heure_sortie"].time() if p["heure_sortie"] else None,
-#                 "evenement": "X"  # Travail normal par défaut
-#             })
-
-#         return Response(resultat)
-
-
-# presence/views.py
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
+from rest_framework import status
 from django.db.models import Min, Max
 from datetime import date
-from .models import CheckInOut, UserInfo, Date
-from .serializers import DateSerializer
+from .models import CheckInOut, UserInfo, Date, Evenement, HoraireSection
+from .serializers import DateSerializer, HoraireSectionSerializer, EvenementSerializer
+from .utils import decimal_to_time, analyser_presence, get_section_employe
 
 
-# ========== NOUVELLES VUES (AVEC TABLE DATE) ==========
+# ========== GESTION DES DATES ==========
 
 class DateGenerationAPIView(APIView):
     """
-    Générer les dates pour un mois donné
+    Générer les dates pour un mois donné ET créer les événements par défaut
     GET /api/presence/generer-dates/?annee=2024&mois=8
     """
     permission_classes = [AllowAny]
@@ -282,7 +22,34 @@ class DateGenerationAPIView(APIView):
         annee = int(request.query_params.get('annee', date.today().year))
         mois = int(request.query_params.get('mois', date.today().month))
         
+        # Générer les dates
         dates_crees = Date.generer_dates_mois(annee, mois)
+        
+        # ✅ CRÉER LES ÉVÉNEMENTS PAR DÉFAUT POUR TOUS LES EMPLOYÉS
+        mois_ref = date(annee, mois, 1)
+        dates_periode = Date.objects.filter(
+            mois_reference=mois_ref,
+            hors_periode=False
+        ).values_list('date', flat=True)
+        
+        # Récupérer tous les employés
+        employes = UserInfo.objects.all()
+        
+        evenements_crees = 0
+        for employe in employes:
+            for date_jour in dates_periode:
+                # Créer l'événement "X" par défaut s'il n'existe pas
+                _, created = Evenement.objects.get_or_create(
+                    userid=employe.userid,
+                    date=date_jour,
+                    defaults={
+                        'type_evenement': 'X',
+                        'commentaire': 'Créé automatiquement'
+                    }
+                )
+                if created:
+                    evenements_crees += 1
+        
         serializer = DateSerializer(dates_crees, many=True)
         
         mois_fr = [
@@ -296,6 +63,7 @@ class DateGenerationAPIView(APIView):
             "message": f"Dates générées pour {mois_fr[mois-1]} {annee}",
             "periode": f"21 {mois_fr[mois_precedent-1]} → 20 {mois_fr[mois-1]}",
             "count": len(dates_crees),
+            "evenements_crees": evenements_crees,
             "dates": serializer.data
         })
 
@@ -321,12 +89,12 @@ class DateListAPIView(APIView):
         return Response(serializer.data)
 
 
+# ========== PRÉSENCES SIMPLES (SANS CALCULS) ==========
+
 class PresenceMoisAPIView(APIView):
     """
     Vue principale : Présences d'un mois avec codes dates
     GET /api/presence/mois/?annee=2024&mois=8
-    GET /api/presence/mois/?annee=2024&mois=8&badgenumber=123
-    GET /api/presence/mois/?annee=2024&mois=8&inclure_hors_periode=true
     """
     permission_classes = [AllowAny]
 
@@ -569,11 +337,9 @@ class PresenceMoisRecapAPIView(APIView):
         })
 
 
-# ========== ANCIENNES VUES (SANS TABLE DATE) ==========
-
 class PresenceListAPIView(APIView):
     """
-    API pour afficher toutes les présences de tous les utilisateurs (ANCIENNE VERSION)
+    API pour afficher toutes les présences de tous les utilisateurs
     GET /api/presence/
     """
     permission_classes = [AllowAny]
@@ -593,7 +359,6 @@ class PresenceListAPIView(APIView):
         resultat = []
 
         for p in pointages:
-            
             resultat.append({
                 "userid": p["user__userid"],
                 "badgenumber": p["user__badgenumber"],
@@ -609,7 +374,7 @@ class PresenceListAPIView(APIView):
 
 class PresenceAPIView(APIView):
     """
-    API de gestion de présence par badgenumber (ANCIENNE VERSION)
+    API de gestion de présence par badgenumber
     GET /api/presence/123/
     """
     permission_classes = [AllowAny]
@@ -648,3 +413,614 @@ class PresenceAPIView(APIView):
             })
 
         return Response(resultat)
+
+
+# ========== GESTION DES HORAIRES DE SECTION ==========
+
+class HoraireSectionListAPIView(APIView):
+    """
+    Liste et création des horaires de section
+    GET /api/presence/horaires-section/
+    POST /api/presence/horaires-section/
+    """
+    permission_classes = [AllowAny]
+    
+    def get(self, request):
+        """Liste tous les horaires de section"""
+        horaires = HoraireSection.objects.all()
+        serializer = HoraireSectionSerializer(horaires, many=True)
+        return Response({
+            'count': horaires.count(),
+            'horaires': serializer.data
+        })
+    
+    def post(self, request):
+        """Créer ou mettre à jour un horaire de section"""
+        serializer = HoraireSectionSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class HoraireSectionDetailAPIView(APIView):
+    """
+    Détail, modification et suppression d'un horaire de section
+    GET /api/presence/horaires-section/{section}/
+    PUT /api/presence/horaires-section/{section}/
+    DELETE /api/presence/horaires-section/{section}/
+    """
+    permission_classes = [AllowAny]
+    
+    def get_object(self, section):
+        try:
+            return HoraireSection.objects.get(section=section)
+        except HoraireSection.DoesNotExist:
+            return None
+    
+    def get(self, request, section):
+        """Récupérer un horaire de section"""
+        horaire = self.get_object(section)
+        if not horaire:
+            return Response(
+                {'error': f'Horaire pour la section {section} non trouvé'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        serializer = HoraireSectionSerializer(horaire)
+        return Response(serializer.data)
+    
+    def put(self, request, section):
+        """Mettre à jour un horaire de section"""
+        horaire = self.get_object(section)
+        if not horaire:
+            return Response(
+                {'error': f'Horaire pour la section {section} non trouvé'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        serializer = HoraireSectionSerializer(horaire, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    def delete(self, request, section):
+        """Supprimer un horaire de section"""
+        horaire = self.get_object(section)
+        if not horaire:
+            return Response(
+                {'error': f'Horaire pour la section {section} non trouvé'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        horaire.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class InitialiserHorairesAPIView(APIView):
+    """
+    Initialiser tous les horaires de section avec les données par défaut
+    POST /api/presence/initialiser-horaires/
+    """
+    permission_classes = [AllowAny]
+    
+    def post(self, request):
+        """Initialise les horaires de toutes les sections"""
+        count = HoraireSection.initialiser_horaires()
+        return Response({
+            'message': f'{count} horaires de section initialisés avec succès',
+            'total': HoraireSection.objects.count()
+        })
+
+
+# ========== PRÉSENCES AVEC CALCULS ==========
+
+class PresenceMoisCalculeeAPIView(APIView):
+    """
+    Présences avec calculs de retard et heures travaillées
+    GET /api/presence/mois/calculee/?annee=2024&mois=8
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        annee = request.query_params.get('annee')
+        mois = request.query_params.get('mois')
+        badgenumber = request.query_params.get('badgenumber')
+        inclure_hors_periode = request.query_params.get('inclure_hors_periode', 'false').lower() == 'true'
+        
+        if not annee or not mois:
+            return Response(
+                {"error": "Les paramètres 'annee' et 'mois' sont obligatoires"}, 
+                status=400
+            )
+        
+        try:
+            annee = int(annee)
+            mois = int(mois)
+        except ValueError:
+            return Response({"error": "Année et mois doivent être des nombres"}, status=400)
+        
+        dates_mois = Date.get_dates_par_mois(annee, mois, inclure_hors_periode)
+        dates_liste = list(dates_mois.values_list('date', flat=True))
+        
+        if not dates_liste:
+            return Response({
+                "message": f"Aucune date trouvée pour {mois}/{annee}. Générez d'abord les dates.",
+                "dates_disponibles": []
+            })
+        
+        pointages_query = CheckInOut.objects.filter(checktime__date__in=dates_liste)
+        
+        if badgenumber:
+            pointages_query = pointages_query.filter(user__badgenumber=badgenumber)
+        
+        pointages = (
+            pointages_query
+            .select_related('user')
+            .values('user__userid', 'user__badgenumber', 'user__name', 'checktime__date')
+            .annotate(
+                heure_entree=Min('checktime'),
+                heure_sortie=Max('checktime')
+            )
+            .order_by('user__badgenumber', 'checktime__date')
+        )
+        
+        dates_dict = {d.date: d for d in dates_mois}
+        
+        resultat = []
+        
+        for p in pointages:
+            date_pointage = p["checktime__date"]
+            date_obj = dates_dict.get(date_pointage)
+            
+            if not date_obj:
+                continue
+            
+            section = get_section_employe(p["user__badgenumber"])
+            
+            try:
+                horaire = HoraireSection.objects.get(section=section)
+            except HoraireSection.DoesNotExist:
+                try:
+                    horaire = HoraireSection.objects.get(section='ADMINISTRATION')
+                except HoraireSection.DoesNotExist:
+                    continue
+            
+            est_samedi = date_pointage.weekday() == 5
+            heure_sortie_prevue_decimal = horaire.sortie_samedi if est_samedi else horaire.heure_sortie
+            
+            heure_entree_prevue = decimal_to_time(horaire.heure_entree)
+            heure_sortie_prevue = decimal_to_time(heure_sortie_prevue_decimal)
+            
+            heure_entree_reelle = p["heure_entree"].time() if p["heure_entree"] else None
+            heure_sortie_reelle = p["heure_sortie"].time() if p["heure_sortie"] else None
+            
+            analyse = analyser_presence(
+                heure_entree_reelle,
+                heure_sortie_reelle,
+                heure_entree_prevue,
+                heure_sortie_prevue,
+                date_pointage
+            )
+            
+            resultat.append({
+                "userid": p["user__userid"],
+                "badgenumber": p["user__badgenumber"],
+                "name": p["user__name"],
+                "section": section,
+                "date": date_pointage,
+                "code_date": date_obj.code_date,
+                "code_affichage": date_obj.code_affichage,
+                "hors_periode": date_obj.hors_periode,
+                "est_samedi": est_samedi,
+                
+                "heure_entree_reelle": str(heure_entree_reelle) if heure_entree_reelle else None,
+                "heure_sortie_reelle": str(heure_sortie_reelle) if heure_sortie_reelle else None,
+                
+                "heure_entree_prevue": str(heure_entree_prevue),
+                "heure_sortie_prevue": str(heure_sortie_prevue),
+                
+                "heure_entree_comptabilisee": str(analyse['heure_entree_comptabilisee']) if analyse['heure_entree_comptabilisee'] else None,
+                "heure_sortie_comptabilisee": str(analyse['heure_sortie_comptabilisee']) if analyse['heure_sortie_comptabilisee'] else None,
+                
+                "retard_minutes": analyse['retard_minutes'],
+                "sortie_anticipee_minutes": analyse['sortie_anticipee_minutes'],
+                "heures_travaillees": analyse['heures_travaillees'],
+                "heures_prevues": analyse['heures_prevues'],
+                "est_en_retard": analyse['est_en_retard'],
+                "est_sorti_en_avance": analyse['est_sorti_en_avance'],
+                
+                "evenement": "X"
+            })
+        
+        mois_fr = [
+            'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+            'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
+        ]
+        
+        mois_precedent = mois - 1 if mois > 1 else 12
+        
+        total_retard_minutes = sum(r['retard_minutes'] for r in resultat)
+        total_sortie_anticipee_minutes = sum(r['sortie_anticipee_minutes'] for r in resultat)
+        total_heures_travaillees = sum(r['heures_travaillees'] for r in resultat)
+        total_heures_prevues = sum(r['heures_prevues'] for r in resultat)
+        
+        return Response({
+            "periode": {
+                "mois": mois_fr[mois - 1],
+                "annee": annee,
+                "du": f"21 {mois_fr[mois_precedent - 1]}",
+                "au": f"20 {mois_fr[mois - 1]}",
+                "nombre_jours": len(dates_liste)
+            },
+            "statistiques": {
+                "total_presences": len(resultat),
+                "total_retard_minutes": total_retard_minutes,
+                "total_retard_heures": round(total_retard_minutes / 60, 2),
+                "total_sortie_anticipee_minutes": total_sortie_anticipee_minutes,
+                "total_sortie_anticipee_heures": round(total_sortie_anticipee_minutes / 60, 2),
+                "total_heures_travaillees": round(total_heures_travaillees, 2),
+                "total_heures_prevues": round(total_heures_prevues, 2),
+                "nombre_retards": sum(1 for r in resultat if r['est_en_retard']),
+                "nombre_sorties_anticipees": sum(1 for r in resultat if r['est_sorti_en_avance']),
+            },
+            "presences": resultat
+        })
+
+
+class PresenceMoisDetailCalculeeAPIView(APIView):
+    """
+    Présence détaillée d'un employé avec tous les calculs
+    GET /api/presence/mois/detail/calculee/?annee=2024&mois=8&badgenumber=123
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        annee = request.query_params.get('annee')
+        mois = request.query_params.get('mois')
+        badgenumber = request.query_params.get('badgenumber')
+        inclure_hors_periode = request.query_params.get('inclure_hors_periode', 'false').lower() == 'true'
+        
+        if not annee or not mois:
+            return Response(
+                {"error": "Les paramètres 'annee' et 'mois' sont obligatoires"}, 
+                status=400
+            )
+        
+        try:
+            annee = int(annee)
+            mois = int(mois)
+        except ValueError:
+            return Response({"error": "Année et mois doivent être des nombres"}, status=400)
+        
+        dates_mois = Date.get_dates_par_mois(annee, mois, inclure_hors_periode)
+        dates_liste = list(dates_mois.values_list('date', flat=True))
+        
+        if not dates_liste:
+            return Response({
+                "message": f"Aucune date trouvée pour {mois}/{annee}. Générez d'abord les dates.",
+                "dates_disponibles": []
+            })
+        
+        # ✅ RÉCUPÉRER TOUS LES ÉVÉNEMENTS DU MOIS DEPUIS LA BASE
+        evenements_query = Evenement.objects.filter(date__in=dates_liste)
+        
+        if badgenumber:
+            user_ids = UserInfo.objects.filter(badgenumber=badgenumber).values_list('userid', flat=True)
+            evenements_query = evenements_query.filter(userid__in=user_ids)
+        
+        evenements_dict = {
+            (e.userid, str(e.date)): e.type_evenement 
+            for e in evenements_query
+        }
+        
+        # Récupérer les pointages
+        pointages_query = CheckInOut.objects.filter(checktime__date__in=dates_liste)
+        
+        if badgenumber:
+            pointages_query = pointages_query.filter(user__badgenumber=badgenumber)
+        
+        pointages = (
+            pointages_query
+            .select_related('user')
+            .values('user__userid', 'user__badgenumber', 'user__name', 'checktime__date')
+            .annotate(
+                heure_entree=Min('checktime'),
+                heure_sortie=Max('checktime')
+            )
+            .order_by('user__badgenumber', 'checktime__date')
+        )
+        
+        dates_dict = {d.date: d for d in dates_mois}
+        resultat = []
+        
+        for p in pointages:
+            date_pointage = p["checktime__date"]
+            date_obj = dates_dict.get(date_pointage)
+            
+            if not date_obj:
+                continue
+            
+            # ✅ RÉCUPÉRER L'ÉVÉNEMENT DEPUIS LA BASE (ou "A" si absent)
+            evenement = evenements_dict.get((p["user__userid"], str(date_pointage)), 'A')
+            
+            section = get_section_employe(p["user__badgenumber"])
+            
+            try:
+                horaire = HoraireSection.objects.get(section=section)
+            except HoraireSection.DoesNotExist:
+                try:
+                    horaire = HoraireSection.objects.get(section='ADMINISTRATION')
+                except HoraireSection.DoesNotExist:
+                    continue
+            
+            est_samedi = date_pointage.weekday() == 5
+            heure_sortie_prevue_decimal = horaire.sortie_samedi if est_samedi else horaire.heure_sortie
+            
+            heure_entree_prevue = decimal_to_time(horaire.heure_entree)
+            heure_sortie_prevue = decimal_to_time(heure_sortie_prevue_decimal)
+            
+            heure_entree_reelle = p["heure_entree"].time() if p["heure_entree"] else None
+            heure_sortie_reelle = p["heure_sortie"].time() if p["heure_sortie"] else None
+            
+            analyse = analyser_presence(
+                heure_entree_reelle,
+                heure_sortie_reelle,
+                heure_entree_prevue,
+                heure_sortie_prevue,
+                date_pointage
+            )
+            
+            resultat.append({
+                "userid": p["user__userid"],
+                "badgenumber": p["user__badgenumber"],
+                "name": p["user__name"],
+                "section": section,
+                "date": str(date_pointage),
+                "code_date": date_obj.code_date,
+                "code_affichage": date_obj.code_affichage,
+                "hors_periode": date_obj.hors_periode,
+                "est_samedi": est_samedi,
+                
+                "heure_entree_reelle": str(heure_entree_reelle) if heure_entree_reelle else None,
+                "heure_sortie_reelle": str(heure_sortie_reelle) if heure_sortie_reelle else None,
+                
+                "heure_entree_prevue": str(heure_entree_prevue),
+                "heure_sortie_prevue": str(heure_sortie_prevue),
+                
+                "heure_entree_comptabilisee": str(analyse['heure_entree_comptabilisee']) if analyse['heure_entree_comptabilisee'] else None,
+                "heure_sortie_comptabilisee": str(analyse['heure_sortie_comptabilisee']) if analyse['heure_sortie_comptabilisee'] else None,
+                
+                "retard_minutes": analyse['retard_minutes'],
+                "sortie_anticipee_minutes": analyse['sortie_anticipee_minutes'],
+                "heures_travaillees": analyse['heures_travaillees'],
+                "heures_prevues": analyse['heures_prevues'],
+                "est_en_retard": analyse['est_en_retard'],
+                "est_sorti_en_avance": analyse['est_sorti_en_avance'],
+                
+                "evenement": evenement  # ✅ Événement DEPUIS LA BASE
+            })
+        
+        mois_fr = [
+            'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+            'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
+        ]
+        
+        mois_precedent = mois - 1 if mois > 1 else 12
+        
+        total_retard_minutes = sum(r['retard_minutes'] for r in resultat)
+        total_sortie_anticipee_minutes = sum(r['sortie_anticipee_minutes'] for r in resultat)
+        total_heures_travaillees = sum(r['heures_travaillees'] for r in resultat)
+        total_heures_prevues = sum(r['heures_prevues'] for r in resultat)
+        
+        return Response({
+            "periode": {
+                "mois": mois_fr[mois - 1],
+                "annee": annee,
+                "du": f"21 {mois_fr[mois_precedent - 1]}",
+                "au": f"20 {mois_fr[mois - 1]}",
+                "nombre_jours": len(dates_liste)
+            },
+            "statistiques": {
+                "total_presences": len(resultat),
+                "total_retard_minutes": total_retard_minutes,
+                "total_retard_heures": round(total_retard_minutes / 60, 2),
+                "total_sortie_anticipee_minutes": total_sortie_anticipee_minutes,
+                "total_sortie_anticipee_heures": round(total_sortie_anticipee_minutes / 60, 2),
+                "total_heures_travaillees": round(total_heures_travaillees, 2),
+                "total_heures_prevues": round(total_heures_prevues, 2),
+                "nombre_retards": sum(1 for r in resultat if r['est_en_retard']),
+                "nombre_sorties_anticipees": sum(1 for r in resultat if r['est_sorti_en_avance']),
+            },
+            "presences": resultat
+        })
+
+
+# ========== GESTION DES ÉVÉNEMENTS ==========
+
+class EvenementListAPIView(APIView):
+    """
+    Liste et création d'événements
+    GET /api/presence/evenements/?annee=2024&mois=8
+    POST /api/presence/evenements/
+    """
+    permission_classes = [AllowAny]
+    
+    def get(self, request):
+        """Liste tous les événements (avec filtres optionnels)"""
+        evenements = Evenement.objects.all()
+        
+        annee = request.query_params.get('annee')
+        mois = request.query_params.get('mois')
+        badgenumber = request.query_params.get('badgenumber')
+        
+        if annee and mois:
+            mois_ref = date(int(annee), int(mois), 1)
+            dates_mois = Date.objects.filter(mois_reference=mois_ref).values_list('date', flat=True)
+            evenements = evenements.filter(date__in=dates_mois)
+        
+        if badgenumber:
+            evenements = evenements.filter(userid__in=UserInfo.objects.filter(badgenumber=badgenumber).values_list('userid', flat=True))
+        
+        evenements = evenements.order_by('-date')
+        serializer = EvenementSerializer(evenements, many=True)
+        
+        return Response({
+            'count': evenements.count(),
+            'evenements': serializer.data
+        })
+    
+    def post(self, request):
+        """Créer un événement"""
+        serializer = EvenementSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class EvenementDetailAPIView(APIView):
+    """
+    Détail, modification et suppression d'un événement
+    GET /api/presence/evenements/{id}/
+    PUT /api/presence/evenements/{id}/
+    DELETE /api/presence/evenements/{id}/
+    """
+    permission_classes = [AllowAny]
+    
+    def get_object(self, pk):
+        try:
+            return Evenement.objects.get(pk=pk)
+        except Evenement.DoesNotExist:
+            return None
+    
+    def get(self, request, pk):
+        """Récupérer un événement"""
+        evenement = self.get_object(pk)
+        if not evenement:
+            return Response(
+                {'error': 'Événement non trouvé'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        serializer = EvenementSerializer(evenement)
+        return Response(serializer.data)
+    
+    def put(self, request, pk):
+        """Mettre à jour un événement"""
+        evenement = self.get_object(pk)
+        if not evenement:
+            return Response(
+                {'error': 'Événement non trouvé'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        serializer = EvenementSerializer(evenement, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    def delete(self, request, pk):
+        """Supprimer un événement"""
+        evenement = self.get_object(pk)
+        if not evenement:
+            return Response(
+                {'error': 'Événement non trouvé'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        evenement.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class EvenementByUserDateAPIView(APIView):
+    """
+    Gérer un événement par user et date
+    GET /api/presence/evenements/user/{userid}/date/{date}/
+    POST /api/presence/evenements/user/{userid}/date/{date}/
+    DELETE /api/presence/evenements/user/{userid}/date/{date}/
+    """
+    permission_classes = [AllowAny]
+    
+    def get(self, request, userid, date_str):
+        """Récupérer l'événement pour un user et une date"""
+        try:
+            evenement = Evenement.objects.get(userid=userid, date=date_str)
+            serializer = EvenementSerializer(evenement)
+            return Response(serializer.data)
+        except Evenement.DoesNotExist:
+            return Response({
+                'evenement': None,
+                'type_evenement': 'X',
+                'message': 'Aucun événement enregistré'
+            })
+    
+    def post(self, request, userid, date_str):
+        """Créer ou mettre à jour un événement"""
+        data = request.data.copy()
+        data['userid'] = userid
+        data['date'] = date_str
+        
+        try:
+            # ✅ UTILISER update_or_create POUR GARANTIR LA PERSISTANCE
+            evenement, created = Evenement.objects.update_or_create(
+                userid=userid,
+                date=date_str,
+                defaults={
+                    'type_evenement': data.get('type_evenement', 'X'),
+                    'commentaire': data.get('commentaire', '')
+                }
+            )
+            
+            serializer = EvenementSerializer(evenement)
+            
+            return Response({
+                'success': True,
+                'created': created,
+                'evenement': serializer.data,
+                'message': 'Événement créé' if created else 'Événement mis à jour'
+            }, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
+            
+        except Exception as e:
+            return Response({
+                'success': False,
+                'error': str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
+    
+    def delete(self, request, userid, date_str):
+        """Supprimer un événement (retour à 'X' par défaut)"""
+        try:
+            # ✅ AU LIEU DE SUPPRIMER, RÉINITIALISER À 'X'
+            evenement, created = Evenement.objects.update_or_create(
+                userid=userid,
+                date=date_str,
+                defaults={
+                    'type_evenement': 'X',
+                    'commentaire': ''
+                }
+            )
+            
+            return Response({
+                'success': True,
+                'message': 'Événement réinitialisé à "X"'
+            }, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            return Response({
+                'success': False,
+                'error': str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+
+class TypesEvenementAPIView(APIView):
+    """
+    Liste les types d'événements disponibles
+    GET /api/presence/types-evenements/
+    """
+    permission_classes = [AllowAny]
+    
+    def get(self, request):
+        """Liste tous les types d'événements"""
+        types = [
+            {'code': code, 'libelle': libelle}
+            for code, libelle in Evenement.TYPES_EVENEMENT
+        ]
+        return Response({'types_evenements': types})
+    
+    

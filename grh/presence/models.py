@@ -1,76 +1,3 @@
-# # from django.db import models
-
-# # # ===== USERINFO =====
-# # class UserInfo(models.Model):
-# #     userid01 = models.IntegerField(db_column='userid01', primary_key=True)
-# #     userid = models.IntegerField(db_column='userid')
-# #     badgenumber = models.CharField(db_column='badgenumber', max_length=50)
-# #     ssn = models.CharField(db_column='ssn', max_length=50, null=True, blank=True)
-# #     name = models.CharField(db_column='name', max_length=150)
-
-# #     class Meta:
-# #         db_table = 'userinfo'  # nom table en minuscules
-# #         managed = False
-
-# #     def __str__(self):
-# #         return self.name
-
-
-# # # ===== CHECKINOUT =====
-# # class CheckInOut(models.Model):
-# #     numauto = models.AutoField(db_column='numauto', primary_key=True)
-# #     user = models.ForeignKey(
-# #         UserInfo,
-# #         db_column='userid',  # colonne dans checkinout
-# #         on_delete=models.DO_NOTHING
-# #     )
-# #     checktime = models.DateTimeField(db_column='checktime')
-# #     checktype = models.CharField(db_column='checktype', max_length=1)
-
-# #     class Meta:
-# #         db_table = 'checkinout'  # nom table en minuscules
-# #         managed = False
-
-
-
-# from django.db import models
-
-# # ===== USERINFO =====
-# class UserInfo(models.Model):
-#     userid = models.IntegerField(db_column='userid', primary_key=True)
-#     badgenumber = models.CharField(db_column='Badgenumber', max_length=50)  # 🔹 Majuscule
-#     ssn = models.CharField(db_column='ssn', max_length=50, null=True, blank=True)
-#     name = models.CharField(db_column='Name', max_length=150)  # 🔹 Majuscule
-
-#     class Meta:
-#         db_table = 'userinfo'
-#         managed = False
-
-#     def __str__(self):
-#         return self.name
-
-
-# # ===== CHECKINOUT =====
-# class CheckInOut(models.Model):
-#     numauto = models.AutoField(db_column='NumAuto', primary_key=True)  # 🔹 Majuscules
-#     user = models.ForeignKey(
-#         UserInfo,
-#         db_column='userid',
-#         on_delete=models.DO_NOTHING
-#     )
-#     checktime = models.DateTimeField(db_column='checktime')
-#     checktype = models.CharField(db_column='checktype', max_length=1)
-
-#     class Meta:
-#         db_table = 'checkinout'
-#         managed = False
-
-
-
-
-
-# presence/models.py
-
 from django.db import models
 from datetime import date, timedelta
 
@@ -209,3 +136,230 @@ class CheckInOut(models.Model):
     class Meta:
         db_table = 'checkinout'
         managed = False
+
+
+
+
+
+
+
+
+
+
+# ===== HORAIRES PAR SECTION =====
+class HoraireSection(models.Model):
+    """
+    Horaires de référence par section
+    Les heures sont stockées en format décimal (ex: 7.50 = 7h30, 17.83 = 17h50)
+    """
+    section = models.CharField(max_length=100, unique=True, primary_key=True)
+    heure_entree = models.DecimalField(
+        max_digits=4, 
+        decimal_places=2,
+        help_text="Heure d'entrée en format décimal (ex: 7.50 = 7h30)"
+    )
+    heure_sortie = models.DecimalField(
+        max_digits=4, 
+        decimal_places=2,
+        help_text="Heure de sortie en format décimal (ex: 17.83 = 17h50)"
+    )
+    sortie_samedi = models.DecimalField(
+        max_digits=4, 
+        decimal_places=2,
+        help_text="Heure de sortie le samedi en format décimal"
+    )
+    
+    class Meta:
+        db_table = 'horaire_section'
+        verbose_name = "Horaire de section"
+        verbose_name_plural = "Horaires de section"
+        ordering = ['section']
+    
+    def __str__(self):
+        return f"{self.section} ({self.heure_entree_normale} - {self.heure_sortie_normale})"
+    
+    @staticmethod
+    def decimal_to_time(heure_decimal):
+        """
+        Convertit une heure décimale en format HH:MM
+        Ex: 7.50 -> "07:30", 17.83 -> "17:50"
+        """
+        heures = int(heure_decimal)
+        minutes_decimal = (heure_decimal - heures) * 100
+        minutes = int(round(minutes_decimal))
+        return f"{heures:02d}:{minutes:02d}"
+    
+    @staticmethod
+    def time_to_decimal(heure_str):
+        """
+        Convertit un format HH:MM en décimal
+        Ex: "07:30" -> 7.50, "17:50" -> 17.83
+        """
+        from datetime import datetime
+        time_obj = datetime.strptime(heure_str, "%H:%M").time()
+        heures = time_obj.hour
+        minutes = time_obj.minute
+        return heures + (minutes / 60 * 100) / 100
+    
+    @property
+    def heure_entree_normale(self):
+        """Retourne l'heure d'entrée au format HH:MM"""
+        return self.decimal_to_time(self.heure_entree)
+    
+    @property
+    def heure_sortie_normale(self):
+        """Retourne l'heure de sortie au format HH:MM"""
+        return self.decimal_to_time(self.heure_sortie)
+    
+    @property
+    def sortie_samedi_normale(self):
+        """Retourne l'heure de sortie samedi au format HH:MM"""
+        return self.decimal_to_time(self.sortie_samedi)
+    
+    @classmethod
+    def initialiser_horaires(cls):
+        """
+        Initialise les horaires de toutes les sections
+        À appeler une seule fois pour créer les données initiales
+        """
+        horaires_data = [
+            ('ADMINISTRATION', 7.50, 17.83, 15.50),
+            ('BRODERIE MACHINE', 7.50, 18.00, 15.50),
+            ('BRODERIE MAIN AK B', 7.33, 17.33, 15.33),
+            ('BRODERIE MAIN AK17', 7.00, 17.00, 15.00),
+            ('BRODERIE MAIN DEV', 7.50, 18.00, 15.50),
+            ('BUREAU DE METHODE', 7.41, 17.91, 12.00),
+            ('CONTROLE QUALITE AS', 7.50, 17.50, 15.50),
+            ('CHAINE 1', 7.41, 17.91, 15.41),
+            ('CHAINE 2', 7.41, 17.91, 15.41),
+            ('CHAINE 3', 7.41, 17.91, 15.41),
+            ('CHAINE 4', 7.41, 17.91, 15.41),
+            ('CHAINE 5', 7.41, 17.91, 15.41),
+            ('CHAINE 6', 7.41, 17.91, 15.41),
+            ('CHAINE 7', 7.41, 17.91, 15.41),
+            ('CHAINE 8', 7.41, 17.91, 15.41),
+            ('PACKING/EXPEDITION', 7.50, 18.00, 15.50),
+            ('PLISSE', 7.50, 18.00, 15.50),
+            ('POLE QUALITE 1', 7.33, 17.83, 15.33),
+            ('POLE QUALITE 2', 7.33, 17.83, 15.33),
+            ('RAPHIA 1', 7.33, 17.33, 15.33),
+            ('RAPHIA 2', 7.25, 17.25, 15.25),
+            ('RAPHIA 3', 7.16, 17.16, 15.16),
+            ('RAPHIA 4', 7.25, 17.25, 15.25),
+            ('RAPHIA 5', 7.16, 17.16, 15.16),
+            ('RAPHIA 6', 7.33, 17.33, 15.33),
+            ('RESPONSABLE 0', 7.50, 18.00, 15.50),
+            ('RESPONSABLE 1', 7.50, 17.83, 15.50),
+            ('RESPONSABLE 2', 7.41, 17.91, 15.41),
+            ('RESPONSABLE 3', 7.50, 17.50, 15.50),
+            ('RESPONSABLE RAPHIA', 7.33, 17.33, 15.33),
+            ('SECURITE', 6.50, 18.00, 18.00),
+        ]
+        
+        created_count = 0
+        for section, entree, sortie, samedi in horaires_data:
+            obj, created = cls.objects.update_or_create(
+                section=section,
+                defaults={
+                    'heure_entree': entree,
+                    'heure_sortie': sortie,
+                    'sortie_samedi': samedi
+                }
+            )
+            if created:
+                created_count += 1
+        
+        return created_count
+    
+
+
+
+
+
+
+
+
+
+# Ajouter ce modèle dans models.py
+
+class Evenement(models.Model):
+    """
+    Événements de présence (absences, congés, etc.)
+    """
+    TYPES_EVENEMENT = [
+        ('X', 'Travail normal'),
+        ('RM', 'Repos Médical'),
+        ('HP', 'Hospitalisation'),
+        ('RC', 'Repos de convalescence'),
+        ('ANO', 'Absence Non Autorisée'),
+        ('CP', 'Congé Payé'),
+        ('EF', 'Événement familial'),
+        ('F', 'Fonction (délégués)'),
+        ('PS', 'Permission Spéciale'),
+        ('A', 'Absent'),
+    ]
+    
+    # Utiliser un IntegerField au lieu de ForeignKey car userinfo est managed=False
+    userid = models.IntegerField(db_column='userid')
+    date = models.DateField()
+    type_evenement = models.CharField(
+        max_length=3,
+        choices=TYPES_EVENEMENT,
+        default='X'
+    )
+    commentaire = models.TextField(blank=True, null=True)
+    cree_le = models.DateTimeField(auto_now_add=True)
+    modifie_le = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'evenement'
+        unique_together = ['userid', 'date']
+        ordering = ['date', 'userid']
+        verbose_name = "Événement"
+        verbose_name_plural = "Événements"
+    
+    def __str__(self):
+        try:
+            user = UserInfo.objects.get(userid=self.userid)
+            return f"{user.name} - {self.date} - {self.get_type_evenement_display()}"
+        except UserInfo.DoesNotExist:
+            return f"User {self.userid} - {self.date} - {self.get_type_evenement_display()}"
+    
+    @property
+    def user(self):
+        """Propriété pour accéder à l'objet UserInfo"""
+        try:
+            return UserInfo.objects.get(userid=self.userid)
+        except UserInfo.DoesNotExist:
+            return None
+    
+    @classmethod
+    def get_evenement(cls, userid, date):
+        """Récupère l'événement pour un utilisateur et une date"""
+        try:
+            return cls.objects.get(userid=userid, date=date)
+        except cls.DoesNotExist:
+            return None
+    
+    @classmethod
+    def set_evenement(cls, userid, date, type_evenement, commentaire=''):
+        """Crée ou met à jour un événement"""
+        obj, created = cls.objects.update_or_create(
+            userid=userid,
+            date=date,
+            defaults={
+                'type_evenement': type_evenement,
+                'commentaire': commentaire
+            }
+        )
+        return obj
+    
+    @classmethod
+    def supprimer_evenement(cls, userid, date):
+        """Supprime un événement"""
+        try:
+            obj = cls.objects.get(userid=userid, date=date)
+            obj.delete()
+            return True
+        except cls.DoesNotExist:
+            return False
