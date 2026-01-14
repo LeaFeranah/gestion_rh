@@ -1,13 +1,11 @@
 from django.db import models
 from datetime import date, timedelta
 
-
-# ===== TABLE DATE =====
 class Date(models.Model):
     date = models.DateField(unique=True, primary_key=True)
-    code_date = models.CharField(max_length=2)  # 11, 12, 13... 57
-    hors_periode = models.BooleanField(default=False)  # True = F (hors période)
-    mois_reference = models.DateField()  # Ex: 2024-08-01 pour le mois d'août
+    code_date = models.CharField(max_length=2)  
+    hors_periode = models.BooleanField(default=False)  
+    mois_reference = models.DateField()  
     
     class Meta:
         db_table = 'date'
@@ -54,7 +52,7 @@ class Date(models.Model):
         """
         mois_ref = date(annee, mois, 1)
         
-        # ✅ Période du 21 du mois précédent au 20 du mois courant
+        # Période du 21 du mois précédent au 20 du mois courant
         if mois == 1:
             debut_periode = date(annee - 1, 12, 21)
         else:
@@ -62,20 +60,20 @@ class Date(models.Model):
         
         fin_periode = date(annee, mois, 20)
         
-        # ✅ Commencer au lundi précédent ou égal au 21
+        # Commencer au lundi précédent ou égal au 21
         lundi_debut = cls.get_lundi_precedent(debut_periode)
         
-        # ✅ Générer toutes les dates (6 semaines complètes)
+        # Générer toutes les dates (6 semaines complètes)
         date_courante = lundi_debut
         dates_crees = []
         
         fin_generation = lundi_debut + timedelta(days=6*7-1)  # 6 semaines
         
         while date_courante <= fin_generation:
-            # ✅ Toujours calculer le code_date
+            # Toujours calculer le code_date
             code = cls.calculer_code_date(date_courante, lundi_debut)
             
-            # ✅ Déterminer si hors période (F)
+            # Déterminer si hors période (F)
             hors_periode = (date_courante < debut_periode or date_courante > fin_periode)
             
             obj, created = cls.objects.update_or_create(
@@ -136,14 +134,6 @@ class CheckInOut(models.Model):
     class Meta:
         db_table = 'checkinout'
         managed = False
-
-
-
-
-
-
-
-
 
 
 # ===== HORAIRES PAR SECTION =====
@@ -271,16 +261,6 @@ class HoraireSection(models.Model):
         
         return created_count
     
-
-
-
-
-
-
-
-
-
-# Ajouter ce modèle dans models.py
 
 class Evenement(models.Model):
     """

@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from .models import Date, HoraireSection
-
+from .models import Evenement
 
 class DateSerializer(serializers.ModelSerializer):
     code_affichage = serializers.ReadOnlyField()
@@ -45,17 +45,7 @@ class HoraireSectionSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("L'heure de sortie samedi doit être entre 0 et 24")
         return value
     
-
-
-
-
-
-
-
-# Ajouter dans serializers.py
-
-from .models import Evenement
-
+    
 class EvenementSerializer(serializers.ModelSerializer):
     type_evenement_display = serializers.CharField(source='get_type_evenement_display', read_only=True)
     user_name = serializers.SerializerMethodField()
