@@ -343,3 +343,41 @@ class Evenement(models.Model):
             return True
         except cls.DoesNotExist:
             return False
+        
+
+class AnomaliePointage(models.Model):
+    """
+    Anomalies de pointage (heures modifiées manuellement)
+    """
+    userid = models.IntegerField(db_column='userid')
+    date = models.DateField()
+    heure_entree_modifiee = models.TimeField(null=True, blank=True)
+    heure_sortie_modifiee = models.TimeField(null=True, blank=True)
+    motif = models.TextField(blank=True, null=True)
+    modifie_par = models.CharField(max_length=100, blank=True)
+    cree_le = models.DateTimeField(auto_now_add=True)
+    modifie_le = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'anomalie_pointage'
+        unique_together = ['userid', 'date']
+        ordering = ['date', 'userid']
+        verbose_name = "Anomalie de pointage"
+        verbose_name_plural = "Anomalies de pointage"
+    
+    def __str__(self):
+        try:
+            from .models import UserInfo
+            user = UserInfo.objects.get(userid=self.userid)
+            return f"{user.name} - {self.date}"
+        except:
+            return f"User {self.userid} - {self.date}"
+    
+    @property
+    def user(self):
+        """Propriété pour accéder à l'objet UserInfo"""
+        try:
+            from .models import UserInfo
+            return UserInfo.objects.get(userid=self.userid)
+        except:
+            return None

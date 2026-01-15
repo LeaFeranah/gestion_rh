@@ -13,6 +13,11 @@ urlpatterns = [
     path('evenements/<int:pk>/', EvenementDetailAPIView.as_view(), name='evenement-detail'),
     path('evenements/user/<int:userid>/date/<str:date_str>/', EvenementByUserDateAPIView.as_view(), name='evenement-user-date'),
     path('types-evenements/', TypesEvenementAPIView.as_view(), name='types-evenements'),
+
+    # ===== GESTION DES ANOMALIES DE POINTAGE =====
+    path('anomalies/', AnomaliePointageListAPIView.as_view(), name='anomalie-list'),
+    path('anomalies/user/<int:userid>/date/<str:date_str>/', AnomaliePointageByUserDateAPIView.as_view(), name='anomalie-user-date'),
+    
     
     # ===== GESTION DES HORAIRES DE SECTION =====
     path('horaires-section/', HoraireSectionListAPIView.as_view(), name='horaires-section-list'),
