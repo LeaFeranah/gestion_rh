@@ -667,9 +667,6 @@ class PresenceMoisCalculeeAPIView(APIView):
             "presences": resultat
         })
 
-
-
-
 class PresenceMoisDetailCalculeeAPIView(APIView):
     """
     Présence détaillée d'un employé avec tous les calculs
@@ -704,7 +701,7 @@ class PresenceMoisDetailCalculeeAPIView(APIView):
                 "dates_disponibles": []
             })
         
-        # ✅ RÉCUPÉRER TOUS LES ÉVÉNEMENTS DU MOIS DEPUIS LA BASE
+        #RÉCUPÉRER TOUS LES ÉVÉNEMENTS DU MOIS
         evenements_query = Evenement.objects.filter(date__in=dates_liste)
         
         if badgenumber:
@@ -716,23 +713,23 @@ class PresenceMoisDetailCalculeeAPIView(APIView):
             for e in evenements_query
         }
         
-        # ✅ RÉCUPÉRER LES ANOMALIES DU MOIS
+        #RÉCUPÉRER LES ANOMALIES DU MOIS
         anomalies_query = AnomaliePointage.objects.filter(date__in=dates_liste)
         
         if badgenumber:
             user_ids = UserInfo.objects.filter(badgenumber=badgenumber).values_list('userid', flat=True)
             anomalies_query = anomalies_query.filter(userid__in=user_ids)
         
-        anomalies_dict = {
-            (a.userid, str(a.date)): {
+        anomalies_dict = {}
+        for a in anomalies_query:
+            key = (a.userid, str(a.date))
+            anomalies_dict[key] = {
                 'heure_entree': a.heure_entree_modifiee,
                 'heure_sortie': a.heure_sortie_modifiee,
                 'motif': a.motif,
                 'modifie_par': a.modifie_par,
                 'modifie_le': a.modifie_le
             }
-            for a in anomalies_query
-        }
         
         # Récupérer les pointages
         pointages_query = CheckInOut.objects.filter(checktime__date__in=dates_liste)
@@ -761,10 +758,10 @@ class PresenceMoisDetailCalculeeAPIView(APIView):
             if not date_obj:
                 continue
             
-            # ✅ RÉCUPÉRER L'ÉVÉNEMENT DEPUIS LA BASE (ou "A" si absent)
+            # RÉCUPÉRER L'ÉVÉNEMENT
             evenement = evenements_dict.get((p["user__userid"], str(date_pointage)), 'A')
             
-            # ✅ VÉRIFIER S'IL Y A UNE ANOMALIE
+            # VÉRIFIER S'IL Y A UNE ANOMALIE
             anomalie_key = (p["user__userid"], str(date_pointage))
             anomalie = anomalies_dict.get(anomalie_key)
             
@@ -795,7 +792,7 @@ class PresenceMoisDetailCalculeeAPIView(APIView):
                 date_pointage
             )
             
-            # ✅ UTILISER LES HEURES MODIFIÉES SI ANOMALIE EXISTE
+            # UTILISER LES HEURES MODIFIÉES SI ANOMALIE EXISTE
             if anomalie:
                 if anomalie['heure_entree']:
                     analyse['heure_entree_comptabilisee'] = anomalie['heure_entree']
@@ -871,8 +868,9 @@ class PresenceMoisDetailCalculeeAPIView(APIView):
                 "heure_entree_prevue": str(heure_entree_prevue),
                 "heure_sortie_prevue": str(heure_sortie_prevue),
                 
-                "heure_entree_comptabilisee": str(analyse['heure_entree_comptabilisee']) if analyse['heure_entree_comptabilisee'] else None,
-                "heure_sortie_comptabilisee": str(analyse['heure_sortie_comptabilisee']) if analyse['heure_sortie_comptabilisee'] else None,
+                # ✅ TOUJOURS UTILISER LES HEURES MODIFIÉES SI ELLES EXISTENT
+                "heure_entree_comptabilisee": str(anomalie['heure_entree']) if anomalie and anomalie['heure_entree'] else str(analyse['heure_entree_comptabilisee']) if analyse['heure_entree_comptabilisee'] else None,
+                "heure_sortie_comptabilisee": str(anomalie['heure_sortie']) if anomalie and anomalie['heure_sortie'] else str(analyse['heure_sortie_comptabilisee']) if analyse['heure_sortie_comptabilisee'] else None,
                 
                 "retard_minutes": analyse['retard_minutes'],
                 "sortie_anticipee_minutes": analyse['sortie_anticipee_minutes'],
@@ -881,12 +879,13 @@ class PresenceMoisDetailCalculeeAPIView(APIView):
                 "est_en_retard": analyse['est_en_retard'],
                 "est_sorti_en_avance": analyse['est_sorti_en_avance'],
                 
-                "a_anomalie": anomalie is not None,  # ✅ INDICATEUR DE MODIFICATION
+                # ✅ INDIQUER CLAIREMENT LES ANOMALIES
+                "a_anomalie": anomalie is not None,
                 "motif_anomalie": anomalie['motif'] if anomalie else None,
                 "modifie_par": anomalie['modifie_par'] if anomalie else None,
                 "modifie_le": str(anomalie['modifie_le']) if anomalie else None,
                 
-                "evenement": evenement  # ✅ Événement DEPUIS LA BASE
+                "evenement": evenement
             })
         
         mois_fr = [
