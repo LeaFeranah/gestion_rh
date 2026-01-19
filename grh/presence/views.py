@@ -701,7 +701,18 @@ class PresenceMoisDetailCalculeeAPIView(APIView):
                 "dates_disponibles": []
             })
         
-        #RÉCUPÉRER TOUS LES ÉVÉNEMENTS DU MOIS
+        # Créer un dictionnaire pour les dates avec leurs propriétés
+        dates_dict = {}
+        for date_obj in dates_mois:
+            dates_dict[str(date_obj.date)] = {
+                'date_obj': date_obj,
+                'est_jour_paiement': date_obj.est_jour_paiement,
+                'hors_periode': date_obj.hors_periode,
+                'code_affichage': date_obj.code_affichage,
+                'code_date': date_obj.code_date
+            }
+        
+        # Récupérer tous les événements du mois
         evenements_query = Evenement.objects.filter(date__in=dates_liste)
         
         if badgenumber:
@@ -713,7 +724,7 @@ class PresenceMoisDetailCalculeeAPIView(APIView):
             for e in evenements_query
         }
         
-        #RÉCUPÉRER LES ANOMALIES DU MOIS
+        # Récupérer les anomalies du mois
         anomalies_query = AnomaliePointage.objects.filter(date__in=dates_liste)
         
         if badgenumber:
@@ -748,21 +759,24 @@ class PresenceMoisDetailCalculeeAPIView(APIView):
             .order_by('user__badgenumber', 'checktime__date')
         )
         
-        dates_dict = {d.date: d for d in dates_mois}
         resultat = []
         
         for p in pointages:
             date_pointage = p["checktime__date"]
-            date_obj = dates_dict.get(date_pointage)
+            date_str = str(date_pointage)
+            date_info = dates_dict.get(date_str)
             
-            if not date_obj:
+            if not date_info:
                 continue
             
-            # RÉCUPÉRER L'ÉVÉNEMENT
-            evenement = evenements_dict.get((p["user__userid"], str(date_pointage)), 'A')
+            date_obj = date_info['date_obj']
+            est_jour_paiement = date_info['est_jour_paiement']
             
-            # VÉRIFIER S'IL Y A UNE ANOMALIE
-            anomalie_key = (p["user__userid"], str(date_pointage))
+            # Récupérer l'événement
+            evenement = evenements_dict.get((p["user__userid"], date_str), 'A')
+            
+            # Vérifier s'il y a une anomalie
+            anomalie_key = (p["user__userid"], date_str)
             anomalie = anomalies_dict.get(anomalie_key)
             
             section = get_section_employe(p["user__badgenumber"])
@@ -776,7 +790,22 @@ class PresenceMoisDetailCalculeeAPIView(APIView):
                     continue
             
             est_samedi = date_pointage.weekday() == 5
-            heure_sortie_prevue_decimal = horaire.sortie_samedi if est_samedi else horaire.heure_sortie
+            est_vendredi = date_pointage.weekday() == 4
+            
+            # ✅ DÉTERMINER L'HEURE DE SORTIE PRÉVUE EN FONCTION DU TYPE DE JOUR
+            if est_jour_paiement:
+                if est_vendredi:
+                    # Vendredi de paiement
+                    heure_sortie_prevue_decimal = horaire.sortie_vendredi_paiement
+                else:
+                    # Samedi de paiement
+                    heure_sortie_prevue_decimal = horaire.sortie_samedi_paiement
+            elif est_samedi:
+                # Samedi normal (non paiement)
+                heure_sortie_prevue_decimal = horaire.sortie_samedi
+            else:
+                # Jour normal (lundi à jeudi)
+                heure_sortie_prevue_decimal = horaire.heure_sortie
             
             heure_entree_prevue = decimal_to_time(horaire.heure_entree)
             heure_sortie_prevue = decimal_to_time(heure_sortie_prevue_decimal)
@@ -792,7 +821,7 @@ class PresenceMoisDetailCalculeeAPIView(APIView):
                 date_pointage
             )
             
-            # UTILISER LES HEURES MODIFIÉES SI ANOMALIE EXISTE
+            # Utiliser les heures modifiées si anomalie existe
             if anomalie:
                 if anomalie['heure_entree']:
                     analyse['heure_entree_comptabilisee'] = anomalie['heure_entree']
@@ -856,17 +885,22 @@ class PresenceMoisDetailCalculeeAPIView(APIView):
                 "badgenumber": p["user__badgenumber"],
                 "name": p["user__name"],
                 "section": section,
-                "date": str(date_pointage),
+                "date": date_str,
                 "code_date": date_obj.code_date,
                 "code_affichage": date_obj.code_affichage,
                 "hors_periode": date_obj.hors_periode,
                 "est_samedi": est_samedi,
+                "est_vendredi": est_vendredi,
+                "est_jour_paiement": est_jour_paiement,  # ✅ NOUVEAU CHAMP
                 
                 "heure_entree_reelle": str(heure_entree_reelle) if heure_entree_reelle else None,
                 "heure_sortie_reelle": str(heure_sortie_reelle) if heure_sortie_reelle else None,
                 
                 "heure_entree_prevue": str(heure_entree_prevue),
                 "heure_sortie_prevue": str(heure_sortie_prevue),
+                "type_sortie_prevue": "vendredi_paiement" if est_jour_paiement and est_vendredi else 
+                                     "samedi_paiement" if est_jour_paiement and est_samedi else
+                                     "samedi_normal" if est_samedi else "normal",  # ✅ INFO SUR LE TYPE D'HORAIRE
                 
                 # ✅ TOUJOURS UTILISER LES HEURES MODIFIÉES SI ELLES EXISTENT
                 "heure_entree_comptabilisee": str(anomalie['heure_entree']) if anomalie and anomalie['heure_entree'] else str(analyse['heure_entree_comptabilisee']) if analyse['heure_entree_comptabilisee'] else None,
@@ -919,11 +953,12 @@ class PresenceMoisDetailCalculeeAPIView(APIView):
                 "nombre_retards": sum(1 for r in resultat if r['est_en_retard']),
                 "nombre_sorties_anticipees": sum(1 for r in resultat if r['est_sorti_en_avance']),
                 "nombre_anomalies": sum(1 for r in resultat if r['a_anomalie']),
+                "nombre_jours_paiement": sum(1 for r in resultat if r['est_jour_paiement']),
             },
             "presences": resultat
         })
-
-
+    
+    
 # ========== GESTION DES ÉVÉNEMENTS ==========
 
 class EvenementListAPIView(APIView):
