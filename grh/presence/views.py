@@ -7,8 +7,6 @@ from datetime import date
 from .models import CheckInOut, UserInfo, Date, Evenement, HoraireSection
 from .serializers import DateSerializer, HoraireSectionSerializer, EvenementSerializer
 from .utils import decimal_to_time, analyser_presence, get_section_employe
-from .models import AnomaliePointage
-from .serializers import AnomaliePointageSerializer
 
 
 # ========== GESTION DES DATES ==========
@@ -34,13 +32,13 @@ class DateGenerationAPIView(APIView):
             hors_periode=False
         ).values_list('date', flat=True)
         
-        #Récupérer tous les employés
+        # Récupérer tous les employés
         employes = UserInfo.objects.all()
         
         evenements_crees = 0
         for employe in employes:
             for date_jour in dates_periode:
-                #Créer l'événement "X" par défaut s'il n'existe pas
+                # Créer l'événement "X" par défaut s'il n'existe pas
                 _, created = Evenement.objects.get_or_create(
                     userid=employe.userid,
                     date=date_jour,
@@ -724,24 +722,6 @@ class PresenceMoisDetailCalculeeAPIView(APIView):
             for e in evenements_query
         }
         
-        # Récupérer les anomalies du mois
-        anomalies_query = AnomaliePointage.objects.filter(date__in=dates_liste)
-        
-        if badgenumber:
-            user_ids = UserInfo.objects.filter(badgenumber=badgenumber).values_list('userid', flat=True)
-            anomalies_query = anomalies_query.filter(userid__in=user_ids)
-        
-        anomalies_dict = {}
-        for a in anomalies_query:
-            key = (a.userid, str(a.date))
-            anomalies_dict[key] = {
-                'heure_entree': a.heure_entree_modifiee,
-                'heure_sortie': a.heure_sortie_modifiee,
-                'motif': a.motif,
-                'modifie_par': a.modifie_par,
-                'modifie_le': a.modifie_le
-            }
-        
         # Récupérer les pointages
         pointages_query = CheckInOut.objects.filter(checktime__date__in=dates_liste)
         
@@ -775,10 +755,6 @@ class PresenceMoisDetailCalculeeAPIView(APIView):
             # Récupérer l'événement
             evenement = evenements_dict.get((p["user__userid"], date_str), 'A')
             
-            # Vérifier s'il y a une anomalie
-            anomalie_key = (p["user__userid"], date_str)
-            anomalie = anomalies_dict.get(anomalie_key)
-            
             section = get_section_employe(p["user__badgenumber"])
             
             try:
@@ -792,7 +768,7 @@ class PresenceMoisDetailCalculeeAPIView(APIView):
             est_samedi = date_pointage.weekday() == 5
             est_vendredi = date_pointage.weekday() == 4
             
-            # ✅ DÉTERMINER L'HEURE DE SORTIE PRÉVUE EN FONCTION DU TYPE DE JOUR
+            # DÉTERMINER L'HEURE DE SORTIE PRÉVUE EN FONCTION DU TYPE DE JOUR
             if est_jour_paiement:
                 if est_vendredi:
                     # Vendredi de paiement
@@ -821,65 +797,6 @@ class PresenceMoisDetailCalculeeAPIView(APIView):
                 date_pointage
             )
             
-            # Utiliser les heures modifiées si anomalie existe
-            if anomalie:
-                if anomalie['heure_entree']:
-                    analyse['heure_entree_comptabilisee'] = anomalie['heure_entree']
-                if anomalie['heure_sortie']:
-                    analyse['heure_sortie_comptabilisee'] = anomalie['heure_sortie']
-                
-                # Recalculer les heures travaillées avec les heures modifiées
-                if anomalie['heure_entree'] and anomalie['heure_sortie']:
-                    from decimal import Decimal
-                    from datetime import datetime
-                    
-                    today = datetime.today().date()
-                    dt_entree = datetime.combine(today, anomalie['heure_entree'])
-                    dt_sortie = datetime.combine(today, anomalie['heure_sortie'])
-                    
-                    if dt_sortie > dt_entree:
-                        diff = dt_sortie - dt_entree
-                        minutes_totales = diff.total_seconds() / 60
-                        minutes_travaillees = minutes_totales - 60  # Pause de 60 minutes
-                        
-                        if minutes_travaillees > 0:
-                            heures = minutes_travaillees / 60
-                            analyse['heures_travaillees'] = round(heures, 2)
-                
-                # Recalculer le retard avec l'heure modifiée
-                if anomalie['heure_entree'] and heure_entree_prevue:
-                    from datetime import datetime
-                    today = datetime.today().date()
-                    dt_entree_modifiee = datetime.combine(today, anomalie['heure_entree'])
-                    dt_entree_prevue = datetime.combine(today, heure_entree_prevue)
-                    
-                    diff = dt_entree_modifiee - dt_entree_prevue
-                    diff_minutes = diff.total_seconds() / 60
-                    
-                    if diff_minutes > 20:  # Tolérance de 20 minutes
-                        analyse['retard_minutes'] = int(diff_minutes - 20)
-                        analyse['est_en_retard'] = True
-                    else:
-                        analyse['retard_minutes'] = 0
-                        analyse['est_en_retard'] = False
-                
-                # Recalculer la sortie anticipée avec l'heure modifiée
-                if anomalie['heure_sortie'] and heure_sortie_prevue:
-                    from datetime import datetime
-                    today = datetime.today().date()
-                    dt_sortie_modifiee = datetime.combine(today, anomalie['heure_sortie'])
-                    dt_sortie_prevue = datetime.combine(today, heure_sortie_prevue)
-                    
-                    diff = dt_sortie_prevue - dt_sortie_modifiee
-                    diff_minutes = diff.total_seconds() / 60
-                    
-                    if diff_minutes > 0:
-                        analyse['sortie_anticipee_minutes'] = int(diff_minutes)
-                        analyse['est_sorti_en_avance'] = True
-                    else:
-                        analyse['sortie_anticipee_minutes'] = 0
-                        analyse['est_sorti_en_avance'] = False
-            
             resultat.append({
                 "userid": p["user__userid"],
                 "badgenumber": p["user__badgenumber"],
@@ -891,7 +808,7 @@ class PresenceMoisDetailCalculeeAPIView(APIView):
                 "hors_periode": date_obj.hors_periode,
                 "est_samedi": est_samedi,
                 "est_vendredi": est_vendredi,
-                "est_jour_paiement": est_jour_paiement,  # ✅ NOUVEAU CHAMP
+                "est_jour_paiement": est_jour_paiement,
                 
                 "heure_entree_reelle": str(heure_entree_reelle) if heure_entree_reelle else None,
                 "heure_sortie_reelle": str(heure_sortie_reelle) if heure_sortie_reelle else None,
@@ -900,11 +817,10 @@ class PresenceMoisDetailCalculeeAPIView(APIView):
                 "heure_sortie_prevue": str(heure_sortie_prevue),
                 "type_sortie_prevue": "vendredi_paiement" if est_jour_paiement and est_vendredi else 
                                      "samedi_paiement" if est_jour_paiement and est_samedi else
-                                     "samedi_normal" if est_samedi else "normal",  # ✅ INFO SUR LE TYPE D'HORAIRE
+                                     "samedi_normal" if est_samedi else "normal",
                 
-                # ✅ TOUJOURS UTILISER LES HEURES MODIFIÉES SI ELLES EXISTENT
-                "heure_entree_comptabilisee": str(anomalie['heure_entree']) if anomalie and anomalie['heure_entree'] else str(analyse['heure_entree_comptabilisee']) if analyse['heure_entree_comptabilisee'] else None,
-                "heure_sortie_comptabilisee": str(anomalie['heure_sortie']) if anomalie and anomalie['heure_sortie'] else str(analyse['heure_sortie_comptabilisee']) if analyse['heure_sortie_comptabilisee'] else None,
+                "heure_entree_comptabilisee": str(analyse['heure_entree_comptabilisee']) if analyse['heure_entree_comptabilisee'] else None,
+                "heure_sortie_comptabilisee": str(analyse['heure_sortie_comptabilisee']) if analyse['heure_sortie_comptabilisee'] else None,
                 
                 "retard_minutes": analyse['retard_minutes'],
                 "sortie_anticipee_minutes": analyse['sortie_anticipee_minutes'],
@@ -912,12 +828,6 @@ class PresenceMoisDetailCalculeeAPIView(APIView):
                 "heures_prevues": analyse['heures_prevues'],
                 "est_en_retard": analyse['est_en_retard'],
                 "est_sorti_en_avance": analyse['est_sorti_en_avance'],
-                
-                # ✅ INDIQUER CLAIREMENT LES ANOMALIES
-                "a_anomalie": anomalie is not None,
-                "motif_anomalie": anomalie['motif'] if anomalie else None,
-                "modifie_par": anomalie['modifie_par'] if anomalie else None,
-                "modifie_le": str(anomalie['modifie_le']) if anomalie else None,
                 
                 "evenement": evenement
             })
@@ -952,7 +862,6 @@ class PresenceMoisDetailCalculeeAPIView(APIView):
                 "total_heures_prevues": round(total_heures_prevues, 2),
                 "nombre_retards": sum(1 for r in resultat if r['est_en_retard']),
                 "nombre_sorties_anticipees": sum(1 for r in resultat if r['est_sorti_en_avance']),
-                "nombre_anomalies": sum(1 for r in resultat if r['a_anomalie']),
                 "nombre_jours_paiement": sum(1 for r in resultat if r['est_jour_paiement']),
             },
             "presences": resultat
@@ -1083,7 +992,7 @@ class EvenementByUserDateAPIView(APIView):
         data['date'] = date_str
         
         try:
-            # ✅ UTILISER update_or_create POUR GARANTIR LA PERSISTANCE
+            # UTILISER update_or_create POUR GARANTIR LA PERSISTANCE
             evenement, created = Evenement.objects.update_or_create(
                 userid=userid,
                 date=date_str,
@@ -1111,7 +1020,7 @@ class EvenementByUserDateAPIView(APIView):
     def delete(self, request, userid, date_str):
         """Supprimer un événement (retour à 'X' par défaut)"""
         try:
-            # ✅ AU LIEU DE SUPPRIMER, RÉINITIALISER À 'X'
+            # AU LIEU DE SUPPRIMER, RÉINITIALISER À 'X'
             evenement, created = Evenement.objects.update_or_create(
                 userid=userid,
                 date=date_str,
@@ -1147,127 +1056,3 @@ class TypesEvenementAPIView(APIView):
             for code, libelle in Evenement.TYPES_EVENEMENT
         ]
         return Response({'types_evenements': types})
-    
-    
-
-class AnomaliePointageListAPIView(APIView):
-    """
-    Liste et création d'anomalies de pointage
-    GET /api/presence/anomalies/?annee=2024&mois=8
-    POST /api/presence/anomalies/
-    """
-    permission_classes = [AllowAny]
-    
-    def get(self, request):
-        """Liste toutes les anomalies (avec filtres optionnels)"""
-        anomalies = AnomaliePointage.objects.all()
-        
-        annee = request.query_params.get('annee')
-        mois = request.query_params.get('mois')
-        badgenumber = request.query_params.get('badgenumber')
-        
-        if annee and mois:
-            from .models import Date
-            mois_ref = date(int(annee), int(mois), 1)
-            dates_mois = Date.objects.filter(mois_reference=mois_ref).values_list('date', flat=True)
-            anomalies = anomalies.filter(date__in=dates_mois)
-        
-        if badgenumber:
-            from .models import UserInfo
-            anomalies = anomalies.filter(
-                userid__in=UserInfo.objects.filter(badgenumber=badgenumber).values_list('userid', flat=True)
-            )
-        
-        anomalies = anomalies.order_by('-date')
-        serializer = AnomaliePointageSerializer(anomalies, many=True)
-        
-        return Response({
-            'count': anomalies.count(),
-            'anomalies': serializer.data
-        })
-    
-    def post(self, request):
-        """Créer une anomalie"""
-        serializer = AnomaliePointageSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-class AnomaliePointageByUserDateAPIView(APIView):
-    """
-    Gérer une anomalie par user et date
-    GET /api/presence/anomalies/user/{userid}/date/{date_str}/
-    POST /api/presence/anomalies/user/{userid}/date/{date_str}/
-    DELETE /api/presence/anomalies/user/{userid}/date/{date_str}/
-    """
-    permission_classes = [AllowAny]
-    
-    def get(self, request, userid, date_str):
-        """Récupérer l'anomalie pour un user et une date"""
-        try:
-            anomalie = AnomaliePointage.objects.get(userid=userid, date=date_str)
-            serializer = AnomaliePointageSerializer(anomalie)
-            return Response(serializer.data)
-        except AnomaliePointage.DoesNotExist:
-            return Response({
-                'anomalie': None,
-                'message': 'Aucune anomalie enregistrée'
-            })
-    
-    def post(self, request, userid, date_str):
-        """Créer ou mettre à jour une anomalie"""
-        data = request.data.copy()
-        data['userid'] = userid
-        data['date'] = date_str
-        
-        try:
-            anomalie, created = AnomaliePointage.objects.update_or_create(
-                userid=userid,
-                date=date_str,
-                defaults={
-                    'heure_entree_modifiee': data.get('heure_entree_modifiee'),
-                    'heure_sortie_modifiee': data.get('heure_sortie_modifiee'),
-                    'motif': data.get('motif', ''),
-                    'modifie_par': data.get('modifie_par', '')
-                }
-            )
-            
-            serializer = AnomaliePointageSerializer(anomalie)
-            
-            return Response({
-                'success': True,
-                'created': created,
-                'anomalie': serializer.data,
-                'message': 'Anomalie créée' if created else 'Anomalie mise à jour'
-            }, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
-            
-        except Exception as e:
-            return Response({
-                'success': False,
-                'error': str(e)
-            }, status=status.HTTP_400_BAD_REQUEST)
-    
-    def delete(self, request, userid, date_str):
-        """Supprimer une anomalie"""
-        try:
-            anomalie = AnomaliePointage.objects.get(userid=userid, date=date_str)
-            anomalie.delete()
-            
-            return Response({
-                'success': True,
-                'message': 'Anomalie supprimée'
-            }, status=status.HTTP_200_OK)
-            
-        except AnomaliePointage.DoesNotExist:
-            return Response({
-                'success': False,
-                'error': 'Anomalie non trouvée'
-            }, status=status.HTTP_404_NOT_FOUND)
-        except Exception as e:
-            return Response({
-                'success': False,
-                'error': str(e)
-            }, status=status.HTTP_400_BAD_REQUEST)
-

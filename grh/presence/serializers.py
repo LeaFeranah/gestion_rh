@@ -1,6 +1,7 @@
+
 from rest_framework import serializers
 from decimal import Decimal
-from .models import Date, HoraireSection, Evenement, AnomaliePointage
+from .models import Date, HoraireSection, Evenement
 
 
 class DateSerializer(serializers.ModelSerializer):
@@ -103,43 +104,3 @@ class EvenementSerializer(serializers.ModelSerializer):
         if value not in valid_types:
             raise serializers.ValidationError(f"Type d'événement invalide. Choix: {', '.join(valid_types)}")
         return value
-    
-
-class AnomaliePointageSerializer(serializers.ModelSerializer):
-    user_name = serializers.SerializerMethodField()
-    badgenumber = serializers.SerializerMethodField()
-    
-    class Meta:
-        model = AnomaliePointage
-        fields = [
-            'id',
-            'userid',
-            'user_name',
-            'badgenumber',
-            'date',
-            'heure_entree_modifiee',
-            'heure_sortie_modifiee',
-            'motif',
-            'modifie_par',
-            'cree_le',
-            'modifie_le'
-        ]
-        read_only_fields = ['id', 'cree_le', 'modifie_le']
-    
-    def get_user_name(self, obj):
-        """Récupère le nom de l'utilisateur"""
-        try:
-            from .models import UserInfo
-            user = UserInfo.objects.get(userid=obj.userid)
-            return user.name if user else f"User {obj.userid}"
-        except:
-            return f"User {obj.userid}"
-    
-    def get_badgenumber(self, obj):
-        """Récupère le badgenumber"""
-        try:
-            from .models import UserInfo
-            user = UserInfo.objects.get(userid=obj.userid)
-            return user.badgenumber if user else None
-        except:
-            return None
