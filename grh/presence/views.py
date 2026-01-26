@@ -3,12 +3,13 @@ from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
 from rest_framework import status
 from django.db.models import Min, Max
-from datetime import date
-from .models import CheckInOut, UserInfo, Date, Evenement, HoraireSection
-from .serializers import DateSerializer, HoraireSectionSerializer, EvenementSerializer
+from datetime import date, datetime
+from .models import CheckInOut, UserInfo, Date, Evenement, HoraireSection, Anomalie
+from .serializers import DateSerializer, HoraireSectionSerializer, EvenementSerializer, AnomalieSerializer
 from .utils import decimal_to_time, analyser_presence, get_section_employe
+import logging
 
-
+logger = logging.getLogger(__name__)
 # ========== GESTION DES DATES ==========
 
 class DateGenerationAPIView(APIView):
@@ -1056,3 +1057,615 @@ class TypesEvenementAPIView(APIView):
             for code, libelle in Evenement.TYPES_EVENEMENT
         ]
         return Response({'types_evenements': types})
+
+
+
+
+
+
+
+
+
+
+# ========== GESTION DES ANOMALIES ==========
+
+# class AnomalieListAPIView(APIView):
+#     """
+#     Liste des anomalies avec filtres
+#     GET /api/presence/anomalies/?annee=2024&mois=8&section=BRODERIE
+#     """
+#     permission_classes = [AllowAny]
+    
+#     def get(self, request):
+#         """Liste toutes les anomalies avec filtres optionnels"""
+#         anomalies = Anomalie.objects.all()
+        
+#         annee = request.query_params.get('annee')
+#         mois = request.query_params.get('mois')
+#         section = request.query_params.get('section')
+#         date_debut = request.query_params.get('date_debut')
+#         date_fin = request.query_params.get('date_fin')
+#         corrigee = request.query_params.get('corrigee')
+        
+#         if annee and mois:
+#             mois_ref = date(int(annee), int(mois), 1)
+#             dates_mois = Date.objects.filter(
+#                 mois_reference=mois_ref,
+#                 hors_periode=False
+#             ).values_list('date', flat=True)
+#             anomalies = anomalies.filter(date__in=dates_mois)
+        
+#         if date_debut:
+#             anomalies = anomalies.filter(date__gte=date_debut)
+        
+#         if date_fin:
+#             anomalies = anomalies.filter(date__lte=date_fin)
+        
+#         if section:
+#             anomalies = anomalies.filter(section=section)
+        
+#         if corrigee is not None:
+#             est_corrigee = corrigee.lower() == 'true'
+#             anomalies = anomalies.filter(corrigee=est_corrigee)
+        
+#         anomalies = anomalies.select_related().order_by('-date', 'section', 'userid')
+#         serializer = AnomalieSerializer(anomalies, many=True)
+        
+#         # Statistiques
+#         stats = {
+#             'total': anomalies.count(),
+#             'corrigees': anomalies.filter(corrigee=True).count(),
+#             'non_corrigees': anomalies.filter(corrigee=False).count(),
+#             'par_etat': {}
+#         }
+        
+#         for etat_code, etat_libelle in Anomalie.ETATS_ANOMALIE:
+#             count = anomalies.filter(etat=etat_code).count()
+#             if count > 0:
+#                 stats['par_etat'][etat_code] = {
+#                     'libelle': etat_libelle,
+#                     'count': count
+#                 }
+        
+#         return Response({
+#             'count': anomalies.count(),
+#             'statistiques': stats,
+#             'anomalies': serializer.data
+#         })
+
+
+# class AnomalieDetailAPIView(APIView):
+#     """
+#     Détail et modification d'une anomalie
+#     GET /api/presence/anomalies/{id}/
+#     PUT /api/presence/anomalies/{id}/
+#     """
+#     permission_classes = [AllowAny]
+    
+#     def get_object(self, pk):
+#         try:
+#             return Anomalie.objects.get(pk=pk)
+#         except Anomalie.DoesNotExist:
+#             return None
+    
+#     def get(self, request, pk):
+#         """Récupérer une anomalie"""
+#         anomalie = self.get_object(pk)
+#         if not anomalie:
+#             return Response(
+#                 {'error': 'Anomalie non trouvée'},
+#                 status=status.HTTP_404_NOT_FOUND
+#             )
+#         serializer = AnomalieSerializer(anomalie)
+#         return Response(serializer.data)
+    
+#     def put(self, request, pk):
+#         """
+#         Mettre à jour une anomalie (corriger les heures)
+#         IMPORTANT : heure_reelle = heure_comptabilisee toujours
+#         """
+#         anomalie = self.get_object(pk)
+#         if not anomalie:
+#             return Response(
+#                 {'error': 'Anomalie non trouvée'},
+#                 status=status.HTTP_404_NOT_FOUND
+#             )
+        
+#         # Forcer la synchronisation heure_reelle = heure_comptabilisee
+#         data = request.data.copy()
+#         if 'heure_reelle_entree' in data:
+#             data['heure_comptabilisee_entree'] = data['heure_reelle_entree']
+#         if 'heure_reelle_sortie' in data:
+#             data['heure_comptabilisee_sortie'] = data['heure_reelle_sortie']
+        
+#         serializer = AnomalieSerializer(anomalie, data=data, partial=True)
+#         if serializer.is_valid():
+#             serializer.save()
+            
+#             # Si corrigée et OK, synchroniser avec la présence
+#             if anomalie.etat == 'ok' and anomalie.corrigee:
+#                 self._synchroniser_avec_presence(anomalie)
+            
+#             return Response(serializer.data)
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+#     def _synchroniser_avec_presence(self, anomalie):
+#         """
+#         Synchronise l'anomalie corrigée avec la table de présence
+#         """
+#         try:
+#             # Créer ou mettre à jour les pointages dans CheckInOut
+#             user = UserInfo.objects.get(userid=anomalie.userid)
+            
+#             # Supprimer les anciens pointages du jour
+#             CheckInOut.objects.filter(
+#                 user=user,
+#                 checktime__date=anomalie.date
+#             ).delete()
+            
+#             # Créer les nouveaux pointages
+#             if anomalie.heure_reelle_entree:
+#                 CheckInOut.objects.create(
+#                     user=user,
+#                     checktime=datetime.combine(anomalie.date, anomalie.heure_reelle_entree),
+#                     checktype='I'
+#                 )
+            
+#             if anomalie.heure_reelle_sortie:
+#                 CheckInOut.objects.create(
+#                     user=user,
+#                     checktime=datetime.combine(anomalie.date, anomalie.heure_reelle_sortie),
+#                     checktype='O'
+#                 )
+            
+#             return True
+#         except Exception as e:
+#             logger.error(f"Erreur synchronisation présence: {e}")
+#             return False
+
+
+# class DetecterAnomaliesAPIView(APIView):
+#     """
+#     Détecte automatiquement les anomalies pour une période
+#     POST /api/presence/detecter-anomalies/
+#     Body: {"annee": 2024, "mois": 8}
+#     """
+#     permission_classes = [AllowAny]
+    
+#     def post(self, request):
+#         annee = request.data.get('annee')
+#         mois = request.data.get('mois')
+        
+#         if not annee or not mois:
+#             return Response(
+#                 {"error": "Les paramètres 'annee' et 'mois' sont obligatoires"},
+#                 status=400
+#             )
+        
+#         try:
+#             annee = int(annee)
+#             mois = int(mois)
+#         except ValueError:
+#             return Response({"error": "Année et mois doivent être des nombres"}, status=400)
+        
+#         # Récupérer les dates de la période
+#         dates_mois = Date.get_dates_par_mois(annee, mois, inclure_hors_periode=False)
+        
+#         total_anomalies = 0
+#         for date_obj in dates_mois:
+#             count = Anomalie.detecter_anomalies_jour(date_obj.date)
+#             total_anomalies += count
+        
+#         return Response({
+#             'message': f'{total_anomalies} anomalies détectées pour {mois}/{annee}',
+#             'total': total_anomalies,
+#             'periode': {
+#                 'annee': annee,
+#                 'mois': mois,
+#                 'jours_analyses': dates_mois.count()
+#             }
+#         })
+
+
+# class AnomalieParSectionAPIView(APIView):
+#     """
+#     Anomalies groupées par section et par date
+#     GET /api/presence/anomalies/par-section/?annee=2024&mois=8
+#     """
+#     permission_classes = [AllowAny]
+    
+#     def get(self, request):
+#         annee = request.query_params.get('annee')
+#         mois = request.query_params.get('mois')
+        
+#         if not annee or not mois:
+#             return Response(
+#                 {"error": "Les paramètres 'annee' et 'mois' sont obligatoires"},
+#                 status=400
+#             )
+        
+#         mois_ref = date(int(annee), int(mois), 1)
+#         dates_mois = Date.objects.filter(
+#             mois_reference=mois_ref,
+#             hors_periode=False
+#         ).values_list('date', flat=True)
+        
+#         anomalies = Anomalie.objects.filter(
+#             date__in=dates_mois
+#         ).order_by('section', 'date', 'userid')
+        
+#         # Grouper par section
+#         par_section = {}
+#         for anomalie in anomalies:
+#             section = anomalie.section or 'SANS SECTION'
+#             if section not in par_section:
+#                 par_section[section] = {
+#                     'section': section,
+#                     'total': 0,
+#                     'corrigees': 0,
+#                     'par_date': {}
+#                 }
+            
+#             date_str = str(anomalie.date)
+#             if date_str not in par_section[section]['par_date']:
+#                 par_section[section]['par_date'][date_str] = []
+            
+#             par_section[section]['par_date'][date_str].append(
+#                 AnomalieSerializer(anomalie).data
+#             )
+#             par_section[section]['total'] += 1
+#             if anomalie.corrigee:
+#                 par_section[section]['corrigees'] += 1
+        
+#         return Response({
+#             'periode': {'annee': int(annee), 'mois': int(mois)},
+#             'sections': list(par_section.values())
+#         })
+
+class AnomalieListAPIView(APIView):
+    """
+    Liste des anomalies avec filtres
+    GET /api/presence/anomalies/?annee=2024&mois=8&section=BRODERIE&etat=pas_entree
+    """
+    permission_classes = [AllowAny]
+    
+    def get(self, request):
+        """Liste toutes les anomalies avec filtres optionnels"""
+        anomalies = Anomalie.objects.all()
+        
+        annee = request.query_params.get('annee')
+        mois = request.query_params.get('mois')
+        section = request.query_params.get('section')
+        date_debut = request.query_params.get('date_debut')
+        date_fin = request.query_params.get('date_fin')
+        etat = request.query_params.get('etat')
+        
+        if annee and mois:
+            mois_ref = date(int(annee), int(mois), 1)
+            dates_mois = Date.objects.filter(
+                mois_reference=mois_ref,
+                hors_periode=False
+            ).values_list('date', flat=True)
+            anomalies = anomalies.filter(date__in=dates_mois)
+        
+        if date_debut:
+            anomalies = anomalies.filter(date__gte=date_debut)
+        
+        if date_fin:
+            anomalies = anomalies.filter(date__lte=date_fin)
+        
+        if section:
+            anomalies = anomalies.filter(section=section)
+        
+        if etat:
+            anomalies = anomalies.filter(etat=etat)
+        
+        anomalies = anomalies.select_related().order_by('-date', 'section', 'userid')
+        serializer = AnomalieSerializer(anomalies, many=True)
+        
+        # Statistiques
+        stats = {
+            'total': anomalies.count(),
+            'corrigees': anomalies.filter(etat='ok').count(),
+            'non_corrigees': anomalies.exclude(etat='ok').count(),
+            'par_etat': {}
+        }
+        
+        for etat_code, etat_libelle in Anomalie.ETATS_ANOMALIE:
+            count = anomalies.filter(etat=etat_code).count()
+            if count > 0:
+                stats['par_etat'][etat_code] = {
+                    'libelle': etat_libelle,
+                    'count': count
+                }
+        
+        return Response({
+            'count': anomalies.count(),
+            'statistiques': stats,
+            'anomalies': serializer.data
+        })
+
+
+class AnomalieDetailAPIView(APIView):
+    """
+    Détail et modification d'une anomalie
+    GET /api/presence/anomalies/{id}/
+    PUT /api/presence/anomalies/{id}/
+    PATCH /api/presence/anomalies/{id}/
+    """
+    permission_classes = [AllowAny]
+    
+    def get_object(self, pk):
+        try:
+            return Anomalie.objects.get(pk=pk)
+        except Anomalie.DoesNotExist:
+            return None
+    
+    def get(self, request, pk):
+        """Récupérer une anomalie"""
+        anomalie = self.get_object(pk)
+        if not anomalie:
+            return Response(
+                {'error': 'Anomalie non trouvée'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        serializer = AnomalieSerializer(anomalie)
+        return Response(serializer.data)
+    
+    def put(self, request, pk):
+        """Mettre à jour complètement une anomalie"""
+        return self._update_anomalie(request, pk, partial=False)
+    
+    def patch(self, request, pk):
+        """Mettre à jour partiellement une anomalie"""
+        return self._update_anomalie(request, pk, partial=True)
+    
+    def _update_anomalie(self, request, pk, partial=False):
+        """
+        Logique de mise à jour d'une anomalie
+        """
+        anomalie = self.get_object(pk)
+        if not anomalie:
+            return Response(
+                {'error': 'Anomalie non trouvée'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        serializer = AnomalieSerializer(anomalie, data=request.data, partial=partial)
+        if serializer.is_valid():
+            anomalie_updated = serializer.save()
+            
+            # Vérifier si l'anomalie est maintenant OK
+            if anomalie_updated.etat == 'ok':
+                # Optionnel : synchroniser avec CheckInOut si nécessaire
+                self._synchroniser_avec_checkinout(anomalie_updated)
+            
+            return Response(AnomalieSerializer(anomalie_updated).data)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    def _synchroniser_avec_checkinout(self, anomalie):
+        """
+        Synchronise l'anomalie corrigée avec la table CheckInOut
+        Utilise les heures réelles (qui sont égales aux rectifiées quand OK)
+        """
+        try:
+            user = UserInfo.objects.get(userid=anomalie.userid)
+            
+            # Supprimer les anciens pointages du jour
+            CheckInOut.objects.filter(
+                user=user,
+                checktime__date=anomalie.date
+            ).delete()
+            
+            # Créer les nouveaux pointages avec les heures corrigées
+            # ATTENTION : O = entrée, I = sortie
+            if anomalie.heure_reelle_entree:
+                CheckInOut.objects.create(
+                    user=user,
+                    checktime=datetime.combine(anomalie.date, anomalie.heure_reelle_entree),
+                    checktype='O'  # O = entrée
+                )
+            
+            if anomalie.heure_reelle_sortie:
+                CheckInOut.objects.create(
+                    user=user,
+                    checktime=datetime.combine(anomalie.date, anomalie.heure_reelle_sortie),
+                    checktype='I'  # I = sortie
+                )
+            
+            logger.info(f"Synchronisation OK pour {user.name} le {anomalie.date}")
+            return True
+        except Exception as e:
+            logger.error(f"Erreur synchronisation CheckInOut: {e}")
+            return False
+
+
+class DetecterAnomaliesAPIView(APIView):
+    """
+    Détecte automatiquement les anomalies pour une période
+    POST /api/presence/detecter-anomalies/
+    Body: {"annee": 2024, "mois": 8}
+    """
+    permission_classes = [AllowAny]
+    
+    def post(self, request):
+        annee = request.data.get('annee')
+        mois = request.data.get('mois')
+        
+        if not annee or not mois:
+            return Response(
+                {"error": "Les paramètres 'annee' et 'mois' sont obligatoires"},
+                status=400
+            )
+        
+        try:
+            annee = int(annee)
+            mois = int(mois)
+        except ValueError:
+            return Response({"error": "Année et mois doivent être des nombres"}, status=400)
+        
+        # Récupérer les dates de la période
+        dates_mois = Date.get_dates_par_mois(annee, mois, inclure_hors_periode=False)
+        
+        total_anomalies = 0
+        for date_obj in dates_mois:
+            count = Anomalie.detecter_anomalies_jour(date_obj.date)
+            total_anomalies += count
+        
+        # Statistiques détaillées
+        anomalies = Anomalie.objects.filter(date__in=dates_mois.values_list('date', flat=True))
+        stats_par_etat = {}
+        for etat_code, etat_libelle in Anomalie.ETATS_ANOMALIE:
+            count = anomalies.filter(etat=etat_code).count()
+            if count > 0:
+                stats_par_etat[etat_code] = {
+                    'libelle': etat_libelle,
+                    'count': count
+                }
+        
+        return Response({
+            'message': f'{total_anomalies} anomalies détectées pour {mois}/{annee}',
+            'total': total_anomalies,
+            'periode': {
+                'annee': annee,
+                'mois': mois,
+                'jours_analyses': dates_mois.count()
+            },
+            'statistiques': {
+                'par_etat': stats_par_etat,
+                'total_corrigees': anomalies.filter(etat='ok').count(),
+                'total_non_corrigees': anomalies.exclude(etat='ok').count()
+            }
+        })
+
+
+class AnomalieParSectionAPIView(APIView):
+    """
+    Anomalies groupées par section et par date
+    GET /api/presence/anomalies/par-section/?annee=2024&mois=8
+    """
+    permission_classes = [AllowAny]
+    
+    def get(self, request):
+        annee = request.query_params.get('annee')
+        mois = request.query_params.get('mois')
+        
+        if not annee or not mois:
+            return Response(
+                {"error": "Les paramètres 'annee' et 'mois' sont obligatoires"},
+                status=400
+            )
+        
+        mois_ref = date(int(annee), int(mois), 1)
+        dates_mois = Date.objects.filter(
+            mois_reference=mois_ref,
+            hors_periode=False
+        ).values_list('date', flat=True)
+        
+        anomalies = Anomalie.objects.filter(
+            date__in=dates_mois
+        ).order_by('section', 'date', 'userid')
+        
+        # Grouper par section
+        par_section = {}
+        for anomalie in anomalies:
+            section = anomalie.section or 'SANS SECTION'
+            if section not in par_section:
+                par_section[section] = {
+                    'section': section,
+                    'total': 0,
+                    'corrigees': 0,
+                    'non_corrigees': 0,
+                    'par_etat': {},
+                    'par_date': {}
+                }
+            
+            date_str = str(anomalie.date)
+            if date_str not in par_section[section]['par_date']:
+                par_section[section]['par_date'][date_str] = []
+            
+            par_section[section]['par_date'][date_str].append(
+                AnomalieSerializer(anomalie).data
+            )
+            par_section[section]['total'] += 1
+            
+            if anomalie.etat == 'ok':
+                par_section[section]['corrigees'] += 1
+            else:
+                par_section[section]['non_corrigees'] += 1
+            
+            # Compter par état
+            etat_display = anomalie.get_etat_display()
+            if etat_display not in par_section[section]['par_etat']:
+                par_section[section]['par_etat'][etat_display] = 0
+            par_section[section]['par_etat'][etat_display] += 1
+        
+        return Response({
+            'periode': {'annee': int(annee), 'mois': int(mois)},
+            'total_sections': len(par_section),
+            'sections': list(par_section.values())
+        })
+
+
+class CorrigerAnomalieAPIView(APIView):
+    """
+    Correction rapide d'une anomalie avec règles automatiques
+    POST /api/presence/anomalies/{id}/corriger/
+    Body: {
+        "action": "inverser" | "reel_vide" | "copier_brut" | "manuel",
+        "heure_rectifiee_entree": "08:00:00",  # optionnel pour action "manuel"
+        "heure_rectifiee_sortie": "17:00:00"   # optionnel pour action "manuel"
+    }
+    """
+    permission_classes = [AllowAny]
+    
+    def post(self, request, pk):
+        try:
+            anomalie = Anomalie.objects.get(pk=pk)
+        except Anomalie.DoesNotExist:
+            return Response(
+                {'error': 'Anomalie non trouvée'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        action = request.data.get('action')
+        
+        if action == 'inverser':
+            # Inverser entrée et sortie dans rectifié
+            anomalie.heure_rectifiee_entree = anomalie.heure_brute_sortie
+            anomalie.heure_rectifiee_sortie = anomalie.heure_brute_entree
+            
+        elif action == 'reel_vide':
+            # Mettre réel à vide (absence confirmée)
+            anomalie.heure_reelle_entree = None
+            anomalie.heure_reelle_sortie = None
+            anomalie.heure_rectifiee_entree = None
+            anomalie.heure_rectifiee_sortie = None
+            
+        elif action == 'copier_brut':
+            # Copier brut dans rectifié
+            anomalie.heure_rectifiee_entree = anomalie.heure_brute_entree
+            anomalie.heure_rectifiee_sortie = anomalie.heure_brute_sortie
+            
+        elif action == 'manuel':
+            # Modification manuelle
+            if 'heure_rectifiee_entree' in request.data:
+                anomalie.heure_rectifiee_entree = request.data['heure_rectifiee_entree']
+            if 'heure_rectifiee_sortie' in request.data:
+                anomalie.heure_rectifiee_sortie = request.data['heure_rectifiee_sortie']
+        
+        else:
+            return Response(
+                {'error': 'Action invalide. Choix: inverser, reel_vide, copier_brut, manuel'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        anomalie.save()  # L'état sera automatiquement mis à jour
+        
+        serializer = AnomalieSerializer(anomalie)
+        return Response({
+            'message': 'Anomalie corrigée',
+            'action': action,
+            'anomalie': serializer.data
+        })
