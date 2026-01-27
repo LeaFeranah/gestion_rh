@@ -29,14 +29,11 @@ urlpatterns = [
     path('badge/<str:badgenumber>/', PresenceAPIView.as_view(), name='presence-by-badge'),
 
       # ===== GESTION DES ANOMALIES =====
-    # path('anomalies/', AnomalieListAPIView.as_view(), name='anomalie-list'),
-    # path('anomalies/<int:pk>/', AnomalieDetailAPIView.as_view(), name='anomalie-detail'),
-    # path('detecter-anomalies/', DetecterAnomaliesAPIView.as_view(), name='detecter-anomalies'),
-    # path('anomalies/par-section/', AnomalieParSectionAPIView.as_view(), name='anomalie-par-section'),
-    # ===== GESTION DES ANOMALIES =====
+  
     path('anomalies/', AnomalieListAPIView.as_view(), name='anomalie-list'),
     path('anomalies/<int:pk>/', AnomalieDetailAPIView.as_view(), name='anomalie-detail'),
     path('anomalies/<int:pk>/corriger/', CorrigerAnomalieAPIView.as_view(), name='anomalie-corriger'),
     path('detecter-anomalies/', DetecterAnomaliesAPIView.as_view(), name='detecter-anomalies'),
     path('anomalies/par-section/', AnomalieParSectionAPIView.as_view(), name='anomalie-par-section'),
+    path('anomalies-corrigees/', AnomaliesCorrigeesAPIView.as_view(), name='anomalies-corrigees'),
 ]
