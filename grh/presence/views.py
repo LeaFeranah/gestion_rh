@@ -667,6 +667,323 @@ class PresenceMoisCalculeeAPIView(APIView):
         })
 
 
+# class PresenceMoisDetailCalculeeAPIView(APIView):
+#     """
+#     Présence détaillée d'un employé avec tous les calculs
+#     GET /api/presence/mois/detail/calculee/?annee=2024&mois=8
+#     """
+#     permission_classes = [AllowAny]
+
+#     def get(self, request):
+#         annee = request.query_params.get('annee')
+#         mois = request.query_params.get('mois')
+#         badgenumber = request.query_params.get('badgenumber')
+#         inclure_hors_periode = request.query_params.get('inclure_hors_periode', 'false').lower() == 'true'
+        
+#         if not annee or not mois:
+#             return Response(
+#                 {"error": "Les paramètres 'annee' et 'mois' sont obligatoires"}, 
+#                 status=400
+#             )
+        
+#         try:
+#             annee = int(annee)
+#             mois = int(mois)
+#         except ValueError:
+#             return Response({"error": "Année et mois doivent être des nombres"}, status=400)
+        
+#         # Récupérer les dates du mois
+#         dates_mois = Date.get_dates_par_mois(annee, mois, inclure_hors_periode)
+#         dates_liste = list(dates_mois.values_list('date', flat=True))
+        
+#         if not dates_liste:
+#             return Response({
+#                 "message": f"Aucune date trouvée pour {mois}/{annee}. Générez d'abord les dates.",
+#                 "dates_disponibles": []
+#             })
+        
+#         # Créer un dictionnaire pour les dates avec leurs propriétés
+#         dates_dict = {}
+#         for date_obj in dates_mois:
+#             dates_dict[str(date_obj.date)] = {
+#                 'date_obj': date_obj,
+#                 'est_jour_paiement': date_obj.est_jour_paiement,
+#                 'hors_periode': date_obj.hors_periode,
+#                 'code_affichage': date_obj.code_affichage,
+#                 'code_date': date_obj.code_date
+#             }
+        
+#         # Récupérer tous les événements du mois
+#         evenements_query = Evenement.objects.filter(date__in=dates_liste)
+#         if badgenumber:
+#             user_ids = UserInfo.objects.filter(badgenumber=badgenumber).values_list('userid', flat=True)
+#             evenements_query = evenements_query.filter(userid__in=user_ids)
+        
+#         evenements_dict = {
+#             (e.userid, str(e.date)): e.type_evenement 
+#             for e in evenements_query
+#         }
+        
+#         # RÉCUPÉRER LES ANOMALIES CORRIGÉES (état='ok')
+#         anomalies_corrigees = Anomalie.objects.filter(
+#             date__in=dates_liste,
+#             etat='ok'
+#         ).select_related()
+        
+#         # Créer un dictionnaire pour accéder rapidement aux anomalies corrigées
+#         anomalies_corrigees_dict = {}
+#         for anomalie in anomalies_corrigees:
+#             key = (anomalie.userid, str(anomalie.date))
+#             anomalies_corrigees_dict[key] = {
+#                 'heure_entree': anomalie.heure_reelle_entree,
+#                 'heure_sortie': anomalie.heure_reelle_sortie,
+#                 'heure_rectifiee_entree': anomalie.heure_rectifiee_entree,
+#                 'heure_rectifiee_sortie': anomalie.heure_rectifiee_sortie,
+#                 'est_anomalie_corrigee': True,
+#                 'section': anomalie.section,
+#                 'synchronise_le': anomalie.synchronise_le,
+#                 'heure_brute_entree': anomalie.heure_brute_entree,
+#                 'heure_brute_sortie': anomalie.heure_brute_sortie
+#             }
+        
+#         # Récupérer TOUS les utilisateurs qui ont soit des pointages, soit des anomalies corrigées
+#         userids_avec_anomalies = set([key[0] for key in anomalies_corrigees_dict.keys()])
+        
+#         # Récupérer les utilisateurs avec pointages
+#         pointages_query = CheckInOut.objects.filter(checktime__date__in=dates_liste)
+#         if badgenumber:
+#             pointages_query = pointages_query.filter(user__badgenumber=badgenumber)
+        
+#         userids_avec_pointages = set(pointages_query.values_list('user__userid', flat=True).distinct())
+        
+#         # Combiner tous les userids à traiter
+#         userids_a_traiter = userids_avec_pointages.union(userids_avec_anomalies)
+        
+#         # Si pas d'utilisateurs à traiter
+#         if not userids_a_traiter:
+#             return Response({
+#                 "periode": {
+#                     "mois": mois,
+#                     "annee": annee,
+#                     "nombre_jours": len(dates_liste)
+#                 },
+#                 "presences": [],
+#                 "statistiques": {
+#                     "total_presences": 0
+#                 }
+#             })
+        
+#         # Récupérer les informations des utilisateurs
+#         users = UserInfo.objects.filter(userid__in=userids_a_traiter)
+#         if badgenumber:
+#             users = users.filter(badgenumber=badgenumber)
+        
+#         resultat = []
+        
+#         for user in users:
+#             # Pour chaque date du mois
+#             for date_str in dates_liste:
+#                 date_str = str(date_str)
+#                 date_info = dates_dict.get(date_str)
+                
+#                 if not date_info:
+#                     continue
+                
+#                 date_obj = date_info['date_obj']
+#                 est_jour_paiement = date_info['est_jour_paiement']
+                
+#                 # Récupérer l'événement
+#                 evenement = evenements_dict.get((user.userid, date_str), 'X')
+                
+#                 # VÉRIFIER SI ON A UNE ANOMALIE CORRIGÉE
+#                 pointage_key = (user.userid, date_str)
+#                 anomalie_corrigee = anomalies_corrigees_dict.get(pointage_key)
+#                 est_anomalie_corrigee = anomalie_corrigee is not None
+                
+#                 # Récupérer la section
+#                 if est_anomalie_corrigee:
+#                     section = anomalie_corrigee.get('section') or get_section_employe(user.badgenumber)
+#                 else:
+#                     section = get_section_employe(user.badgenumber)
+                
+#                 # Récupérer l'horaire de la section
+#                 try:
+#                     horaire = HoraireSection.objects.get(section=section)
+#                 except HoraireSection.DoesNotExist:
+#                     try:
+#                         horaire = HoraireSection.objects.get(section='ADMINISTRATION')
+#                     except HoraireSection.DoesNotExist:
+#                         continue
+                
+#                 date_pointage = datetime.strptime(date_str, "%Y-%m-%d").date()
+#                 est_samedi = date_pointage.weekday() == 5
+#                 est_vendredi = date_pointage.weekday() == 4
+                
+#                 # DÉTERMINER L'HEURE DE SORTIE PRÉVUE
+#                 if est_jour_paiement:
+#                     if est_vendredi:
+#                         heure_sortie_prevue_decimal = horaire.sortie_vendredi_paiement
+#                     else:
+#                         heure_sortie_prevue_decimal = horaire.sortie_samedi_paiement
+#                 elif est_samedi:
+#                     heure_sortie_prevue_decimal = horaire.sortie_samedi
+#                 else:
+#                     heure_sortie_prevue_decimal = horaire.heure_sortie
+                
+#                 heure_entree_prevue = decimal_to_time(horaire.heure_entree)
+#                 heure_sortie_prevue = decimal_to_time(heure_sortie_prevue_decimal)
+                
+#                 # DÉTERMINER LES HEURES RÉELLES
+#                 if est_anomalie_corrigee:
+#                     # Utiliser les heures de l'anomalie corrigée
+#                     heure_entree_reelle = anomalie_corrigee['heure_entree']
+#                     heure_sortie_reelle = anomalie_corrigee['heure_sortie']
+#                     heure_entree_rectifiee = anomalie_corrigee['heure_rectifiee_entree']
+#                     heure_sortie_rectifiee = anomalie_corrigee['heure_rectifiee_sortie']
+#                     synchronise_le = anomalie_corrigee['synchronise_le']
+#                     present = heure_entree_reelle is not None or heure_sortie_reelle is not None
+#                 else:
+#                     # Récupérer les pointages bruts pour cette date
+#                     pointages_bruts = CheckInOut.objects.filter(
+#                         user=user,
+#                         checktime__date=date_str
+#                     )
+                    
+#                     if pointages_bruts.exists():
+#                         heure_entree = pointages_bruts.filter(checktype='O').order_by('checktime').first()
+#                         heure_sortie = pointages_bruts.filter(checktype='I').order_by('-checktime').first()
+                        
+#                         heure_entree_reelle = heure_entree.checktime.time() if heure_entree else None
+#                         heure_sortie_reelle = heure_sortie.checktime.time() if heure_sortie else None
+#                         present = True
+#                     else:
+#                         heure_entree_reelle = None
+#                         heure_sortie_reelle = None
+#                         present = False
+                    
+#                     heure_entree_rectifiee = heure_entree_reelle
+#                     heure_sortie_rectifiee = heure_sortie_reelle
+#                     synchronise_le = None
+                
+#                 # Si pas présent et pas d'anomalie corrigée, passer à la date suivante
+#                 if not present and not est_anomalie_corrigee:
+#                     continue
+                
+#                 # ANALYSE DE LA PRÉSENCE
+#                 heure_entree_pour_analyse = heure_entree_rectifiee if est_anomalie_corrigee else heure_entree_reelle
+#                 heure_sortie_pour_analyse = heure_sortie_rectifiee if est_anomalie_corrigee else heure_sortie_reelle
+                
+#                 # Si les deux heures sont None, on peut considérer comme absent
+#                 if not heure_entree_pour_analyse and not heure_sortie_pour_analyse:
+#                     # Si c'est une anomalie corrigée avec heures nulles, c'est une absence confirmée
+#                     if est_anomalie_corrigee:
+#                         analyse = {
+#                             'heure_entree_comptabilisee': None,
+#                             'heure_sortie_comptabilisee': None,
+#                             'retard_minutes': 0,
+#                             'sortie_anticipee_minutes': 0,
+#                             'heures_travaillees': 0.0,
+#                             'heures_prevues': 0.0,
+#                             'est_en_retard': False,
+#                             'est_sorti_en_avance': False,
+#                             'difference_heures': 0.0,
+#                         }
+#                     else:
+#                         # Pas de pointage et pas d'anomalie corrigée, passer
+#                         continue
+#                 else:
+#                     # Au moins une heure existe, analyser
+#                     analyse = analyser_presence(
+#                         heure_entree_pour_analyse,
+#                         heure_sortie_pour_analyse,
+#                         heure_entree_prevue,
+#                         heure_sortie_prevue,
+#                         date_pointage
+#                     )
+                
+#                 # Ajouter au résultat
+#                 resultat.append({
+#                     "userid": user.userid,
+#                     "badgenumber": user.badgenumber,
+#                     "name": user.name,
+#                     "section": section,
+#                     "date": date_str,
+#                     "code_date": date_obj.code_date,
+#                     "code_affichage": date_obj.code_affichage,
+#                     "hors_periode": date_obj.hors_periode,
+#                     "est_samedi": est_samedi,
+#                     "est_vendredi": est_vendredi,
+#                     "est_jour_paiement": est_jour_paiement,
+#                     "est_anomalie_corrigee": est_anomalie_corrigee,
+#                     "synchronise_le": str(synchronise_le) if synchronise_le else None,
+#                     "present": present,
+                    
+#                     "heure_entree_reelle": str(heure_entree_reelle) if heure_entree_reelle else None,
+#                     "heure_sortie_reelle": str(heure_sortie_reelle) if heure_sortie_reelle else None,
+#                     "heure_entree_rectifiee": str(heure_entree_rectifiee) if heure_entree_rectifiee else None,
+#                     "heure_sortie_rectifiee": str(heure_sortie_rectifiee) if heure_sortie_rectifiee else None,
+                    
+#                     "heure_entree_prevue": str(heure_entree_prevue),
+#                     "heure_sortie_prevue": str(heure_sortie_prevue),
+#                     "type_sortie_prevue": "vendredi_paiement" if est_jour_paiement and est_vendredi else 
+#                                          "samedi_paiement" if est_jour_paiement and est_samedi else
+#                                          "samedi_normal" if est_samedi else "normal",
+                    
+#                     "heure_entree_comptabilisee": str(analyse['heure_entree_comptabilisee']) if analyse['heure_entree_comptabilisee'] else None,
+#                     "heure_sortie_comptabilisee": str(analyse['heure_sortie_comptabilisee']) if analyse['heure_sortie_comptabilisee'] else None,
+                    
+#                     "retard_minutes": analyse['retard_minutes'],
+#                     "sortie_anticipee_minutes": analyse['sortie_anticipee_minutes'],
+#                     "heures_travaillees": analyse['heures_travaillees'],
+#                     "heures_prevues": analyse['heures_prevues'],
+#                     "est_en_retard": analyse['est_en_retard'],
+#                     "est_sorti_en_avance": analyse['est_sorti_en_avance'],
+#                     "difference_heures": analyse['difference_heures'],
+                    
+#                     "evenement": evenement
+#                 })
+        
+#         # Trier les résultats par badge number et date
+#         resultat.sort(key=lambda x: (x['badgenumber'], x['date']))
+        
+#         mois_fr = [
+#             'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+#             'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
+#         ]
+        
+#         mois_precedent = mois - 1 if mois > 1 else 12
+        
+#         # Calculer les statistiques
+#         total_retard_minutes = sum(r.get('retard_minutes', 0) for r in resultat)
+#         total_sortie_anticipee_minutes = sum(r.get('sortie_anticipee_minutes', 0) for r in resultat)
+#         total_heures_travaillees = sum(r.get('heures_travaillees', 0) for r in resultat)
+#         total_heures_prevues = sum(r.get('heures_prevues', 0) for r in resultat)
+#         total_anomalies_corrigees = sum(1 for r in resultat if r.get('est_anomalie_corrigee', False))
+        
+#         return Response({
+#             "periode": {
+#                 "mois": mois_fr[mois - 1],
+#                 "annee": annee,
+#                 "du": f"21 {mois_fr[mois_precedent - 1]}",
+#                 "au": f"20 {mois_fr[mois - 1]}",
+#                 "nombre_jours": len(dates_liste)
+#             },
+#             "statistiques": {
+#                 "total_presences": len(resultat),
+#                 "total_retard_minutes": total_retard_minutes,
+#                 "total_retard_heures": round(total_retard_minutes / 60, 2),
+#                 "total_sortie_anticipee_minutes": total_sortie_anticipee_minutes,
+#                 "total_sortie_anticipee_heures": round(total_sortie_anticipee_minutes / 60, 2),
+#                 "total_heures_travaillees": round(total_heures_travaillees, 2),
+#                 "total_heures_prevues": round(total_heures_prevues, 2),
+#                 "nombre_retards": sum(1 for r in resultat if r.get('est_en_retard', False)),
+#                 "nombre_sorties_anticipees": sum(1 for r in resultat if r.get('est_sorti_en_avance', False)),
+#                 "nombre_jours_paiement": sum(1 for r in resultat if r.get('est_jour_paiement', False)),
+#                 "nombre_anomalies_corrigees": total_anomalies_corrigees,
+#             },
+#             "presences": resultat
+#         })
+
 class PresenceMoisDetailCalculeeAPIView(APIView):
     """
     Présence détaillée d'un employé avec tous les calculs
@@ -739,11 +1056,11 @@ class PresenceMoisDetailCalculeeAPIView(APIView):
                 'heure_sortie': anomalie.heure_reelle_sortie,
                 'heure_rectifiee_entree': anomalie.heure_rectifiee_entree,
                 'heure_rectifiee_sortie': anomalie.heure_rectifiee_sortie,
+                'heure_brute_entree': anomalie.heure_brute_entree,
+                'heure_brute_sortie': anomalie.heure_brute_sortie,
                 'est_anomalie_corrigee': True,
                 'section': anomalie.section,
                 'synchronise_le': anomalie.synchronise_le,
-                'heure_brute_entree': anomalie.heure_brute_entree,
-                'heure_brute_sortie': anomalie.heure_brute_sortie
             }
         
         # Récupérer TOUS les utilisateurs qui ont soit des pointages, soit des anomalies corrigées
@@ -833,13 +1150,16 @@ class PresenceMoisDetailCalculeeAPIView(APIView):
                 heure_entree_prevue = decimal_to_time(horaire.heure_entree)
                 heure_sortie_prevue = decimal_to_time(heure_sortie_prevue_decimal)
                 
-                # DÉTERMINER LES HEURES RÉELLES
+                # DÉTERMINER LES HEURES RÉELLES ET BRUTES
                 if est_anomalie_corrigee:
                     # Utiliser les heures de l'anomalie corrigée
                     heure_entree_reelle = anomalie_corrigee['heure_entree']
                     heure_sortie_reelle = anomalie_corrigee['heure_sortie']
                     heure_entree_rectifiee = anomalie_corrigee['heure_rectifiee_entree']
                     heure_sortie_rectifiee = anomalie_corrigee['heure_rectifiee_sortie']
+                    # Heures brutes sont celles de l'anomalie
+                    heure_brute_entree = anomalie_corrigee['heure_brute_entree']
+                    heure_brute_sortie = anomalie_corrigee['heure_brute_sortie']
                     synchronise_le = anomalie_corrigee['synchronise_le']
                     present = heure_entree_reelle is not None or heure_sortie_reelle is not None
                 else:
@@ -855,10 +1175,15 @@ class PresenceMoisDetailCalculeeAPIView(APIView):
                         
                         heure_entree_reelle = heure_entree.checktime.time() if heure_entree else None
                         heure_sortie_reelle = heure_sortie.checktime.time() if heure_sortie else None
+                        # Pour les pointages normaux, les heures brutes sont les mêmes que les heures réelles
+                        heure_brute_entree = heure_entree_reelle
+                        heure_brute_sortie = heure_sortie_reelle
                         present = True
                     else:
                         heure_entree_reelle = None
                         heure_sortie_reelle = None
+                        heure_brute_entree = None
+                        heure_brute_sortie = None
                         present = False
                     
                     heure_entree_rectifiee = heure_entree_reelle
@@ -918,20 +1243,30 @@ class PresenceMoisDetailCalculeeAPIView(APIView):
                     "synchronise_le": str(synchronise_le) if synchronise_le else None,
                     "present": present,
                     
+                    # Heures brutes (originales) - TOUJOURS renvoyées
+                    "heure_brute_entree": str(heure_brute_entree) if heure_brute_entree else None,
+                    "heure_brute_sortie": str(heure_brute_sortie) if heure_brute_sortie else None,
+                    
+                    # Heures réelles (de la section)
                     "heure_entree_reelle": str(heure_entree_reelle) if heure_entree_reelle else None,
                     "heure_sortie_reelle": str(heure_sortie_reelle) if heure_sortie_reelle else None,
+                    
+                    # Heures rectifiées (après correction)
                     "heure_entree_rectifiee": str(heure_entree_rectifiee) if heure_entree_rectifiee else None,
                     "heure_sortie_rectifiee": str(heure_sortie_rectifiee) if heure_sortie_rectifiee else None,
                     
+                    # Heures prévues
                     "heure_entree_prevue": str(heure_entree_prevue),
                     "heure_sortie_prevue": str(heure_sortie_prevue),
                     "type_sortie_prevue": "vendredi_paiement" if est_jour_paiement and est_vendredi else 
                                          "samedi_paiement" if est_jour_paiement and est_samedi else
                                          "samedi_normal" if est_samedi else "normal",
                     
+                    # Heures comptabilisées (après analyse)
                     "heure_entree_comptabilisee": str(analyse['heure_entree_comptabilisee']) if analyse['heure_entree_comptabilisee'] else None,
                     "heure_sortie_comptabilisee": str(analyse['heure_sortie_comptabilisee']) if analyse['heure_sortie_comptabilisee'] else None,
                     
+                    # Analyses
                     "retard_minutes": analyse['retard_minutes'],
                     "sortie_anticipee_minutes": analyse['sortie_anticipee_minutes'],
                     "heures_travaillees": analyse['heures_travaillees'],
@@ -983,7 +1318,6 @@ class PresenceMoisDetailCalculeeAPIView(APIView):
             },
             "presences": resultat
         })
-    
 # ========== GESTION DES ÉVÉNEMENTS ==========
 
 class EvenementListAPIView(APIView):
