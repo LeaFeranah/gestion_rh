@@ -547,12 +547,46 @@ class Anomalie(models.Model):
         
         return 'ok'
     
+    # def save(self, *args, **kwargs):
+    #     """
+    #     Override save pour:
+    #     1. Calculer automatiquement l'état
+    #     2. Initialiser code_date_rectifie si vide
+    #     """
+    #     # Initialiser rectifié depuis brut si vide
+    #     if self.heure_brute_entree and not self.heure_rectifiee_entree:
+    #         self.heure_rectifiee_entree = self.heure_brute_entree
+    #     if self.heure_brute_sortie and not self.heure_rectifiee_sortie:
+    #         self.heure_rectifiee_sortie = self.heure_brute_sortie
+        
+    #     # Calculer l'état automatiquement
+    #     self.etat = self._determiner_etat()
+    #        # NOUVEAU: Marquer comme synchronisé si corrigé
+    #     if self.etat == 'ok':
+    #         from datetime import datetime
+    #         self.synchronise_le = datetime.now()
+        
+    #     super().save(*args, **kwargs)
     def save(self, *args, **kwargs):
         """
         Override save pour:
         1. Calculer automatiquement l'état
-        2. Initialiser code_date_rectifie si vide
+        2. Formater les heures sans secondes
         """
+        # Formater les heures sans secondes avant sauvegarde
+        if self.heure_brute_entree:
+            self.heure_brute_entree = self._format_time_without_seconds(self.heure_brute_entree)
+        if self.heure_brute_sortie:
+            self.heure_brute_sortie = self._format_time_without_seconds(self.heure_brute_sortie)
+        if self.heure_reelle_entree:
+            self.heure_reelle_entree = self._format_time_without_seconds(self.heure_reelle_entree)
+        if self.heure_reelle_sortie:
+            self.heure_reelle_sortie = self._format_time_without_seconds(self.heure_reelle_sortie)
+        if self.heure_rectifiee_entree:
+            self.heure_rectifiee_entree = self._format_time_without_seconds(self.heure_rectifiee_entree)
+        if self.heure_rectifiee_sortie:
+            self.heure_rectifiee_sortie = self._format_time_without_seconds(self.heure_rectifiee_sortie)
+        
         # Initialiser rectifié depuis brut si vide
         if self.heure_brute_entree and not self.heure_rectifiee_entree:
             self.heure_rectifiee_entree = self.heure_brute_entree
@@ -561,12 +595,20 @@ class Anomalie(models.Model):
         
         # Calculer l'état automatiquement
         self.etat = self._determiner_etat()
-           # NOUVEAU: Marquer comme synchronisé si corrigé
+        
+        # Marquer comme synchronisé si corrigé
         if self.etat == 'ok':
             from datetime import datetime
             self.synchronise_le = datetime.now()
         
         super().save(*args, **kwargs)
+    
+    def _format_time_without_seconds(self, time_obj):
+        """
+        Formate un objet time pour n'avoir que les heures et minutes (secondes à 00)
+        """
+        from datetime import time
+        return time(time_obj.hour, time_obj.minute, 0)
     
     @classmethod
     def detecter_anomalies_jour(cls, date_jour):
