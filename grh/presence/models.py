@@ -547,26 +547,6 @@ class Anomalie(models.Model):
         
         return 'ok'
     
-    # def save(self, *args, **kwargs):
-    #     """
-    #     Override save pour:
-    #     1. Calculer automatiquement l'état
-    #     2. Initialiser code_date_rectifie si vide
-    #     """
-    #     # Initialiser rectifié depuis brut si vide
-    #     if self.heure_brute_entree and not self.heure_rectifiee_entree:
-    #         self.heure_rectifiee_entree = self.heure_brute_entree
-    #     if self.heure_brute_sortie and not self.heure_rectifiee_sortie:
-    #         self.heure_rectifiee_sortie = self.heure_brute_sortie
-        
-    #     # Calculer l'état automatiquement
-    #     self.etat = self._determiner_etat()
-    #        # NOUVEAU: Marquer comme synchronisé si corrigé
-    #     if self.etat == 'ok':
-    #         from datetime import datetime
-    #         self.synchronise_le = datetime.now()
-        
-    #     super().save(*args, **kwargs)
     def save(self, *args, **kwargs):
         """
         Override save pour:

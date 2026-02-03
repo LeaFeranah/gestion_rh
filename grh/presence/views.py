@@ -1632,41 +1632,6 @@ class AnomalieDetailAPIView(APIView):
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-    # def _synchroniser_avec_checkinout(self, anomalie):
-    #     """
-    #     Synchronise l'anomalie corrigée avec la table CheckInOut
-    #     Utilise les heures réelles (qui sont égales aux rectifiées quand OK)
-    #     """
-    #     try:
-    #         user = UserInfo.objects.get(userid=anomalie.userid)
-            
-    #         # Supprimer les anciens pointages du jour
-    #         CheckInOut.objects.filter(
-    #             user=user,
-    #             checktime__date=anomalie.date
-    #         ).delete()
-            
-    #         # Créer les nouveaux pointages avec les heures corrigées
-    #         # ATTENTION : O = entrée, I = sortie
-    #         if anomalie.heure_reelle_entree:
-    #             CheckInOut.objects.create(
-    #                 user=user,
-    #                 checktime=datetime.combine(anomalie.date, anomalie.heure_reelle_entree),
-    #                 checktype='O'  # O = entrée
-    #             )
-            
-    #         if anomalie.heure_reelle_sortie:
-    #             CheckInOut.objects.create(
-    #                 user=user,
-    #                 checktime=datetime.combine(anomalie.date, anomalie.heure_reelle_sortie),
-    #                 checktype='I'  # I = sortie
-    #             )
-            
-    #         logger.info(f"Synchronisation OK pour {user.name} le {anomalie.date}")
-    #         return True
-    #     except Exception as e:
-    #         logger.error(f"Erreur synchronisation CheckInOut: {e}")
-    #         return False
     def _synchroniser_avec_checkinout(self, anomalie):
         """
         Synchronise l'anomalie corrigée avec la table CheckInOut
