@@ -108,14 +108,19 @@ def calculer_retard_entree(heure_reelle, heure_prevue, tolerance_minutes=20):
         logger.error(f"Erreur dans calculer_retard_entree: {e}")
         return 0, heure_reelle
 
-
-def calculer_sortie_anticipee(heure_reelle, heure_prevue):
+def calculer_sortie_anticipee(heure_reelle, heure_prevue, tolerance_minutes=5):
     """
-    Calcule la sortie anticipée
+    Calcule la sortie anticipée avec tolérance
     
     Règles:
-    - Si sortie avant l'heure : sortie anticipée = heure prévue - heure réelle
+    - Si sortie dans les 5 min avant l'heure prévue : pas de sortie anticipée, on compte l'heure prévue
+    - Si sortie avant l'heure avec plus de 5 min d'avance : sortie anticipée = heure prévue - heure réelle
     - Si sortie après l'heure : pas de sortie anticipée
+    
+    Args:
+        heure_reelle: time - heure de sortie réelle
+        heure_prevue: time - heure de sortie prévue
+        tolerance_minutes: int - tolérance en minutes (par défaut 5)
     
     Retourne: (minutes de sortie anticipée, heure à comptabiliser)
     """
@@ -127,20 +132,28 @@ def calculer_sortie_anticipee(heure_reelle, heure_prevue):
         dt_reelle = datetime.combine(today, heure_reelle)
         dt_prevue = datetime.combine(today, heure_prevue)
         
-        # Calculer la différence
+        # Calculer la différence (positif = en avance, négatif = en retard)
         diff = dt_prevue - dt_reelle
         diff_minutes = diff.total_seconds() / 60
         
-        # Si sortie en avance
-        if diff_minutes > 0:
-            return int(diff_minutes), heure_reelle
+        # Si sortie dans la tolérance (0 à 5 min avant) ou après l'heure prévue
+        if diff_minutes <= tolerance_minutes:
+            # Pas de sortie anticipée, on comptabilise l'heure prévue
+            return 0, heure_prevue
         
-        # Si sortie à l'heure ou après
+        # Si sortie en avance de plus de 5 minutes
+        if diff_minutes > tolerance_minutes:
+            # Calculer la sortie anticipée (en excluant la tolérance)
+            sortie_anticipee = int(diff_minutes - tolerance_minutes)
+            return sortie_anticipee, heure_reelle
+        
+        # Par défaut (ne devrait jamais arriver)
         return 0, heure_prevue
         
     except Exception as e:
         logger.error(f"Erreur dans calculer_sortie_anticipee: {e}")
         return 0, heure_reelle
+
 
 
 def calculer_heures_travaillees(heure_entree, heure_sortie, pause_minutes=60):
