@@ -1,5 +1,5 @@
 from django.db import models
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 from calendar import monthrange
 
 class Date(models.Model):
@@ -723,7 +723,146 @@ class Anomalie(models.Model):
         
         return count_anomalies
     
-
+    @classmethod
+    def creer_anomalie_manuelle(
+        cls, 
+        userid, 
+        date_jour, 
+        heure_entree_rectifiee=None, 
+        heure_sortie_rectifiee=None,
+        commentaire=''
+    ):
+        """
+        Crée ou met à jour une anomalie manuellement
+        
+        Args:
+            userid: ID de l'utilisateur
+            date_jour: Date concernée
+            heure_entree_rectifiee: Heure d'entrée rectifiée (time object ou string)
+            heure_sortie_rectifiee: Heure de sortie rectifiée (time object ou string)
+            commentaire: Commentaire optionnel
+        
+        Returns:
+            L'objet Anomalie créé ou mis à jour
+        """
+        from datetime import time
+        from .utils import get_section_employe, decimal_to_time
+        
+        try:
+            # Récupérer l'utilisateur
+            user = UserInfo.objects.get(userid=userid)
+        except UserInfo.DoesNotExist:
+            raise ValueError(f"Utilisateur {userid} non trouvé")
+        
+        # Récupérer la date
+        try:
+            date_obj = Date.objects.get(date=date_jour)
+            code_date = date_obj.code_date
+            est_jour_paiement = date_obj.est_jour_paiement
+        except Date.DoesNotExist:
+            date_obj = None
+            code_date = ''
+            est_jour_paiement = False
+        
+        # Récupérer la section
+        section = get_section_employe(user.badgenumber)
+        
+        # Récupérer l'horaire de la section
+        try:
+            horaire = HoraireSection.objects.get(section=section)
+        except HoraireSection.DoesNotExist:
+            horaire = HoraireSection.objects.get(section='ADMINISTRATION')
+        
+        # Déterminer les heures réelles (prévues) selon le jour
+        est_samedi = date_jour.weekday() == 5
+        est_vendredi = date_jour.weekday() == 4
+        
+        heure_reelle_entree = decimal_to_time(horaire.heure_entree)
+        
+        if est_jour_paiement:
+            if est_vendredi:
+                heure_reelle_sortie = decimal_to_time(horaire.sortie_vendredi_paiement)
+            else:  # samedi
+                heure_reelle_sortie = decimal_to_time(horaire.sortie_samedi_paiement)
+        elif est_samedi:
+            heure_reelle_sortie = decimal_to_time(horaire.sortie_samedi)
+        else:
+            heure_reelle_sortie = decimal_to_time(horaire.heure_sortie)
+        
+        # Convertir les heures rectifiées en objets time si nécessaire
+        def convert_to_time(heure):
+            if heure is None:
+                return None
+            if isinstance(heure, str):
+                if heure:
+                    # Format: "HH:MM" ou "HH:MM:SS"
+                    parts = heure.split(':')
+                    if len(parts) >= 2:
+                        hours = int(parts[0])
+                        minutes = int(parts[1])
+                        seconds = int(parts[2]) if len(parts) > 2 else 0
+                        return time(hours, minutes, seconds)
+            elif isinstance(heure, time):
+                return heure
+            return None
+        
+        heure_rectifiee_entree = convert_to_time(heure_entree_rectifiee)
+        heure_rectifiee_sortie = convert_to_time(heure_sortie_rectifiee)
+        
+        # Chercher les pointages bruts existants
+        pointages = CheckInOut.objects.filter(
+            user=user,
+            checktime__date=date_jour
+        ).order_by('checktime')
+        
+        heure_brute_entree = None
+        heure_brute_sortie = None
+        
+        if pointages.exists():
+            entree = pointages.filter(checktype='O').first()
+            sortie = pointages.filter(checktype='I').last()
+            
+            if entree:
+                heure_brute_entree = entree.checktime.time()
+            if sortie:
+                heure_brute_sortie = sortie.checktime.time()
+        
+        # Déterminer l'état initial
+        etat = 'ok'
+        if not heure_rectifiee_entree and not heure_rectifiee_sortie:
+            # Pas d'heures du tout
+            if heure_brute_entree or heure_brute_sortie:
+                # Mais il y a des pointages bruts
+                etat = 'entree_sortie_non_conformes'
+        elif not heure_rectifiee_entree:
+            etat = 'pas_entree'
+        elif not heure_rectifiee_sortie:
+            etat = 'pas_sortie'
+        elif heure_rectifiee_entree and heure_rectifiee_sortie:
+            if heure_rectifiee_entree >= heure_rectifiee_sortie:
+                etat = 'entree_sortie_non_conformes'
+        
+        # Créer ou mettre à jour l'anomalie
+        anomalie, created = cls.objects.update_or_create(
+            userid=userid,
+            date=date_jour,
+            defaults={
+                'section': section,
+                'code_date': code_date,
+                'heure_brute_entree': heure_brute_entree,
+                'heure_brute_sortie': heure_brute_sortie,
+                'heure_reelle_entree': heure_reelle_entree,
+                'heure_reelle_sortie': heure_reelle_sortie,
+                'heure_rectifiee_entree': heure_rectifiee_entree,
+                'heure_rectifiee_sortie': heure_rectifiee_sortie,
+                'etat': etat,
+                'commentaire': commentaire or f"Créé manuellement le {datetime.now().strftime('%Y-%m-%d %H:%M')}",
+            }
+        )
+        
+        logger.info(f"Anomalie {'créée' if created else 'mise à jour'} manuellement pour {user.name} le {date_jour}")
+        
+        return anomalie
 
     # Dans models.py, ajouter à la classe Anomalie
 

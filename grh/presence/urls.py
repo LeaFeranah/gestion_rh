@@ -28,7 +28,7 @@ urlpatterns = [
     path('', PresenceListAPIView.as_view(), name='presence-list'),
     path('badge/<str:badgenumber>/', PresenceAPIView.as_view(), name='presence-by-badge'),
 
-      # ===== GESTION DES ANOMALIES =====
+    # ===== GESTION DES ANOMALIES =====
   
     path('anomalies/', AnomalieListAPIView.as_view(), name='anomalie-list'),
     path('anomalies/<int:pk>/', AnomalieDetailAPIView.as_view(), name='anomalie-detail'),
@@ -36,4 +36,10 @@ urlpatterns = [
     path('detecter-anomalies/', DetecterAnomaliesAPIView.as_view(), name='detecter-anomalies'),
     path('anomalies/par-section/', AnomalieParSectionAPIView.as_view(), name='anomalie-par-section'),
     path('anomalies-corrigees/', AnomaliesCorrigeesAPIView.as_view(), name='anomalies-corrigees'),
+
+    # ===== MODIFICATION MANUELLE DES HEURES =====
+    path('modifier-heures/', ModifierHeuresManuellementAPIView.as_view(), name='modifier-heures'),
+    path('supprimer-heures/', SupprimerHeuresManuellementAPIView.as_view(), name='supprimer-heures'),
+    path('heures-jour/', GetHeuresJourAPIView.as_view(), name='heures-jour'),
+    path('search-employees/', SearchEmployeesAPIView.as_view(), name='search-employees'),
 ]

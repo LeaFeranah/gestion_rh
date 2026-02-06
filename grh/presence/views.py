@@ -2,7 +2,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
 from rest_framework import status
-from django.db.models import Min, Max
+from django.db.models import Min, Max, Q
 from datetime import date, datetime
 from .models import CheckInOut, UserInfo, Date, Evenement, HoraireSection, Anomalie
 from .serializers import DateSerializer, HoraireSectionSerializer, EvenementSerializer, AnomalieSerializer
@@ -712,16 +712,22 @@ class PresenceMoisDetailCalculeeAPIView(APIView):
                 'code_date': date_obj.code_date
             }
         
-        # Récupérer tous les événements du mois
+        # Récupérer tous les événements du mois (uniquement ceux qui ne sont pas 'X')
         evenements_query = Evenement.objects.filter(date__in=dates_liste)
+        
+        # Filtrer pour ne garder que les événements non-'X' ou les événements 'X' qui ont des présences
+        # Nous allons filtrer plus tard dans la logique
         if badgenumber:
             user_ids = UserInfo.objects.filter(badgenumber=badgenumber).values_list('userid', flat=True)
             evenements_query = evenements_query.filter(userid__in=user_ids)
         
-        evenements_dict = {
-            (e.userid, str(e.date)): e.type_evenement 
-            for e in evenements_query
-        }
+        # Créer un dictionnaire pour tous les événements
+        evenements_dict = {}
+        for e in evenements_query:
+            evenements_dict[(e.userid, str(e.date))] = {
+                'type': e.type_evenement,
+                'commentaire': e.commentaire
+            }
         
         # RÉCUPÉRER LES ANOMALIES CORRIGÉES (état='ok')
         anomalies_corrigees = Anomalie.objects.filter(
@@ -745,32 +751,21 @@ class PresenceMoisDetailCalculeeAPIView(APIView):
                 'synchronise_le': anomalie.synchronise_le,
             }
         
-        # Récupérer TOUS les utilisateurs qui ont soit des pointages, soit des anomalies corrigées
-        userids_avec_anomalies = set([key[0] for key in anomalies_corrigees_dict.keys()])
-        
-        # Récupérer les utilisateurs avec pointages
+        # Récupérer les pointages pour construire une liste des users avec présence
         pointages_query = CheckInOut.objects.filter(checktime__date__in=dates_liste)
         if badgenumber:
             pointages_query = pointages_query.filter(user__badgenumber=badgenumber)
         
+        # Créer un ensemble des userids qui ont des pointages
         userids_avec_pointages = set(pointages_query.values_list('user__userid', flat=True).distinct())
         
-        # Combiner tous les userids à traiter
+        # Créer un ensemble des userids qui ont des anomalies corrigées
+        userids_avec_anomalies = set([key[0] for key in anomalies_corrigees_dict.keys()])
+        
+        # Combiner - ce sont les users qui ont soit des pointages, soit des anomalies
         userids_a_traiter = userids_avec_pointages.union(userids_avec_anomalies)
         
         # Si pas d'utilisateurs à traiter
-        # if not userids_a_traiter:
-        #     return Response({
-        #         "periode": {
-        #             "mois": mois,
-        #             "annee": annee,
-        #             "nombre_jours": len(dates_liste)
-        #         },
-        #         "presences": [],
-        #         "statistiques": {
-        #             "total_presences": 0
-        #         }
-        #     })
         if not userids_a_traiter:
             mois_fr = [
                 'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
@@ -791,7 +786,6 @@ class PresenceMoisDetailCalculeeAPIView(APIView):
                     "total_presences": 0
                 }
             })
-
         
         # Récupérer les informations des utilisateurs
         users = UserInfo.objects.filter(userid__in=userids_a_traiter)
@@ -811,9 +805,6 @@ class PresenceMoisDetailCalculeeAPIView(APIView):
                 
                 date_obj = date_info['date_obj']
                 est_jour_paiement = date_info['est_jour_paiement']
-                
-                # Récupérer l'événement
-                evenement = evenements_dict.get((user.userid, date_str), 'X')
                 
                 # VÉRIFIER SI ON A UNE ANOMALIE CORRIGÉE
                 pointage_key = (user.userid, date_str)
@@ -893,9 +884,23 @@ class PresenceMoisDetailCalculeeAPIView(APIView):
                     heure_sortie_rectifiee = heure_sortie_reelle
                     synchronise_le = None
                 
-                # Si pas présent et pas d'anomalie corrigée, passer à la date suivante
-                if not present and not est_anomalie_corrigee:
+                # NOUVELLE LOGIQUE: Si pas présent, pas d'anomalie corrigée, ET pas d'événement spécial -> sauter
+                evenement_data = evenements_dict.get(pointage_key)
+                has_special_event = evenement_data and evenement_data['type'] != 'X'
+                
+                # Ne pas inclure si:
+                # 1. Pas de présence (pointage)
+                # 2. Pas d'anomalie corrigée
+                # 3. Pas d'événement spécial (ou événement = 'X')
+                if not present and not est_anomalie_corrigee and not has_special_event:
                     continue
+                
+                # Déterminer l'événement à afficher
+                if evenement_data:
+                    evenement = evenement_data['type']
+                else:
+                    # Si pas d'événement enregistré, utiliser 'X' par défaut
+                    evenement = 'X'
                 
                 # ANALYSE DE LA PRÉSENCE
                 heure_entree_pour_analyse = heure_entree_rectifiee if est_anomalie_corrigee else heure_entree_reelle
@@ -978,7 +983,8 @@ class PresenceMoisDetailCalculeeAPIView(APIView):
                     "est_sorti_en_avance": analyse['est_sorti_en_avance'],
                     "difference_heures": analyse['difference_heures'],
                     
-                    "evenement": evenement
+                    "evenement": evenement,
+                    "has_special_event": has_special_event  # Ajouter cette information pour le front
                 })
         
         # Trier les résultats par badge number et date
@@ -997,6 +1003,7 @@ class PresenceMoisDetailCalculeeAPIView(APIView):
         total_heures_travaillees = sum(r.get('heures_travaillees', 0) for r in resultat)
         total_heures_prevues = sum(r.get('heures_prevues', 0) for r in resultat)
         total_anomalies_corrigees = sum(1 for r in resultat if r.get('est_anomalie_corrigee', False))
+        total_with_special_events = sum(1 for r in resultat if r.get('has_special_event', False))
         
         return Response({
             "periode": {
@@ -1018,9 +1025,14 @@ class PresenceMoisDetailCalculeeAPIView(APIView):
                 "nombre_sorties_anticipees": sum(1 for r in resultat if r.get('est_sorti_en_avance', False)),
                 "nombre_jours_paiement": sum(1 for r in resultat if r.get('est_jour_paiement', False)),
                 "nombre_anomalies_corrigees": total_anomalies_corrigees,
+                "nombre_evenements_speciaux": total_with_special_events,
             },
             "presences": resultat
         })
+    
+
+
+
 # ========== GESTION DES ÉVÉNEMENTS ==========
 
 class EvenementListAPIView(APIView):
@@ -1616,3 +1628,374 @@ class AnomaliesCorrigeesAPIView(APIView):
                 {"error": str(e)},
                 status=500
             )
+        
+
+
+class ModifierHeuresManuellementAPIView(APIView):
+    """
+    API pour modifier manuellement les heures d'un employé pour une date donnée
+    POST /api/presence/modifier-heures/
+    """
+    permission_classes = [AllowAny]
+    
+    def post(self, request):
+        """
+        Modifie ou crée manuellement les heures d'un employé
+        
+        Body:
+        {
+            "userid": 123,
+            "date": "2024-08-15",
+            "heure_entree": "08:00:00",
+            "heure_sortie": "17:00:00",
+            "commentaire": "Ajout manuel"
+        }
+        """
+        try:
+            userid = request.data.get('userid')
+            date_str = request.data.get('date')
+            heure_entree = request.data.get('heure_entree')
+            heure_sortie = request.data.get('heure_sortie')
+            commentaire = request.data.get('commentaire', '')
+            
+            if not userid or not date_str:
+                return Response(
+                    {"error": "Les paramètres 'userid' et 'date' sont obligatoires"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Convertir la date
+            try:
+                date_jour = datetime.strptime(date_str, "%Y-%m-%d").date()
+            except ValueError:
+                return Response(
+                    {"error": "Format de date invalide. Utilisez YYYY-MM-DD"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Vérifier que au moins une heure est fournie
+            if not heure_entree and not heure_sortie:
+                return Response(
+                    {"error": "Au moins une heure (entrée ou sortie) doit être fournie"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Créer l'anomalie manuellement
+            anomalie = Anomalie.creer_anomalie_manuelle(
+                userid=int(userid),
+                date_jour=date_jour,
+                heure_entree_rectifiee=heure_entree,
+                heure_sortie_rectifiee=heure_sortie,
+                commentaire=commentaire
+            )
+            
+            # Si l'anomalie est OK, synchroniser avec CheckInOut
+            if anomalie.etat == 'ok' and anomalie.heure_reelle_entree and anomalie.heure_reelle_sortie:
+                try:
+                    user = UserInfo.objects.get(userid=userid)
+                    
+                    # Supprimer les anciens pointages du jour
+                    CheckInOut.objects.filter(
+                        user=user,
+                        checktime__date=date_jour
+                    ).delete()
+                    
+                    # Créer les nouveaux pointages
+                    if anomalie.heure_reelle_entree:
+                        CheckInOut.objects.create(
+                            user=user,
+                            checktime=datetime.combine(date_jour, anomalie.heure_reelle_entree),
+                            checktype='O'
+                        )
+                    
+                    if anomalie.heure_reelle_sortie:
+                        CheckInOut.objects.create(
+                            user=user,
+                            checktime=datetime.combine(date_jour, anomalie.heure_reelle_sortie),
+                            checktype='I'
+                        )
+                    
+                    anomalie.synchronise_le = datetime.now()
+                    anomalie.save()
+                    
+                    logger.info(f"Pointages synchronisés pour user {userid} le {date_jour}")
+                    
+                except Exception as e:
+                    logger.error(f"Erreur lors de la synchronisation: {e}")
+            
+            serializer = AnomalieSerializer(anomalie)
+            
+            return Response({
+                "success": True,
+                "message": "Heures modifiées avec succès",
+                "anomalie": serializer.data
+            })
+            
+        except Exception as e:
+            logger.error(f"Erreur lors de la modification manuelle des heures: {e}")
+            return Response(
+                {"error": f"Erreur: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class SupprimerHeuresManuellementAPIView(APIView):
+    """
+    API pour supprimer les heures modifiées manuellement
+    DELETE /api/presence/supprimer-heures/
+    """
+    permission_classes = [AllowAny]
+    
+    def delete(self, request):
+        """
+        Supprime les modifications manuelles et rétablit les pointages bruts
+        
+        Body:
+        {
+            "userid": 123,
+            "date": "2024-08-15"
+        }
+        """
+        try:
+            userid = request.data.get('userid')
+            date_str = request.data.get('date')
+            
+            if not userid or not date_str:
+                return Response(
+                    {"error": "Les paramètres 'userid' et 'date' sont obligatoires"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Convertir la date
+            try:
+                date_jour = datetime.strptime(date_str, "%Y-%m-%d").date()
+            except ValueError:
+                return Response(
+                    {"error": "Format de date invalide. Utilisez YYYY-MM-DD"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Supprimer l'anomalie
+            try:
+                anomalie = Anomalie.objects.get(userid=userid, date=date_jour)
+                
+                # Si c'était une anomalie corrigée, supprimer les pointages synchronisés
+                if anomalie.etat == 'ok':
+                    user = UserInfo.objects.get(userid=userid)
+                    
+                    # Supprimer tous les pointages du jour
+                    CheckInOut.objects.filter(
+                        user=user,
+                        checktime__date=date_jour
+                    ).delete()
+                    
+                    # Recréer les pointages bruts s'ils existaient
+                    if anomalie.heure_brute_entree:
+                        CheckInOut.objects.create(
+                            user=user,
+                            checktime=datetime.combine(date_jour, anomalie.heure_brute_entree),
+                            checktype='O'
+                        )
+                    
+                    if anomalie.heure_brute_sortie:
+                        CheckInOut.objects.create(
+                            user=user,
+                            checktime=datetime.combine(date_jour, anomalie.heure_brute_sortie),
+                            checktype='I'
+                        )
+                
+                anomalie.delete()
+                
+                return Response({
+                    "success": True,
+                    "message": "Modifications supprimées et pointages rétablis"
+                })
+                
+            except Anomalie.DoesNotExist:
+                return Response(
+                    {"error": "Aucune modification manuelle trouvée pour cette date"},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+        except Exception as e:
+            logger.error(f"Erreur lors de la suppression des heures: {e}")
+            return Response(
+                {"error": f"Erreur: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class GetHeuresJourAPIView(APIView):
+    """
+    API pour récupérer toutes les heures disponibles pour un jour donné
+    GET /api/presence/heures-jour/?userid=123&date=2024-08-15
+    """
+    permission_classes = [AllowAny]
+    
+    def get(self, request):
+        userid = request.query_params.get('userid')
+        date_str = request.query_params.get('date')
+        
+        if not userid or not date_str:
+            return Response(
+                {"error": "Les paramètres 'userid' et 'date' sont obligatoires"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            date_jour = datetime.strptime(date_str, "%Y-%m-%d").date()
+        except ValueError:
+            return Response(
+                {"error": "Format de date invalide. Utilisez YYYY-MM-DD"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            # Récupérer l'utilisateur
+            user = UserInfo.objects.get(userid=userid)
+            
+            # Récupérer la section
+            from .utils import get_section_employe
+            section = get_section_employe(user.badgenumber)
+            
+            # Récupérer l'horaire de section
+            try:
+                horaire = HoraireSection.objects.get(section=section)
+            except HoraireSection.DoesNotExist:
+                horaire = HoraireSection.objects.get(section='ADMINISTRATION')
+            
+            # Récupérer la date avec ses propriétés
+            try:
+                date_obj = Date.objects.get(date=date_jour)
+                est_jour_paiement = date_obj.est_jour_paiement
+                code_date = date_obj.code_affichage
+            except Date.DoesNotExist:
+                est_jour_paiement = False
+                code_date = ''
+            
+            # Déterminer l'heure de sortie prévue
+            est_samedi = date_jour.weekday() == 5
+            est_vendredi = date_jour.weekday() == 4
+            
+            heure_entree_prevue = decimal_to_time(horaire.heure_entree)
+            
+            if est_jour_paiement:
+                if est_vendredi:
+                    heure_sortie_prevue = decimal_to_time(horaire.sortie_vendredi_paiement)
+                else:
+                    heure_sortie_prevue = decimal_to_time(horaire.sortie_samedi_paiement)
+            elif est_samedi:
+                heure_sortie_prevue = decimal_to_time(horaire.sortie_samedi)
+            else:
+                heure_sortie_prevue = decimal_to_time(horaire.heure_sortie)
+            
+            # Récupérer les pointages bruts
+            pointages = CheckInOut.objects.filter(
+                user=user,
+                checktime__date=date_jour
+            ).order_by('checktime')
+            
+            heure_brute_entree = None
+            heure_brute_sortie = None
+            
+            if pointages.exists():
+                entree = pointages.filter(checktype='O').first()
+                sortie = pointages.filter(checktype='I').last()
+                
+                if entree:
+                    heure_brute_entree = entree.checktime.time()
+                if sortie:
+                    heure_brute_sortie = sortie.checktime.time()
+            
+            # Récupérer l'anomalie si elle existe
+            anomalie = None
+            try:
+                anomalie = Anomalie.objects.get(userid=userid, date=date_jour)
+            except Anomalie.DoesNotExist:
+                pass
+            
+            # Récupérer l'événement
+            evenement = None
+            try:
+                evenement_obj = Evenement.objects.get(userid=userid, date=date_jour)
+                evenement = {
+                    'type': evenement_obj.type_evenement,
+                    'commentaire': evenement_obj.commentaire
+                }
+            except Evenement.DoesNotExist:
+                evenement = {'type': 'X', 'commentaire': ''}
+            
+            return Response({
+                'user': {
+                    'userid': user.userid,
+                    'badgenumber': user.badgenumber,
+                    'name': user.name,
+                    'section': section
+                },
+                'date': date_str,
+                'code_date': code_date,
+                'est_jour_paiement': est_jour_paiement,
+                'est_samedi': est_samedi,
+                'est_vendredi': est_vendredi,
+                'horaires_prevu': {
+                    'entree': str(heure_entree_prevue) if heure_entree_prevue else None,
+                    'sortie': str(heure_sortie_prevue) if heure_sortie_prevue else None
+                },
+                'pointages_bruts': {
+                    'entree': str(heure_brute_entree) if heure_brute_entree else None,
+                    'sortie': str(heure_brute_sortie) if heure_brute_sortie else None
+                },
+                'anomalie': AnomalieSerializer(anomalie).data if anomalie else None,
+                'evenement': evenement
+            })
+            
+        except UserInfo.DoesNotExist:
+            return Response(
+                {"error": f"Utilisateur {userid} non trouvé"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            logger.error(f"Erreur lors de la récupération des heures: {e}")
+            return Response(
+                {"error": f"Erreur: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        
+
+
+class SearchEmployeesAPIView(APIView):
+    """
+    Recherche d'employés par badge ou nom
+    GET /api/presence/search-employees/?q=recherche
+    """
+    permission_classes = [AllowAny]
+    
+    def get(self, request):
+        query = request.query_params.get('q', '').strip()
+        
+        if not query or len(query) < 2:
+            return Response({
+                'employees': [],
+                'message': 'Saisissez au moins 2 caractères'
+            })
+        
+        # Rechercher par badge ou nom
+        employees = UserInfo.objects.filter(
+            Q(badgenumber__icontains=query) |
+            Q(name__icontains=query)
+        ).order_by('badgenumber')[:20]
+        
+        results = []
+        for emp in employees:
+            section = get_section_employe(emp.badgenumber)
+            results.append({
+                'userid': emp.userid,
+                'badgenumber': emp.badgenumber,
+                'name': emp.name,
+                'section': section
+            })
+        
+        return Response({
+            'employees': results,
+            'count': len(results)
+        })
