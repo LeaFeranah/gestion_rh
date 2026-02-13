@@ -326,3 +326,69 @@ def est_jour_ferie(date_pointage):
     """
     # TODO: Implémenter la logique des jours fériés
     return False
+
+
+
+
+
+def corriger_pointages_automatique(pointages_bruts, heure_entree_prevue, heure_sortie_prevue):
+    """
+    Corrige automatiquement les inversions de pointages (O/I) et applique les règles de retard/avance
+    
+    Règles:
+    1. Tous les pointages sont triés par heure
+    2. Le premier pointage (le plus tôt) = entrée
+    3. Le dernier pointage (le plus tard) = sortie
+    4. Applique les règles:
+       - Entrée en avance → heure prévue
+       - Entrée en retard → heure brute
+       - Sortie anticipée → heure brute
+       - Sortie en retard → heure prévue
+    
+    Args:
+        pointages_bruts: liste de CheckInOut (checktime, checktype)
+        heure_entree_prevue: time - heure d'entrée prévue
+        heure_sortie_prevue: time - heure de sortie prévue
+        
+    Returns:
+        tuple: (heure_entree_corrigee, heure_sortie_corrigee, heures_corrigees_auto)
+    """
+    if not pointages_bruts:
+        return None, None, False
+    
+    # Trier tous les pointages par heure (ignorer le type O/I)
+    pointages_tries = sorted(pointages_bruts, key=lambda p: p.checktime)
+    
+    # Le premier pointage est l'entrée, le dernier est la sortie
+    heure_entree_brute = pointages_tries[0].checktime.time()
+    heure_sortie_brute = pointages_tries[-1].checktime.time() if len(pointages_tries) > 1 else None
+    
+    # Si un seul pointage, considérer comme entrée
+    if len(pointages_tries) == 1:
+        return heure_entree_brute, None, True
+    
+    # Appliquer les règles de retard/avance
+    heure_entree_corrigee = None
+    heure_sortie_corrigee = None
+    heures_corrigees_auto = False
+    
+    # RÈGLE ENTRÉE
+    if heure_entree_brute <= heure_entree_prevue:
+        # Arrivée en avance → heure prévue
+        heure_entree_corrigee = heure_entree_prevue
+        heures_corrigees_auto = True
+    else:
+        # Arrivée en retard → heure brute
+        heure_entree_corrigee = heure_entree_brute
+    
+    # RÈGLE SORTIE
+    if heure_sortie_brute:
+        if heure_sortie_brute < heure_sortie_prevue:
+            # Sortie anticipée → heure brute
+            heure_sortie_corrigee = heure_sortie_brute
+            heures_corrigees_auto = True
+        else:
+            # Sortie en retard → heure prévue
+            heure_sortie_corrigee = heure_sortie_prevue
+    
+    return heure_entree_corrigee, heure_sortie_corrigee, heures_corrigees_auto

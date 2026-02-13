@@ -494,6 +494,8 @@ class HoraireSectionDetailAPIView(APIView):
             )
         horaire.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+    
+    
 
 
 class InitialiserHorairesAPIView(APIView):
@@ -666,6 +668,7 @@ class PresenceMoisCalculeeAPIView(APIView):
             "presences": resultat
         })
 
+
 class PresenceMoisDetailCalculeeAPIView(APIView):
     """
     Présence détaillée d'un employé avec tous les calculs
@@ -690,6 +693,13 @@ class PresenceMoisDetailCalculeeAPIView(APIView):
             mois = int(mois)
         except ValueError:
             return Response({"error": "Année et mois doivent être des nombres"}, status=400)
+        
+        # DÉFINIR LES VARIABLES DE MOIS ICI
+        mois_fr = [
+            'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+            'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
+        ]
+        mois_precedent = mois - 1 if mois > 1 else 12
         
         # Récupérer les dates du mois
         dates_mois = Date.get_dates_par_mois(annee, mois, inclure_hors_periode)
@@ -767,12 +777,6 @@ class PresenceMoisDetailCalculeeAPIView(APIView):
         
         # Si pas d'utilisateurs à traiter
         if not userids_a_traiter:
-            mois_fr = [
-                'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
-                'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
-            ]
-            mois_precedent = mois - 1 if mois > 1 else 12
-
             return Response({
                 "periode": {
                     "mois": mois_fr[mois - 1],
@@ -989,13 +993,6 @@ class PresenceMoisDetailCalculeeAPIView(APIView):
         
         # Trier les résultats par badge number et date
         resultat.sort(key=lambda x: (x['badgenumber'], x['date']))
-        
-        mois_fr = [
-            'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
-            'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
-        ]
-        
-        mois_precedent = mois - 1 if mois > 1 else 12
         
         # Calculer les statistiques
         total_retard_minutes = sum(r.get('retard_minutes', 0) for r in resultat)
@@ -1630,41 +1627,39 @@ class AnomaliesCorrigeesAPIView(APIView):
             )
         
 
-
 class ModifierHeuresManuellementAPIView(APIView):
     """
-    API pour modifier manuellement les heures d'un employé pour une date donnée
+    API pour modifier manuellement les heures d'un employé pour une date donnée.
+    Les heures brutes (pointages d'origine) sont conservées et ne sont jamais modifiées.
+    Seules les heures rectifiées sont enregistrées.
     POST /api/presence/modifier-heures/
+    Body:
+    {
+        "userid": 123,
+        "date": "2024-08-15",
+        "heure_entree": "08:00:00",   // ou "08:00" (HH:MM)
+        "heure_sortie": "17:30:00",
+        "commentaire": "Oubli de pointage"
+    }
     """
     permission_classes = [AllowAny]
-    
+
     def post(self, request):
-        """
-        Modifie ou crée manuellement les heures d'un employé
-        
-        Body:
-        {
-            "userid": 123,
-            "date": "2024-08-15",
-            "heure_entree": "08:00:00",
-            "heure_sortie": "17:00:00",
-            "commentaire": "Ajout manuel"
-        }
-        """
         try:
             userid = request.data.get('userid')
             date_str = request.data.get('date')
-            heure_entree = request.data.get('heure_entree')
-            heure_sortie = request.data.get('heure_sortie')
+            heure_entree_str = request.data.get('heure_entree')
+            heure_sortie_str = request.data.get('heure_sortie')
             commentaire = request.data.get('commentaire', '')
-            
+
+            # Validation des paramètres obligatoires
             if not userid or not date_str:
                 return Response(
                     {"error": "Les paramètres 'userid' et 'date' sont obligatoires"},
                     status=status.HTTP_400_BAD_REQUEST
                 )
-            
-            # Convertir la date
+
+            # Conversion de la date
             try:
                 date_jour = datetime.strptime(date_str, "%Y-%m-%d").date()
             except ValueError:
@@ -1672,72 +1667,138 @@ class ModifierHeuresManuellementAPIView(APIView):
                     {"error": "Format de date invalide. Utilisez YYYY-MM-DD"},
                     status=status.HTTP_400_BAD_REQUEST
                 )
-            
-            # Vérifier que au moins une heure est fournie
-            if not heure_entree and not heure_sortie:
+
+            # Au moins une heure doit être fournie
+            if not heure_entree_str and not heure_sortie_str:
                 return Response(
                     {"error": "Au moins une heure (entrée ou sortie) doit être fournie"},
                     status=status.HTTP_400_BAD_REQUEST
                 )
-            
-            # Créer l'anomalie manuellement
-            anomalie = Anomalie.creer_anomalie_manuelle(
-                userid=int(userid),
-                date_jour=date_jour,
-                heure_entree_rectifiee=heure_entree,
-                heure_sortie_rectifiee=heure_sortie,
-                commentaire=commentaire
-            )
-            
-            # Si l'anomalie est OK, synchroniser avec CheckInOut
-            if anomalie.etat == 'ok' and anomalie.heure_reelle_entree and anomalie.heure_reelle_sortie:
+
+            # Fonction utilitaire pour convertir une chaîne HH:MM ou HH:MM:SS en objet time
+            def str_to_time(t_str):
+                if not t_str:
+                    return None
                 try:
-                    user = UserInfo.objects.get(userid=userid)
-                    
-                    # Supprimer les anciens pointages du jour
-                    CheckInOut.objects.filter(
-                        user=user,
-                        checktime__date=date_jour
-                    ).delete()
-                    
-                    # Créer les nouveaux pointages
-                    if anomalie.heure_reelle_entree:
-                        CheckInOut.objects.create(
-                            user=user,
-                            checktime=datetime.combine(date_jour, anomalie.heure_reelle_entree),
-                            checktype='O'
-                        )
-                    
-                    if anomalie.heure_reelle_sortie:
-                        CheckInOut.objects.create(
-                            user=user,
-                            checktime=datetime.combine(date_jour, anomalie.heure_reelle_sortie),
-                            checktype='I'
-                        )
-                    
-                    anomalie.synchronise_le = datetime.now()
-                    anomalie.save()
-                    
-                    logger.info(f"Pointages synchronisés pour user {userid} le {date_jour}")
-                    
-                except Exception as e:
-                    logger.error(f"Erreur lors de la synchronisation: {e}")
-            
-            serializer = AnomalieSerializer(anomalie)
-            
-            return Response({
-                "success": True,
-                "message": "Heures modifiées avec succès",
-                "anomalie": serializer.data
-            })
-            
-        except Exception as e:
-            logger.error(f"Erreur lors de la modification manuelle des heures: {e}")
-            return Response(
-                {"error": f"Erreur: {str(e)}"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                    return datetime.strptime(t_str, "%H:%M:%S").time()
+                except ValueError:
+                    try:
+                        return datetime.strptime(t_str, "%H:%M").time()
+                    except ValueError:
+                        return None
+
+            heure_entree = str_to_time(heure_entree_str)
+            heure_sortie = str_to_time(heure_sortie_str)
+
+            # Récupération de l'utilisateur
+            try:
+                user = UserInfo.objects.get(userid=userid)
+            except UserInfo.DoesNotExist:
+                return Response(
+                    {"error": f"Utilisateur {userid} non trouvé"},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            # Détermination de la section
+            section = get_section_employe(user.badgenumber)
+
+            # Récupération de l'horaire de la section
+            try:
+                horaire = HoraireSection.objects.get(section=section)
+            except HoraireSection.DoesNotExist:
+                horaire = HoraireSection.objects.get(section='ADMINISTRATION')
+
+            # Récupération de l'objet Date pour obtenir code_date et est_jour_paiement
+            try:
+                date_obj = Date.objects.get(date=date_jour)
+                code_date = date_obj.code_date
+                est_jour_paiement = date_obj.est_jour_paiement
+            except Date.DoesNotExist:
+                # Génération à la volée si la date n'existe pas (normalement déjà générée)
+                from calendar import monthrange
+                if date_jour.month == 1:
+                    annee_prec = date_jour.year - 1
+                    mois_prec = 12
+                else:
+                    annee_prec = date_jour.year
+                    mois_prec = date_jour.month - 1
+                debut_periode = datetime(annee_prec, mois_prec, 21).date()
+                lundi_debut = Date.get_lundi_precedent(debut_periode)
+                code_date = Date.calculer_code_date(date_jour, lundi_debut)
+                est_jour_paiement = False
+
+            # Détermination des heures prévues (heure_reelle) selon la date
+            est_samedi = date_jour.weekday() == 5
+            est_vendredi = date_jour.weekday() == 4
+
+            heure_reelle_entree = decimal_to_time(horaire.heure_entree)
+
+            if est_jour_paiement and est_vendredi:
+                heure_reelle_sortie = decimal_to_time(horaire.sortie_vendredi_paiement)
+            elif est_jour_paiement and est_samedi:
+                heure_reelle_sortie = decimal_to_time(horaire.sortie_samedi_paiement)
+            elif est_samedi:
+                heure_reelle_sortie = decimal_to_time(horaire.sortie_samedi)
+            else:
+                heure_reelle_sortie = decimal_to_time(horaire.heure_sortie)
+
+            # --- RÉCUPÉRATION DES HEURES BRUTES (pointages d'origine) ---
+            # On interroge la table CheckInOut pour obtenir les vrais pointages du jour
+            pointages_bruts = CheckInOut.objects.filter(
+                user=user,
+                checktime__date=date_jour
+            ).order_by('checktime')
+
+            heure_brute_entree = None
+            heure_brute_sortie = None
+            if pointages_bruts.exists():
+                # Premier pointage = entrée brute
+                heure_brute_entree = pointages_bruts[0].checktime.time()
+                # Dernier pointage = sortie brute (si plusieurs)
+                if len(pointages_bruts) > 1:
+                    heure_brute_sortie = pointages_bruts[-1].checktime.time()
+                # Si un seul pointage, la sortie brute reste None (absence de sortie)
+
+            # --- CRÉATION / MISE À JOUR DE L'ANOMALIE ---
+            # On conserve systématiquement les heures brutes, on ne les écrase jamais.
+            # Les heures rectifiées sont celles saisies par l'utilisateur.
+            anomalie, created = Anomalie.objects.update_or_create(
+                userid=userid,
+                date=date_jour,
+                defaults={
+                    'section': section,
+                    'code_date': code_date,
+                    'heure_brute_entree': heure_brute_entree,   # ← inchangées, jamais None sauf si aucun pointage
+                    'heure_brute_sortie': heure_brute_sortie,
+                    'heure_reelle_entree': heure_reelle_entree,
+                    'heure_reelle_sortie': heure_reelle_sortie,
+                    'heure_rectifiee_entree': heure_entree,
+                    'heure_rectifiee_sortie': heure_sortie,
+                    'commentaire': commentaire,
+                }
             )
 
+            # L'état est automatiquement recalculé par la méthode save() du modèle Anomalie
+            # On rafraîchit l'instance pour obtenir l'état à jour
+            anomalie.refresh_from_db()
+
+            # ⚠️ SUPPRESSION DE TOUTE SYNCHRONISATION AVEC CheckInOut
+            # Les pointages bruts restent intacts dans la table d'origine.
+            # Aucune création / suppression / modification n'est effectuée sur CheckInOut.
+
+            serializer = AnomalieSerializer(anomalie)
+            return Response({
+                "success": True,
+                "message": "Heures modifiées avec succès (heures brutes conservées)",
+                "anomalie": serializer.data
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            logger.error(f"Erreur dans ModifierHeuresManuellementAPIView: {e}", exc_info=True)
+            return Response(
+                {"error": f"Erreur interne : {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 class SupprimerHeuresManuellementAPIView(APIView):
     """
