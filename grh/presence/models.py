@@ -519,31 +519,42 @@ class Anomalie(models.Model):
         """Retourne True si l'anomalie est corrigée (état = ok)"""
         return self.etat == 'ok'
     
-    def _determiner_etat(self):
+    
+    def _determiner_etat(self, ancien_etat=None):
         """
         Détermine l'état de l'anomalie selon les règles:
-        - Si pas d'entrée rectifiée → "pas_entree"
-        - Si pas de sortie rectifiée → "pas_sortie"
-        - Sinon → "ok"
+        - Si pas d'entrée rectifiée → 'pas_entree'
+        - Si pas de sortie rectifiée → 'pas_sortie'
+        - Si les deux sont présentes ET égales aux heures réelles → 'ok'
+        - Sinon → on garde l'ancien état (ou 'pas_entree' par défaut)
         """
-        # CAS 1: Pas d'entrée
+        # CAS 1: Pas d'entrée rectifiée
         if not self.heure_rectifiee_entree:
             return 'pas_entree'
-        
-        # CAS 2: Pas de sortie
+
+        # CAS 2: Pas de sortie rectifiée
         if not self.heure_rectifiee_sortie:
             return 'pas_sortie'
-        
-        # CAS 3: Les deux sont présents → OK
-        return 'ok'
-    
+
+        # CAS 3: Les deux sont présentes – on vérifie l'égalité avec les heures réelles
+        if (self.heure_rectifiee_entree == self.heure_reelle_entree and
+            self.heure_rectifiee_sortie == self.heure_reelle_sortie):
+            return 'ok'
+
+        # Sinon, on conserve l'ancien état s'il existe, sinon 'pas_entree'
+        return ancien_etat if ancien_etat else 'pas_entree'
+
+
     def save(self, *args, **kwargs):
         """
         Override save pour:
-        1. Calculer automatiquement l'état (version simplifiée)
-        2. Formater les heures sans secondes
+        1. Formater les heures sans secondes
+        2. Calculer l'état avec la nouvelle règle
         """
-        # Formater les heures sans secondes avant sauvegarde
+        # Sauvegarder l'état actuel avant modifications
+        ancien_etat = self.etat
+
+        # Formater les heures sans secondes
         if self.heure_brute_entree:
             self.heure_brute_entree = self._format_time_without_seconds(self.heure_brute_entree)
         if self.heure_brute_sortie:
@@ -556,21 +567,21 @@ class Anomalie(models.Model):
             self.heure_rectifiee_entree = self._format_time_without_seconds(self.heure_rectifiee_entree)
         if self.heure_rectifiee_sortie:
             self.heure_rectifiee_sortie = self._format_time_without_seconds(self.heure_rectifiee_sortie)
-        
+
         # Initialiser rectifié depuis brut si vide
         if self.heure_brute_entree and not self.heure_rectifiee_entree:
             self.heure_rectifiee_entree = self.heure_brute_entree
         if self.heure_brute_sortie and not self.heure_rectifiee_sortie:
             self.heure_rectifiee_sortie = self.heure_brute_sortie
-        
-        # Calculer l'état automatiquement (version simplifiée)
-        self.etat = self._determiner_etat()
-        
+
+        # Calculer l'état en tenant compte de l'ancien état
+        self.etat = self._determiner_etat(ancien_etat)
+
         # Marquer comme synchronisé si corrigé
         if self.etat == 'ok':
             from datetime import datetime
             self.synchronise_le = datetime.now()
-        
+
         super().save(*args, **kwargs)
     
     def _format_time_without_seconds(self, time_obj):
