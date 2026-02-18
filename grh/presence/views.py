@@ -6,7 +6,7 @@ from django.db.models import Min, Max, Q
 from datetime import date, datetime
 from .models import CheckInOut, UserInfo, Date, Evenement, HoraireSection, Anomalie
 from .serializers import DateSerializer, HoraireSectionSerializer, EvenementSerializer, AnomalieSerializer
-from .utils import decimal_to_time, analyser_presence, get_section_employe
+from .utils import decimal_to_time, analyser_presence, get_section_employe, corriger_pointages_automatique
 import logging
 
 logger = logging.getLogger(__name__)
@@ -868,15 +868,38 @@ class PresenceMoisDetailCalculeeAPIView(APIView):
                     )
                     
                     if pointages_bruts.exists():
-                        heure_entree = pointages_bruts.filter(checktype='O').order_by('checktime').first()
-                        heure_sortie = pointages_bruts.filter(checktype='I').order_by('-checktime').first()
-                        
-                        heure_entree_reelle = heure_entree.checktime.time() if heure_entree else None
-                        heure_sortie_reelle = heure_sortie.checktime.time() if heure_sortie else None
-                        # Pour les pointages normaux, les heures brutes sont les mêmes que les heures réelles
-                        heure_brute_entree = heure_entree_reelle
-                        heure_brute_sortie = heure_sortie_reelle
+                        pointages_list = list(pointages_bruts)
+
+                        # Séparer par type O/I
+                        entrees_pointages = [p for p in pointages_list if p.checktype.upper() == 'O']
+                        sorties_pointages = [p for p in pointages_list if p.checktype.upper() == 'I']
+
+                        # Heures BRUTES = basées sur les types O/I (préserve l'état original, même en cas d'inversion)
+                        heure_brute_entree = entrees_pointages[0].checktime.time() if entrees_pointages else None
+                        heure_brute_sortie = sorties_pointages[-1].checktime.time() if sorties_pointages else None
+
+                        # Correction selon le cas
+                        if entrees_pointages and sorties_pointages:
+                            # Les deux types existent (cas normal ou inversion) → correction automatique
+                            heure_entree_corrigee, heure_sortie_corrigee, _ = corriger_pointages_automatique(
+                                pointages_list, heure_entree_prevue, heure_sortie_prevue
+                            )
+                        elif entrees_pointages and not sorties_pointages:
+                            # Uniquement entrées (pas de sortie) → copier brut dans rectifié, sans correction
+                            heure_entree_corrigee = heure_brute_entree
+                            heure_sortie_corrigee = None
+                        elif sorties_pointages and not entrees_pointages:
+                            # Uniquement sorties (pas d'entrée) → copier brut dans rectifié, sans correction
+                            heure_entree_corrigee = None
+                            heure_sortie_corrigee = heure_brute_sortie
+                        else:
+                            heure_entree_corrigee = None
+                            heure_sortie_corrigee = None
+
+                        heure_entree_reelle = heure_entree_corrigee
+                        heure_sortie_reelle = heure_sortie_corrigee
                         present = True
+                       
                     else:
                         heure_entree_reelle = None
                         heure_sortie_reelle = None
@@ -1027,7 +1050,6 @@ class PresenceMoisDetailCalculeeAPIView(APIView):
             "presences": resultat
         })
     
-
 
 
 # ========== GESTION DES ÉVÉNEMENTS ==========
