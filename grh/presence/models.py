@@ -388,12 +388,13 @@ class Evenement(models.Model):
         ('F', 'Fonction (délégués)'),
         ('PS', 'Permission Spéciale'),
         ('A', 'Absent'),
+        ('AUT', 'Autre'),
     ]
     
     userid = models.IntegerField(db_column='userid')
     date = models.DateField()
     type_evenement = models.CharField(
-        max_length=3,
+        max_length=10,
         choices=TYPES_EVENEMENT,
         default='X'
     )
