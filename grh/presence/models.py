@@ -46,9 +46,9 @@ class Date(models.Model):
         numero_semaine = (jours_depuis_debut // 7) + 1
         jour_semaine = (d.weekday() + 1)  # 1 = lundi, 7 = dimanche
         
-        # Limiter à 5 semaines max
-        if numero_semaine > 5:
-            numero_semaine = 5
+        # # Limiter à 5 semaines max
+        # if numero_semaine > 5:
+        #     numero_semaine = 5
         
         return f"{numero_semaine}{jour_semaine}"
     
@@ -474,6 +474,7 @@ class Anomalie(models.Model):
     ETATS_ANOMALIE = [
         ('pas_entree', 'Pas d\'entrée'),
         ('pas_sortie', 'Pas de sortie'),
+        ('multiples_pointages', 'Pointages multiples'),
         ('ok', 'OK'),
     ]
     
@@ -501,6 +502,10 @@ class Anomalie(models.Model):
     )
     
     commentaire = models.TextField(blank=True, null=True)
+    pointages_bruts_json = models.JSONField(   # ← AJOUTER
+    null=True, blank=True,
+    help_text="Tous les pointages du jour [{time, checktype}, ...]"
+    )
     cree_le = models.DateTimeField(auto_now_add=True)
     modifie_le = models.DateTimeField(auto_now=True)
     synchronise_le = models.DateTimeField(null=True, blank=True)
@@ -521,90 +526,163 @@ class Anomalie(models.Model):
         return self.etat == 'ok'
     
     
+    # def _determiner_etat(self, ancien_etat=None):
+    #     """
+    #     Détermine l'état de l'anomalie selon les règles:
+    #     - Si pas d'entrée rectifiée → 'pas_entree'
+    #     - Si pas de sortie rectifiée → 'pas_sortie'
+    #     - Si les deux sont présentes ET égales aux heures réelles → 'ok'
+    #     - Sinon → on garde l'ancien état (ou 'pas_entree' par défaut)
+    #     """
+    #     # CAS 1: Pas d'entrée rectifiée
+    #     if not self.heure_rectifiee_entree:
+    #         return 'pas_entree'
+
+    #     # CAS 2: Pas de sortie rectifiée
+    #     if not self.heure_rectifiee_sortie:
+    #         return 'pas_sortie'
+
+    #     # CAS 3: Les deux sont présentes – on vérifie l'égalité avec les heures réelles
+    #     if (self.heure_rectifiee_entree == self.heure_reelle_entree and
+    #         self.heure_rectifiee_sortie == self.heure_reelle_sortie):
+    #         return 'ok'
+
+    #     # Sinon, on conserve l'ancien état s'il existe, sinon 'pas_entree'
+    #     return ancien_etat if ancien_etat else 'pas_entree'
+
     def _determiner_etat(self, ancien_etat=None):
         """
-        Détermine l'état de l'anomalie selon les règles:
-        - Si pas d'entrée rectifiée → 'pas_entree'
-        - Si pas de sortie rectifiée → 'pas_sortie'
-        - Si les deux sont présentes ET égales aux heures réelles → 'ok'
-        - Sinon → on garde l'ancien état (ou 'pas_entree' par défaut)
+        Détermine l'état de l'anomalie selon les règles.
+        Ne touche pas à multiples_pointages si les heures rectifiées sont vides.
         """
-        # CAS 1: Pas d'entrée rectifiée
+        # CAS SPÉCIAL : pointages multiples avec choix manuel pas encore fait
+        # → on garde l'état multiples_pointages tant que les rectifiées ne sont pas remplies
+        if ancien_etat == 'multiples_pointages':
+            if not self.heure_rectifiee_entree or not self.heure_rectifiee_sortie:
+                return 'multiples_pointages'
+
+        # CAS 1 : Pas d'entrée rectifiée
         if not self.heure_rectifiee_entree:
             return 'pas_entree'
 
-        # CAS 2: Pas de sortie rectifiée
+        # CAS 2 : Pas de sortie rectifiée
         if not self.heure_rectifiee_sortie:
             return 'pas_sortie'
 
-        # CAS 3: Les deux sont présentes – on vérifie l'égalité avec les heures réelles
+        # CAS 3 : Les deux sont présentes → vérifier égalité avec réelles
         if (self.heure_rectifiee_entree == self.heure_reelle_entree and
-            self.heure_rectifiee_sortie == self.heure_reelle_sortie):
+                self.heure_rectifiee_sortie == self.heure_reelle_sortie):
             return 'ok'
 
-        # Sinon, on conserve l'ancien état s'il existe, sinon 'pas_entree'
+        # Sinon conserver l'ancien état
         return ancien_etat if ancien_etat else 'pas_entree'
+    # def save(self, *args, **kwargs):
+    #     """
+    #     Override save pour:
+    #     1. Formater les heures sans secondes
+    #     2. Calculer l'état avec la nouvelle règle
+    #     """
+    #     # Sauvegarder l'état actuel avant modifications
+    #     ancien_etat = self.etat
 
+    #     # Formater les heures sans secondes
+    #     if self.heure_brute_entree:
+    #         self.heure_brute_entree = self._format_time_without_seconds(self.heure_brute_entree)
+    #     if self.heure_brute_sortie:
+    #         self.heure_brute_sortie = self._format_time_without_seconds(self.heure_brute_sortie)
+    #     if self.heure_reelle_entree:
+    #         self.heure_reelle_entree = self._format_time_without_seconds(self.heure_reelle_entree)
+    #     if self.heure_reelle_sortie:
+    #         self.heure_reelle_sortie = self._format_time_without_seconds(self.heure_reelle_sortie)
+    #     if self.heure_rectifiee_entree:
+    #         self.heure_rectifiee_entree = self._format_time_without_seconds(self.heure_rectifiee_entree)
+    #     if self.heure_rectifiee_sortie:
+    #         self.heure_rectifiee_sortie = self._format_time_without_seconds(self.heure_rectifiee_sortie)
 
+        
+    #     if self.etat not in ('multiples_pointages', 'pas_entree', 'pas_sortie'):
+    #         if self.heure_brute_entree and not self.heure_rectifiee_entree:
+    #             self.heure_rectifiee_entree = self.heure_brute_entree
+    #         if self.heure_brute_sortie and not self.heure_rectifiee_sortie:
+    #             self.heure_rectifiee_sortie = self.heure_brute_sortie
+    #     elif self.etat == 'pas_sortie':
+    #         # Copier seulement l'entrée brute, pas la sortie
+    #         if self.heure_brute_entree and not self.heure_rectifiee_entree:
+    #             self.heure_rectifiee_entree = self.heure_brute_entree
+    #     elif self.etat == 'pas_entree':
+    #         # Copier seulement la sortie brute, pas l'entrée
+    #         if self.heure_brute_sortie and not self.heure_rectifiee_sortie:
+    #             self.heure_rectifiee_sortie = self.heure_brute_sortie
+
+    #     # Calculer l'état en tenant compte de l'ancien état
+    #     self.etat = self._determiner_etat(ancien_etat)
+
+    #     # Marquer comme synchronisé si corrigé
+    #     if self.etat == 'ok':
+    #         from datetime import datetime
+    #         self.synchronise_le = datetime.now()
+
+    #     super().save(*args, **kwargs)
+    
+
+   
     def save(self, *args, **kwargs):
-        """
-        Override save pour:
-        1. Formater les heures sans secondes
-        2. Calculer l'état avec la nouvelle règle
-        """
-        # Sauvegarder l'état actuel avant modifications
         ancien_etat = self.etat
 
         # Formater les heures sans secondes
-        if self.heure_brute_entree:
-            self.heure_brute_entree = self._format_time_without_seconds(self.heure_brute_entree)
-        if self.heure_brute_sortie:
-            self.heure_brute_sortie = self._format_time_without_seconds(self.heure_brute_sortie)
-        if self.heure_reelle_entree:
-            self.heure_reelle_entree = self._format_time_without_seconds(self.heure_reelle_entree)
-        if self.heure_reelle_sortie:
-            self.heure_reelle_sortie = self._format_time_without_seconds(self.heure_reelle_sortie)
-        if self.heure_rectifiee_entree:
-            self.heure_rectifiee_entree = self._format_time_without_seconds(self.heure_rectifiee_entree)
-        if self.heure_rectifiee_sortie:
-            self.heure_rectifiee_sortie = self._format_time_without_seconds(self.heure_rectifiee_sortie)
+        for field in ['heure_brute_entree', 'heure_brute_sortie',
+                    'heure_reelle_entree', 'heure_reelle_sortie',
+                    'heure_rectifiee_entree', 'heure_rectifiee_sortie']:
+            val = getattr(self, field)
+            if val:
+                setattr(self, field, self._format_time_without_seconds(val))
 
-        # Initialiser rectifié depuis brut si vide
-        if self.heure_brute_entree and not self.heure_rectifiee_entree:
-            self.heure_rectifiee_entree = self.heure_brute_entree
-        if self.heure_brute_sortie and not self.heure_rectifiee_sortie:
-            self.heure_rectifiee_sortie = self.heure_brute_sortie
+        # Copie des brutes dans rectifiées selon l'état
+        if self.etat == 'multiples_pointages':
+            # Rien à copier — choix manuel dans l'UI
+            pass
 
-        # Calculer l'état en tenant compte de l'ancien état
+        elif self.etat == 'pas_entree':
+            # Entrée manquante → copier seulement la sortie brute
+            if self.heure_brute_sortie and not self.heure_rectifiee_sortie:
+                self.heure_rectifiee_sortie = self.heure_brute_sortie
+            # Ne jamais copier l'entrée brute
+            self.heure_rectifiee_entree = None
+
+        elif self.etat == 'pas_sortie':
+            # Sortie manquante → copier seulement l'entrée brute
+            if self.heure_brute_entree and not self.heure_rectifiee_entree:
+                self.heure_rectifiee_entree = self.heure_brute_entree
+            # Ne jamais copier la sortie brute
+            self.heure_rectifiee_sortie = None
+
+        else:
+            # Cas normal : copier les deux si vides
+            if self.heure_brute_entree and not self.heure_rectifiee_entree:
+                self.heure_rectifiee_entree = self.heure_brute_entree
+            if self.heure_brute_sortie and not self.heure_rectifiee_sortie:
+                self.heure_rectifiee_sortie = self.heure_brute_sortie
+
         self.etat = self._determiner_etat(ancien_etat)
 
-        # Marquer comme synchronisé si corrigé
         if self.etat == 'ok':
             from datetime import datetime
             self.synchronise_le = datetime.now()
 
         super().save(*args, **kwargs)
-    
+
+
     def _format_time_without_seconds(self, time_obj):
         """
         Formate un objet time pour n'avoir que les heures et minutes (secondes à 00)
         """
         from datetime import time
         return time(time_obj.hour, time_obj.minute, 0)
-    
 
     @classmethod
     def detecter_anomalies_jour(cls, date_jour):
-        """
-        Détecte les anomalies pour un jour donné.
-        Règles :
-        - Aucun pointage → aucune anomalie (absence gérée ailleurs)
-        - Uniquement sortie (I) → anomalie 'pas_entree'
-        - Uniquement entrée (O) → anomalie 'pas_sortie'
-        - Entrée + sortie → correction auto ; si état 'ok' → suppression de l'anomalie
-        """
         from .models import CheckInOut, UserInfo, HoraireSection, Date
-        from .utils import get_section_employe, decimal_to_time, corriger_pointages_automatique
+        from .utils import get_section_employe, decimal_to_time, analyser_pointages_jour
 
         try:
             date_obj = Date.objects.get(date=date_jour)
@@ -612,37 +690,30 @@ class Anomalie(models.Model):
             logger.warning(f"Date {date_jour} non trouvée")
             return 0
 
-        # Tous les employés (ou filtre selon vos besoins)
         employes = UserInfo.objects.all()
         count_anomalies = 0
 
         for employe in employes:
-            # Pointages du jour pour cet employé
             pointages = CheckInOut.objects.filter(
                 user=employe,
                 checktime__date=date_jour
             ).order_by('checktime')
 
-            # --- AUCUN POINTAGE : AUCUNE ANOMALIE, nettoyage ---
             if not pointages.exists():
-                # Supprimer toute anomalie existante pour cet employé à cette date
                 cls.objects.filter(userid=employe.userid, date=date_jour).delete()
                 continue
 
-            # --- Déterminer section et horaire ---
             section = get_section_employe(employe.badgenumber)
             try:
                 horaire = HoraireSection.objects.get(section=section)
             except HoraireSection.DoesNotExist:
                 horaire = HoraireSection.objects.get(section='ADMINISTRATION')
 
-            # Heures prévues selon le jour
-            est_samedi = date_jour.weekday() == 5
+            est_samedi   = date_jour.weekday() == 5
             est_vendredi = date_jour.weekday() == 4
             est_paiement = date_obj.est_jour_paiement
 
             heure_reelle_entree = decimal_to_time(horaire.heure_entree)
-
             if est_paiement and est_vendredi:
                 heure_reelle_sortie = decimal_to_time(horaire.sortie_vendredi_paiement)
             elif est_paiement and est_samedi:
@@ -652,104 +723,75 @@ class Anomalie(models.Model):
             else:
                 heure_reelle_sortie = decimal_to_time(horaire.heure_sortie)
 
-            # --- Séparer les pointages par type ---
-            entrees = [p for p in pointages if p.checktype.upper() == 'O']
-            sorties = [p for p in pointages if p.checktype.upper() == 'I']
+            pointages_list = list(pointages)
+            tries = sorted(pointages_list, key=lambda p: p.checktime)
 
-            # Heures brutes réelles
-            heure_brute_entree = entrees[0].checktime.time() if entrees else None
-            heure_brute_sortie = sorties[-1].checktime.time() if sorties else None
+            # ── Heures brutes basées sur le checktype réel ─────────────────────
+            entrees_brutes = [p for p in tries if p.checktype.upper() == 'O']
+            sorties_brutes  = [p for p in tries if p.checktype.upper() == 'I']
+            heure_brute_entree = entrees_brutes[0].checktime.time() if entrees_brutes else None
+            heure_brute_sortie = sorties_brutes[-1].checktime.time() if sorties_brutes else None
 
-            # --- CAS : UNIQUEMENT ENTRÉE(S) → PAS DE SORTIE ---
-            if entrees and not sorties:
-                heure_entree_brute = entrees[0].checktime.time()
-                defaults = {
-                    'section': section,
-                    'code_date': date_obj.code_date,
-                    'heure_brute_entree': heure_entree_brute,
-                    'heure_brute_sortie': None,
-                    'heure_reelle_entree': heure_reelle_entree,
-                    'heure_reelle_sortie': heure_reelle_sortie,
-                    'heure_rectifiee_entree': heure_entree_brute,
-                    'heure_rectifiee_sortie': None,
-                    'etat': 'pas_sortie',
-                    'commentaire': '',
-                }
-                anomalie, created = cls.objects.update_or_create(
-                    userid=employe.userid,
-                    date=date_jour,
-                    defaults=defaults
-                )
-                if created:
-                    count_anomalies += 1
-                continue
-
-            # --- CAS : UNIQUEMENT SORTIE(S) → PAS D'ENTRÉE ---
-            if sorties and not entrees:
-                heure_sortie_brute = sorties[-1].checktime.time()
-                defaults = {
-                    'section': section,
-                    'code_date': date_obj.code_date,
-                    'heure_brute_entree': None,
-                    'heure_brute_sortie': heure_sortie_brute,
-                    'heure_reelle_entree': heure_reelle_entree,
-                    'heure_reelle_sortie': heure_reelle_sortie,
-                    'heure_rectifiee_entree': None,
-                    'heure_rectifiee_sortie': heure_sortie_brute,
-                    'etat': 'pas_entree',
-                    'commentaire': '',
-                }
-                anomalie, created = cls.objects.update_or_create(
-                    userid=employe.userid,
-                    date=date_jour,
-                    defaults=defaults
-                )
-                if created:
-                    count_anomalies += 1
-                continue
-
-            # --- CAS : ENTRÉE(S) ET SORTIE(S) ---
-            # Application de la correction automatique (retard/avance, pas d'inversion)
-            heure_entree_corrigee, heure_sortie_corrigee, _ = corriger_pointages_automatique(
-                pointages, heure_reelle_entree, heure_reelle_sortie
+            # ── Analyse ────────────────────────────────────────────────────────
+            heure_entree_calc, heure_sortie_calc, type_anomalie, liste_bruts = analyser_pointages_jour(
+                pointages_list, heure_reelle_entree, heure_reelle_sortie, seuil_minutes=30,
             )
 
-            # Déterminer l'état
-            if heure_entree_corrigee is None:
-                etat = 'pas_entree'
-            elif heure_sortie_corrigee is None:
-                etat = 'pas_sortie'
+            # ── Déterminer état et heures rectifiées ───────────────────────────
+            if type_anomalie == 'multiples_pointages':
+                etat                   = 'multiples_pointages'
+                heure_rectifiee_entree = None
+                heure_rectifiee_sortie = None
+
+            elif type_anomalie == 'pas_entree':
+                etat                   = 'pas_entree'
+                heure_rectifiee_entree = None
+                heure_rectifiee_sortie = heure_sortie_calc
+
+            elif type_anomalie == 'pas_sortie':
+                etat                   = 'pas_sortie'
+                heure_rectifiee_entree = heure_entree_calc
+                heure_rectifiee_sortie = None
+
+            elif heure_entree_calc is None:
+                etat                   = 'pas_entree'
+                heure_rectifiee_entree = None
+                heure_rectifiee_sortie = heure_sortie_calc
+
+            elif heure_sortie_calc is None:
+                etat                   = 'pas_sortie'
+                heure_rectifiee_entree = heure_entree_calc
+                heure_rectifiee_sortie = None
+
             else:
-                etat = 'ok'
+                etat                   = 'ok'
+                heure_rectifiee_entree = heure_entree_calc
+                heure_rectifiee_sortie = heure_sortie_calc
 
             defaults = {
-                'section': section,
-                'code_date': date_obj.code_date,
-                'heure_brute_entree': heure_brute_entree,
-                'heure_brute_sortie': heure_brute_sortie,
-                'heure_reelle_entree': heure_reelle_entree,
-                'heure_reelle_sortie': heure_reelle_sortie,
-                'heure_rectifiee_entree': heure_entree_corrigee,
-                'heure_rectifiee_sortie': heure_sortie_corrigee,
-                'etat': etat,
-                'commentaire': '',
+                'section':                section,
+                'code_date':              date_obj.code_date,
+                'heure_brute_entree':     heure_brute_entree,
+                'heure_brute_sortie':     heure_brute_sortie,
+                'heure_reelle_entree':    heure_reelle_entree,
+                'heure_reelle_sortie':    heure_reelle_sortie,
+                'heure_rectifiee_entree': heure_rectifiee_entree,
+                'heure_rectifiee_sortie': heure_rectifiee_sortie,
+                'pointages_bruts_json':   liste_bruts,
+                'etat':                   etat,
+                'commentaire':            '',
             }
 
             anomalie, created = cls.objects.update_or_create(
                 userid=employe.userid,
                 date=date_jour,
-                defaults=defaults
+                defaults=defaults,
             )
-
             if created:
                 count_anomalies += 1
 
-            # Si l'état est 'ok' (pointage complet et correct), on supprime l'anomalie
             if etat == 'ok':
                 anomalie.delete()
-                # On ne compte pas cette anomalie comme créée (si created était True,
-                # on l'a déjà compté, mais on la supprime immédiatement ; on peut
-                # décrémenter le compteur pour rester cohérent)
                 if created:
                     count_anomalies -= 1
 

@@ -867,37 +867,44 @@ class PresenceMoisDetailCalculeeAPIView(APIView):
                         checktime__date=date_str
                     )
                     
+
                     if pointages_bruts.exists():
+                        from .utils import analyser_pointages_jour
                         pointages_list = list(pointages_bruts)
+                        tries = sorted(pointages_list, key=lambda p: p.checktime)
 
-                        # Séparer par type O/I
-                        entrees_pointages = [p for p in pointages_list if p.checktype.upper() == 'O']
-                        sorties_pointages = [p for p in pointages_list if p.checktype.upper() == 'I']
+                        entrees_brutes = [p for p in tries if p.checktype.upper() == 'O']
+                        sorties_brutes  = [p for p in tries if p.checktype.upper() == 'I']
+                        has_mixed = bool(entrees_brutes and sorties_brutes)
 
-                        # Heures BRUTES = basées sur les types O/I (préserve l'état original, même en cas d'inversion)
-                        heure_brute_entree = entrees_pointages[0].checktime.time() if entrees_pointages else None
-                        heure_brute_sortie = sorties_pointages[-1].checktime.time() if sorties_pointages else None
+                        if len(tries) == 1:
+                            p = tries[0]
+                            if p.checktype.upper() == 'I':
+                                # Seul I → entrée vide
+                                heure_brute_entree = None
+                                heure_brute_sortie = p.checktime.time()
+                            else:
+                                # Seul O → sortie vide
+                                heure_brute_entree = p.checktime.time()
+                                heure_brute_sortie = None
 
-                        # Correction selon le cas
-                        if entrees_pointages and sorties_pointages:
-                            # Les deux types existent (cas normal ou inversion) → correction automatique
-                            heure_entree_corrigee, heure_sortie_corrigee, _ = corriger_pointages_automatique(
-                                pointages_list, heure_entree_prevue, heure_sortie_prevue
-                            )
-                        elif entrees_pointages and not sorties_pointages:
-                            # Uniquement entrées (pas de sortie) → copier brut dans rectifié, sans correction
-                            heure_entree_corrigee = heure_brute_entree
-                            heure_sortie_corrigee = None
-                        elif sorties_pointages and not entrees_pointages:
-                            # Uniquement sorties (pas d'entrée) → copier brut dans rectifié, sans correction
-                            heure_entree_corrigee = None
-                            heure_sortie_corrigee = heure_brute_sortie
+                        elif has_mixed:
+                            # O+I ou I+O → brutes basées sur le checktype (même si inversé)
+                            heure_brute_entree = entrees_brutes[0].checktime.time()
+                            heure_brute_sortie = sorties_brutes[-1].checktime.time()
+
                         else:
-                            heure_entree_corrigee = None
-                            heure_sortie_corrigee = None
+                            # I+I ou O+O → premier=entrée brute, dernier=sortie brute (chronologique)
+                            heure_brute_entree = tries[0].checktime.time()
+                            heure_brute_sortie = tries[-1].checktime.time()
 
-                        heure_entree_reelle = heure_entree_corrigee
-                        heure_sortie_reelle = heure_sortie_corrigee
+                        # ── Heures rectifiées via analyser_pointages_jour ──────────────────────
+                        heure_entree_calc, heure_sortie_calc, type_anomalie_calc, _ = analyser_pointages_jour(
+                            pointages_list, heure_entree_prevue, heure_sortie_prevue, seuil_minutes=30
+                        )
+
+                        heure_entree_reelle = heure_entree_calc
+                        heure_sortie_reelle = heure_sortie_calc
                         present = True
                        
                     else:

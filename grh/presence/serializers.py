@@ -1,4 +1,3 @@
-
 from rest_framework import serializers
 from decimal import Decimal
 from .models import Date, HoraireSection, Evenement, Anomalie
@@ -6,25 +5,25 @@ from .models import Date, HoraireSection, Evenement, Anomalie
 
 class DateSerializer(serializers.ModelSerializer):
     code_affichage = serializers.ReadOnlyField()
-    
+
     class Meta:
         model = Date
         fields = ['date', 'code_date', 'code_affichage', 'hors_periode', 'mois_reference']
 
 
 class HoraireSectionSerializer(serializers.ModelSerializer):
-    heure_entree_normale = serializers.ReadOnlyField()
-    heure_sortie_normale = serializers.ReadOnlyField()
-    sortie_samedi_normale = serializers.ReadOnlyField()
-    sortie_vendredi_paiement_normale = serializers.ReadOnlyField()
-    sortie_samedi_paiement_normale = serializers.ReadOnlyField()
-    
+    heure_entree_normale              = serializers.ReadOnlyField()
+    heure_sortie_normale              = serializers.ReadOnlyField()
+    sortie_samedi_normale             = serializers.ReadOnlyField()
+    sortie_vendredi_paiement_normale  = serializers.ReadOnlyField()
+    sortie_samedi_paiement_normale    = serializers.ReadOnlyField()
+
     class Meta:
         model = HoraireSection
         fields = [
-            'section', 
-            'heure_entree', 
-            'heure_sortie', 
+            'section',
+            'heure_entree',
+            'heure_sortie',
             'sortie_samedi',
             'sortie_vendredi_paiement',
             'sortie_samedi_paiement',
@@ -32,92 +31,82 @@ class HoraireSectionSerializer(serializers.ModelSerializer):
             'heure_sortie_normale',
             'sortie_samedi_normale',
             'sortie_vendredi_paiement_normale',
-            'sortie_samedi_paiement_normale'
+            'sortie_samedi_paiement_normale',
         ]
-    
-    # Ajouter les validateurs pour les nouveaux champs
+
     def validate_sortie_vendredi_paiement(self, value):
-        """Valide que l'heure de sortie vendredi paiement est entre 0 et 24"""
         try:
             if isinstance(value, str):
                 value = Decimal(value)
             if not (0 <= float(value) < 24):
-                raise serializers.ValidationError("L'heure de sortie vendredi paiement doit être entre 0 et 24")
+                raise serializers.ValidationError(
+                    "L'heure de sortie vendredi paiement doit être entre 0 et 24")
             return value
         except (ValueError, TypeError):
             raise serializers.ValidationError("Format d'heure invalide")
-    
+
     def validate_sortie_samedi_paiement(self, value):
-        """Valide que l'heure de sortie samedi paiement est entre 0 et 24"""
         try:
             if isinstance(value, str):
                 value = Decimal(value)
             if not (0 <= float(value) < 24):
-                raise serializers.ValidationError("L'heure de sortie samedi paiement doit être entre 0 et 24")
+                raise serializers.ValidationError(
+                    "L'heure de sortie samedi paiement doit être entre 0 et 24")
             return value
         except (ValueError, TypeError):
             raise serializers.ValidationError("Format d'heure invalide")
-        
+
 
 class EvenementSerializer(serializers.ModelSerializer):
-    type_evenement_display = serializers.CharField(source='get_type_evenement_display', read_only=True)
-    user_name = serializers.SerializerMethodField()
-    badgenumber = serializers.SerializerMethodField()
-    
+    type_evenement_display = serializers.CharField(
+        source='get_type_evenement_display', read_only=True)
+    user_name    = serializers.SerializerMethodField()
+    badgenumber  = serializers.SerializerMethodField()
+
     class Meta:
         model = Evenement
         fields = [
-            'id',
-            'userid',
-            'user_name',
-            'badgenumber',
-            'date',
-            'type_evenement',
-            'type_evenement_display',
-            'commentaire',
-            'cree_le',
-            'modifie_le'
+            'id', 'userid', 'user_name', 'badgenumber',
+            'date', 'type_evenement', 'type_evenement_display',
+            'commentaire', 'cree_le', 'modifie_le',
         ]
         read_only_fields = ['id', 'cree_le', 'modifie_le']
-    
+
     def get_user_name(self, obj):
-        """Récupère le nom de l'utilisateur"""
         try:
             from .models import UserInfo
             user = UserInfo.objects.get(userid=obj.userid)
             return user.name if user else f"User {obj.userid}"
         except:
             return f"User {obj.userid}"
-    
+
     def get_badgenumber(self, obj):
-        """Récupère le badgenumber"""
         try:
             from .models import UserInfo
             user = UserInfo.objects.get(userid=obj.userid)
             return user.badgenumber if user else None
         except:
             return None
-    
+
     def validate_type_evenement(self, value):
-        """Valide que le type d'événement est valide"""
         valid_types = [choice[0] for choice in Evenement.TYPES_EVENEMENT]
         if value not in valid_types:
-            raise serializers.ValidationError(f"Type d'événement invalide. Choix: {', '.join(valid_types)}")
+            raise serializers.ValidationError(
+                f"Type d'événement invalide. Choix: {', '.join(valid_types)}")
         return value
-    
 
 
 class AnomalieSerializer(serializers.ModelSerializer):
-    etat_display = serializers.CharField(source='get_etat_display', read_only=True)
-    user_name = serializers.SerializerMethodField()
-    badgenumber = serializers.SerializerMethodField()
-    est_corrigee = serializers.ReadOnlyField()
-    
+    etat_display  = serializers.CharField(source='get_etat_display', read_only=True)
+    user_name     = serializers.SerializerMethodField()
+    badgenumber   = serializers.SerializerMethodField()
+    est_corrigee  = serializers.ReadOnlyField()
+
     # Codes pour affichage
-    code_date_brut = serializers.SerializerMethodField()
-    code_date_reel = serializers.SerializerMethodField()
-    code_date_rectifie = serializers.SerializerMethodField()
-    
+    code_date_brut      = serializers.SerializerMethodField()
+    code_date_reel      = serializers.SerializerMethodField()
+    code_date_rectifie  = serializers.SerializerMethodField()
+
     class Meta:
         model = Anomalie
         fields = [
@@ -131,10 +120,15 @@ class AnomalieSerializer(serializers.ModelSerializer):
             'code_date_brut',
             'code_date_reel',
             'code_date_rectifie',
+            # Heures brutes (non modifiables)
             'heure_brute_entree',
             'heure_brute_sortie',
+            # Tous les pointages bruts du jour (pour multiples_pointages)
+            # Heures réelles (section)
+            'pointages_bruts_json',      
             'heure_reelle_entree',
             'heure_reelle_sortie',
+            # Heures rectifiées (modifiables)
             'heure_rectifiee_entree',
             'heure_rectifiee_sortie',
             'etat',
@@ -142,70 +136,57 @@ class AnomalieSerializer(serializers.ModelSerializer):
             'est_corrigee',
             'commentaire',
             'cree_le',
-            'modifie_le'
+            'modifie_le',
         ]
-        read_only_fields = ['id', 'cree_le', 'modifie_le', 'heure_brute_entree', 'heure_brute_sortie', 'est_corrigee']
-    
+        read_only_fields = [
+            'id', 'cree_le', 'modifie_le',
+            'heure_brute_entree', 'heure_brute_sortie',
+            'pointages_bruts_json',      # non modifiable depuis l'API
+            'est_corrigee',
+        ]
+
     def get_user_name(self, obj):
-        """Récupère le nom de l'utilisateur"""
         try:
             from .models import UserInfo
             user = UserInfo.objects.get(userid=obj.userid)
             return user.name if user else f"User {obj.userid}"
         except:
             return f"User {obj.userid}"
-    
+
     def get_badgenumber(self, obj):
-        """Récupère le badgenumber"""
         try:
             from .models import UserInfo
             user = UserInfo.objects.get(userid=obj.userid)
             return user.badgenumber if user else None
         except:
             return None
-    
+
     def get_code_date_brut(self, obj):
-        """Code date avec heures brutes (non modifiable)"""
         if obj.heure_brute_entree or obj.heure_brute_sortie:
             return f"{obj.code_date}B" if obj.code_date else 'B'
         return ''
-    
+
     def get_code_date_reel(self, obj):
-        """Code date avec heures réelles (horaires de section - modifiable)"""
         if obj.heure_reelle_entree or obj.heure_reelle_sortie:
             return f"{obj.code_date}R" if obj.code_date else 'R'
         return ''
-    
+
     def get_code_date_rectifie(self, obj):
-        """Code date avec heures rectifiées (corrigées manuellement - modifiable)"""
         if obj.heure_rectifiee_entree or obj.heure_rectifiee_sortie:
             return f"{obj.code_date}P" if obj.code_date else 'P'
         return ''
-    
+
     def validate(self, data):
-        """
-        Validation : vérifier la cohérence des heures
-        """
         heure_rectifiee_entree = data.get('heure_rectifiee_entree')
         heure_rectifiee_sortie = data.get('heure_rectifiee_sortie')
-        
-        # Si les deux heures rectifiées sont renseignées, vérifier qu'elles sont cohérentes
         if heure_rectifiee_entree and heure_rectifiee_sortie:
             if heure_rectifiee_entree >= heure_rectifiee_sortie:
                 raise serializers.ValidationError(
-                    "L'heure rectifiée d'entrée doit être antérieure à l'heure rectifiée de sortie"
-                )
-        
+                    "L'heure rectifiée d'entrée doit être antérieure à l'heure rectifiée de sortie")
         return data
-    
+
     def update(self, instance, validated_data):
-        """
-        Met à jour l'anomalie et recalcule automatiquement l'état
-        """
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
-        
-        # L'état sera automatiquement mis à jour via le save() du modèle
         instance.save()
-        
         return instance
