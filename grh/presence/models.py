@@ -576,56 +576,8 @@ class Anomalie(models.Model):
 
         # Sinon conserver l'ancien état
         return ancien_etat if ancien_etat else 'pas_entree'
-    # def save(self, *args, **kwargs):
-    #     """
-    #     Override save pour:
-    #     1. Formater les heures sans secondes
-    #     2. Calculer l'état avec la nouvelle règle
-    #     """
-    #     # Sauvegarder l'état actuel avant modifications
-    #     ancien_etat = self.etat
-
-    #     # Formater les heures sans secondes
-    #     if self.heure_brute_entree:
-    #         self.heure_brute_entree = self._format_time_without_seconds(self.heure_brute_entree)
-    #     if self.heure_brute_sortie:
-    #         self.heure_brute_sortie = self._format_time_without_seconds(self.heure_brute_sortie)
-    #     if self.heure_reelle_entree:
-    #         self.heure_reelle_entree = self._format_time_without_seconds(self.heure_reelle_entree)
-    #     if self.heure_reelle_sortie:
-    #         self.heure_reelle_sortie = self._format_time_without_seconds(self.heure_reelle_sortie)
-    #     if self.heure_rectifiee_entree:
-    #         self.heure_rectifiee_entree = self._format_time_without_seconds(self.heure_rectifiee_entree)
-    #     if self.heure_rectifiee_sortie:
-    #         self.heure_rectifiee_sortie = self._format_time_without_seconds(self.heure_rectifiee_sortie)
-
-        
-    #     if self.etat not in ('multiples_pointages', 'pas_entree', 'pas_sortie'):
-    #         if self.heure_brute_entree and not self.heure_rectifiee_entree:
-    #             self.heure_rectifiee_entree = self.heure_brute_entree
-    #         if self.heure_brute_sortie and not self.heure_rectifiee_sortie:
-    #             self.heure_rectifiee_sortie = self.heure_brute_sortie
-    #     elif self.etat == 'pas_sortie':
-    #         # Copier seulement l'entrée brute, pas la sortie
-    #         if self.heure_brute_entree and not self.heure_rectifiee_entree:
-    #             self.heure_rectifiee_entree = self.heure_brute_entree
-    #     elif self.etat == 'pas_entree':
-    #         # Copier seulement la sortie brute, pas l'entrée
-    #         if self.heure_brute_sortie and not self.heure_rectifiee_sortie:
-    #             self.heure_rectifiee_sortie = self.heure_brute_sortie
-
-    #     # Calculer l'état en tenant compte de l'ancien état
-    #     self.etat = self._determiner_etat(ancien_etat)
-
-    #     # Marquer comme synchronisé si corrigé
-    #     if self.etat == 'ok':
-    #         from datetime import datetime
-    #         self.synchronise_le = datetime.now()
-
-    #     super().save(*args, **kwargs)
-    
-
    
+
     def save(self, *args, **kwargs):
         ancien_etat = self.etat
 
@@ -637,24 +589,25 @@ class Anomalie(models.Model):
             if val:
                 setattr(self, field, self._format_time_without_seconds(val))
 
-        # Copie des brutes dans rectifiées selon l'état
+        # ─── Auto-complétion depuis les brutes (UNIQUEMENT si le champ est vide) ───
+        # On ne force JAMAIS à None : si l'utilisateur a saisi une valeur, on la garde.
+
         if self.etat == 'multiples_pointages':
-            # Rien à copier — choix manuel dans l'UI
+            # Rien à copier automatiquement — l'UI propose un choix manuel
             pass
 
         elif self.etat == 'pas_entree':
-            # Entrée manquante → copier seulement la sortie brute
+            # Sortie brute → rectifiée si vide
             if self.heure_brute_sortie and not self.heure_rectifiee_sortie:
                 self.heure_rectifiee_sortie = self.heure_brute_sortie
-            # Ne jamais copier l'entrée brute
-            self.heure_rectifiee_entree = None
+            # ⚠️ On NE remet PAS heure_rectifiee_entree = None
+            # Si l'utilisateur l'a remplie (correction manuelle), on la conserve.
 
         elif self.etat == 'pas_sortie':
-            # Sortie manquante → copier seulement l'entrée brute
+            # Entrée brute → rectifiée si vide
             if self.heure_brute_entree and not self.heure_rectifiee_entree:
                 self.heure_rectifiee_entree = self.heure_brute_entree
-            # Ne jamais copier la sortie brute
-            self.heure_rectifiee_sortie = None
+            # ⚠️ On NE remet PAS heure_rectifiee_sortie = None
 
         else:
             # Cas normal : copier les deux si vides
@@ -670,7 +623,6 @@ class Anomalie(models.Model):
             self.synchronise_le = datetime.now()
 
         super().save(*args, **kwargs)
-
 
     def _format_time_without_seconds(self, time_obj):
         """
