@@ -631,10 +631,139 @@ class Anomalie(models.Model):
         from datetime import time
         return time(time_obj.hour, time_obj.minute, 0)
 
+    # @classmethod
+    # def detecter_anomalies_jour(cls, date_jour):
+    #     from .models import CheckInOut, UserInfo, HoraireSection, Date
+    #     from .utils import get_section_employe, decimal_to_time, analyser_pointages_jour
+
+    #     # ⚡️ STOP immédiat si aucun pointage
+    #     if not CheckInOut.objects.filter(checktime__date=date_jour).exists():
+    #         return 0
+
+    #     try:
+    #         date_obj = Date.objects.get(date=date_jour)
+    #     except Date.DoesNotExist:
+    #         logger.warning(f"Date {date_jour} non trouvée")
+    #         return 0
+
+    #     employes = UserInfo.objects.all()
+    #     count_anomalies = 0
+
+    #     for employe in employes:
+    #         pointages = CheckInOut.objects.filter(
+    #             user=employe,
+    #             checktime__date=date_jour
+    #         ).order_by('checktime')
+
+    #         if not pointages.exists():
+    #             cls.objects.filter(userid=employe.userid, date=date_jour).delete()
+    #             continue
+
+    #         section = get_section_employe(employe.badgenumber)
+    #         try:
+    #             horaire = HoraireSection.objects.get(section=section)
+    #         except HoraireSection.DoesNotExist:
+    #             horaire = HoraireSection.objects.get(section='ADMINISTRATION')
+
+    #         est_samedi   = date_jour.weekday() == 5
+    #         est_vendredi = date_jour.weekday() == 4
+    #         est_paiement = date_obj.est_jour_paiement
+
+    #         heure_reelle_entree = decimal_to_time(horaire.heure_entree)
+    #         if est_paiement and est_vendredi:
+    #             heure_reelle_sortie = decimal_to_time(horaire.sortie_vendredi_paiement)
+    #         elif est_paiement and est_samedi:
+    #             heure_reelle_sortie = decimal_to_time(horaire.sortie_samedi_paiement)
+    #         elif est_samedi:
+    #             heure_reelle_sortie = decimal_to_time(horaire.sortie_samedi)
+    #         else:
+    #             heure_reelle_sortie = decimal_to_time(horaire.heure_sortie)
+
+    #         pointages_list = list(pointages)
+    #         tries = sorted(pointages_list, key=lambda p: p.checktime)
+
+    #         # ── Heures brutes basées sur le checktype réel ─────────────────────
+    #         entrees_brutes = [p for p in tries if p.checktype.upper() == 'O']
+    #         sorties_brutes  = [p for p in tries if p.checktype.upper() == 'I']
+    #         heure_brute_entree = entrees_brutes[0].checktime.time() if entrees_brutes else None
+    #         heure_brute_sortie = sorties_brutes[-1].checktime.time() if sorties_brutes else None
+
+    #         # ── Analyse ────────────────────────────────────────────────────────
+    #         heure_entree_calc, heure_sortie_calc, type_anomalie, liste_bruts = analyser_pointages_jour(
+    #             pointages_list, heure_reelle_entree, heure_reelle_sortie, seuil_minutes=30,
+    #         )
+
+    #         # ── Déterminer état et heures rectifiées ───────────────────────────
+    #         if type_anomalie == 'multiples_pointages':
+    #             etat                   = 'multiples_pointages'
+    #             heure_rectifiee_entree = None
+    #             heure_rectifiee_sortie = None
+
+    #         elif type_anomalie == 'pas_entree':
+    #             etat                   = 'pas_entree'
+    #             heure_rectifiee_entree = None
+    #             heure_rectifiee_sortie = heure_sortie_calc
+
+    #         elif type_anomalie == 'pas_sortie':
+    #             etat                   = 'pas_sortie'
+    #             heure_rectifiee_entree = heure_entree_calc
+    #             heure_rectifiee_sortie = None
+
+    #         elif heure_entree_calc is None:
+    #             etat                   = 'pas_entree'
+    #             heure_rectifiee_entree = None
+    #             heure_rectifiee_sortie = heure_sortie_calc
+
+    #         elif heure_sortie_calc is None:
+    #             etat                   = 'pas_sortie'
+    #             heure_rectifiee_entree = heure_entree_calc
+    #             heure_rectifiee_sortie = None
+
+    #         else:
+    #             etat                   = 'ok'
+    #             heure_rectifiee_entree = heure_entree_calc
+    #             heure_rectifiee_sortie = heure_sortie_calc
+
+    #         defaults = {
+    #             'section':                section,
+    #             'code_date':              date_obj.code_date,
+    #             'heure_brute_entree':     heure_brute_entree,
+    #             'heure_brute_sortie':     heure_brute_sortie,
+    #             'heure_reelle_entree':    heure_reelle_entree,
+    #             'heure_reelle_sortie':    heure_reelle_sortie,
+    #             'heure_rectifiee_entree': heure_rectifiee_entree,
+    #             'heure_rectifiee_sortie': heure_rectifiee_sortie,
+    #             'pointages_bruts_json':   liste_bruts,
+    #             'etat':                   etat,
+    #             'commentaire':            '',
+    #         }
+
+    #         anomalie, created = cls.objects.update_or_create(
+    #             userid=employe.userid,
+    #             date=date_jour,
+    #             defaults=defaults,
+    #         )
+    #         if created:
+    #             count_anomalies += 1
+
+    #         if etat == 'ok':
+    #             anomalie.delete()
+    #             if created:
+    #                 count_anomalies -= 1
+
+    #     return count_anomalies
+
+
+
+
+
     @classmethod
     def detecter_anomalies_jour(cls, date_jour):
         from .models import CheckInOut, UserInfo, HoraireSection, Date
-        from .utils import get_section_employe, decimal_to_time, analyser_pointages_jour
+        from .utils import decimal_to_time, analyser_pointages_jour, build_user_section_map
+
+        if not CheckInOut.objects.filter(checktime__date=date_jour).exists():
+            return 0
 
         try:
             date_obj = Date.objects.get(date=date_jour)
@@ -642,7 +771,12 @@ class Anomalie(models.Model):
             logger.warning(f"Date {date_jour} non trouvée")
             return 0
 
-        employes = UserInfo.objects.all()
+        # ── Précharger section map + horaires EN DEHORS de la boucle ──
+        user_section_map = build_user_section_map()  # {userid: section_nom}
+        horaires_dict    = {h.section: h for h in HoraireSection.objects.all()}
+        horaire_default  = horaires_dict.get('ADMINISTRATION')
+
+        employes        = UserInfo.objects.all()
         count_anomalies = 0
 
         for employe in employes:
@@ -655,11 +789,11 @@ class Anomalie(models.Model):
                 cls.objects.filter(userid=employe.userid, date=date_jour).delete()
                 continue
 
-            section = get_section_employe(employe.badgenumber)
-            try:
-                horaire = HoraireSection.objects.get(section=section)
-            except HoraireSection.DoesNotExist:
-                horaire = HoraireSection.objects.get(section='ADMINISTRATION')
+            # ── Section depuis la map (O(1), sans requête DB) ──
+            section = user_section_map.get(employe.userid, 'ADMINISTRATION')
+            horaire = horaires_dict.get(section, horaire_default)
+            if horaire is None:
+                continue
 
             est_samedi   = date_jour.weekday() == 5
             est_vendredi = date_jour.weekday() == 4
@@ -678,39 +812,26 @@ class Anomalie(models.Model):
             pointages_list = list(pointages)
             tries = sorted(pointages_list, key=lambda p: p.checktime)
 
-            # ── Heures brutes basées sur le checktype réel ─────────────────────
             entrees_brutes = [p for p in tries if p.checktype.upper() == 'O']
-            sorties_brutes  = [p for p in tries if p.checktype.upper() == 'I']
+            sorties_brutes = [p for p in tries if p.checktype.upper() == 'I']
             heure_brute_entree = entrees_brutes[0].checktime.time() if entrees_brutes else None
             heure_brute_sortie = sorties_brutes[-1].checktime.time() if sorties_brutes else None
 
-            # ── Analyse ────────────────────────────────────────────────────────
             heure_entree_calc, heure_sortie_calc, type_anomalie, liste_bruts = analyser_pointages_jour(
                 pointages_list, heure_reelle_entree, heure_reelle_sortie, seuil_minutes=30,
             )
 
-            # ── Déterminer état et heures rectifiées ───────────────────────────
             if type_anomalie == 'multiples_pointages':
                 etat                   = 'multiples_pointages'
                 heure_rectifiee_entree = None
                 heure_rectifiee_sortie = None
 
-            elif type_anomalie == 'pas_entree':
+            elif type_anomalie == 'pas_entree' or heure_entree_calc is None:
                 etat                   = 'pas_entree'
                 heure_rectifiee_entree = None
                 heure_rectifiee_sortie = heure_sortie_calc
 
-            elif type_anomalie == 'pas_sortie':
-                etat                   = 'pas_sortie'
-                heure_rectifiee_entree = heure_entree_calc
-                heure_rectifiee_sortie = None
-
-            elif heure_entree_calc is None:
-                etat                   = 'pas_entree'
-                heure_rectifiee_entree = None
-                heure_rectifiee_sortie = heure_sortie_calc
-
-            elif heure_sortie_calc is None:
+            elif type_anomalie == 'pas_sortie' or heure_sortie_calc is None:
                 etat                   = 'pas_sortie'
                 heure_rectifiee_entree = heure_entree_calc
                 heure_rectifiee_sortie = None
@@ -748,3 +869,49 @@ class Anomalie(models.Model):
                     count_anomalies -= 1
 
         return count_anomalies
+
+
+
+# ─── presence/models.py  ─── ajouter APRÈS la classe Anomalie ───────────────
+
+class Section(models.Model):
+    nom_section = models.CharField(max_length=150, unique=True, verbose_name="Nom de la section")
+
+    class Meta:
+        db_table = 'db_section'
+        ordering = ['nom_section']
+        verbose_name = "Section"
+        verbose_name_plural = "Sections"
+
+    def __str__(self):
+        return self.nom_section
+
+
+class UserSection(models.Model):
+    userid = models.IntegerField(
+        primary_key=True,
+        db_column='userid',
+        verbose_name="ID utilisateur"
+    )
+    section = models.ForeignKey(
+        Section,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='employes',
+    )
+
+    class Meta:
+        db_table = 'db_user_section'
+        verbose_name = "Section utilisateur"
+        verbose_name_plural = "Sections utilisateurs"
+
+    def __str__(self):
+        return f"User {self.userid} → {self.section}"
+
+    @property
+    def user(self):
+        try:
+            return UserInfo.objects.get(userid=self.userid)
+        except UserInfo.DoesNotExist:
+            return None

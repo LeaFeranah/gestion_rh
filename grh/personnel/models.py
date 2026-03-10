@@ -21,7 +21,7 @@ class InformationPersonnelle(TimeStampModel):
     ]
 
     numero_matricule = models.CharField(max_length=50, unique=True)
-    nom_complet = models.CharField(max_length=100)
+    nom_complet = models.CharField(max_length=255)
     sexe = models.CharField(max_length=10, choices=SEXE_CHOICES, null=True, blank=True)
     appellation = models.CharField(max_length=100, null=True, blank=True)
     date_naissance = models.DateField(null=True, blank=True)
@@ -217,55 +217,7 @@ class InformationProfessionnelle(TimeStampModel):
         ('H.C', 'H.C'),
     ]
 
-    SECTION_CHOICES = [
-        ('ADMINISTRATION', 'ADMINISTRATION'),
-        ('BRODERIE MACHINE', 'BRODERIE MACHINE'),
-        ('BRODERIE MAIN AK17', 'BRODERIE MAIN AK17'),
-        ('BRODERIE MAIN DEV', 'BRODERIE MAIN DEV'),
-        ('BUREAU DE METHODE', 'BUREAU DE METHODE'),
-        ('CONTROLE QUALITE AS', 'CONTROLE QUALITE AS'),
-        ('CHAINE 1', 'CHAINE 1'),
-        ('CHAINE 2', 'CHAINE 2'),
-        ('CHAINE 3', 'CHAINE 3'),
-        ('CHAINE 4', 'CHAINE 4'),
-        ('CHAINE 5', 'CHAINE 5'),
-        ('CHAINE 6', 'CHAINE 6'),
-        ('CHAINE 7', 'CHAINE 7'),
-        ('CHAINE 8', 'CHAINE 8'),
-        ('CHAINE 9', 'CHAINE 9'),
-        ('CHAINE 10', 'CHAINE 10'),
-        ('CHAINE 11', 'CHAINE 11'),
-        ('CHAINE 12', 'CHAINE 12'),
-        ('CHAINE CUIR', 'CHAINE CUIR'),
-        ('COLLECTION', 'COLLECTION'),
-        ('COUPE', 'COUPE'),
-        ('COUPE COLLECTION', 'COUPE COLLECTION'),
-        ('FINITION D', 'FINITION D'),
-        ('FINITION M', 'FINITION M'),
-        ('FINITION P', 'FINITION P'),
-        ('FINITION Q', 'FINITION Q'),
-        ('FINITION R', 'FINITION R'),
-        ('LECTRA', 'LECTRA'),
-        ('LEMARIE HVA', 'LEMARIE HVA'),
-        ('MAINTENANCE', 'MAINTENANCE'),
-        ('MAISON', 'MAISON'),
-        ('PACKING/EXPEDITION', 'PACKING/EXPEDITION'),
-        ('PLISSE', 'PLISSE'),
-        ('POLE QUALITE 1', 'POLE QUALITE 1'),
-        ('POLE QUALITE 2', 'POLE QUALITE 2'),
-        ('RAPHIA 1', 'RAPHIA 1'),
-        ('RAPHIA 2', 'RAPHIA 2'),
-        ('RAPHIA 3', 'RAPHIA 3'),
-        ('RAPHIA 4', 'RAPHIA 4'),
-        ('RAPHIA 5', 'RAPHIA 5'),
-        ('RAPHIA 6', 'RAPHIA 6'),
-        ('RESPONSABLE 0', 'RESPONSABLE 0'),
-        ('RESPONSABLE 1', 'RESPONSABLE 1'),
-        ('RESPONSABLE 2', 'RESPONSABLE 2'),
-        ('RESPONSABLE 3', 'RESPONSABLE 3'),
-        ('RESPONSABLE RAPHIA', 'RESPONSABLE RAPHIA'),
-        ('SECURITE', 'SECURITE'),
-    ]
+    
 
     RESPONSABLE_CHOICES = [
         ('', 'Sélectionnez un responsable'),
@@ -279,13 +231,21 @@ class InformationProfessionnelle(TimeStampModel):
     employe = models.OneToOneField(InformationPersonnelle, on_delete=models.CASCADE, related_name='information_professionnelle')
     date_embauche = models.DateField(null=True, blank=True,help_text="Date d'embauche de l'employé")
     fonction = models.CharField(max_length=100, null=True, blank=True,help_text="Fonction ou poste occupé")
-    section = models.CharField(max_length=50, choices=SECTION_CHOICES, null=True, blank=True,help_text="Section/département de l'employé")
+    section = models.CharField(max_length=50, null=True, blank=True,help_text="Section/département de l'employé")
     categorie = models.CharField(max_length=10, choices=CATEGORIE_CHOICES, null=True, blank=True,help_text="Catégorie professionnelle de l'employé")
     responsable = models.CharField(max_length=100, choices=RESPONSABLE_CHOICES, null=True, blank=True)
     responsable_section = models.CharField(max_length=100, null=True, blank=True,help_text="Nom du responsable de la section")
     numero_cnaps = models.CharField(max_length=50, null=True, blank=True,help_text="Numéro CNAPS (Caisse Nationale de Prévoyance Sociale)",verbose_name="Numéro CNAPS")
     numero_ostie = models.CharField(max_length=50, null=True, blank=True,help_text="Numéro OSTIE (Organisme de Santé et de Travail pour les Indépendants et Employés)",verbose_name="Numéro OSTIE")
-    
+    section_ref = models.ForeignKey(
+        'presence.Section',          # référence cross-app
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='info_pro',
+        verbose_name="Section (référence)",
+        help_text="Section issue de db_section, calculée automatiquement",
+    )
     def __str__(self):
         return f"Info Pro - {self.employe.nom_complet}"
     
@@ -347,13 +307,13 @@ class EvolutionPoste(TimeStampModel):
     # Anciennes valeurs (capturées automatiquement lors de la création)
     ancienne_categorie = models.CharField(max_length=10, choices=InformationProfessionnelle.CATEGORIE_CHOICES, null=True, blank=True)
     ancienne_fonction = models.CharField(max_length=100, null=True, blank=True)
-    ancienne_section = models.CharField(max_length=50, choices=InformationProfessionnelle.SECTION_CHOICES, null=True, blank=True)
+    ancienne_section = models.CharField(max_length=50, null=True, blank=True)
     ancien_responsable = models.CharField(max_length=100, choices=InformationProfessionnelle.RESPONSABLE_CHOICES, null=True, blank=True)
     
     # Nouvelles valeurs (saisies par l'utilisateur)
     nouvelle_categorie = models.CharField(max_length=10, choices=InformationProfessionnelle.CATEGORIE_CHOICES)
     nouvelle_fonction = models.CharField(max_length=100)
-    nouvelle_section = models.CharField(max_length=50, choices=InformationProfessionnelle.SECTION_CHOICES)
+    nouvelle_section = models.CharField(max_length=50)
     nouveau_responsable = models.CharField(max_length=100, choices=InformationProfessionnelle.RESPONSABLE_CHOICES, null=True, blank=True)
     
     # Informations sur l'évolution
