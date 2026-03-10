@@ -1508,64 +1508,250 @@ class AnomalieDetailAPIView(APIView):
             return False
 
 
-class DetecterAnomaliesAPIView(APIView):
-    """
-    Détecte automatiquement les anomalies pour une période
-    POST /api/presence/detecter-anomalies/
-    Body: {"annee": 2024, "mois": 8}
-    """
-    permission_classes = [AllowAny]
+# class DetecterAnomaliesAPIView(APIView):
+#     """
+#     Détecte automatiquement les anomalies pour une période
+#     POST /api/presence/detecter-anomalies/
+#     Body: {"annee": 2024, "mois": 8}
+#     """
+#     permission_classes = [AllowAny]
     
+#     def post(self, request):
+#         annee = request.data.get('annee')
+#         mois = request.data.get('mois')
+        
+#         if not annee or not mois:
+#             return Response(
+#                 {"error": "Les paramètres 'annee' et 'mois' sont obligatoires"},
+#                 status=400
+#             )
+        
+#         try:
+#             annee = int(annee)
+#             mois = int(mois)
+#         except ValueError:
+#             return Response({"error": "Année et mois doivent être des nombres"}, status=400)
+        
+#         # Récupérer les dates de la période
+#         dates_mois = Date.get_dates_par_mois(annee, mois, inclure_hors_periode=False)
+        
+#         total_anomalies = 0
+#         for date_obj in dates_mois:
+#             count = Anomalie.detecter_anomalies_jour(date_obj.date)
+#             total_anomalies += count
+        
+#         # Statistiques détaillées
+#         anomalies = Anomalie.objects.filter(date__in=dates_mois.values_list('date', flat=True))
+#         stats_par_etat = {}
+#         for etat_code, etat_libelle in Anomalie.ETATS_ANOMALIE:
+#             count = anomalies.filter(etat=etat_code).count()
+#             if count > 0:
+#                 stats_par_etat[etat_code] = {
+#                     'libelle': etat_libelle,
+#                     'count': count
+#                 }
+        
+#         return Response({
+#             'message': f'{total_anomalies} anomalies détectées pour {mois}/{annee}',
+#             'total': total_anomalies,
+#             'periode': {
+#                 'annee': annee,
+#                 'mois': mois,
+#                 'jours_analyses': dates_mois.count()
+#             },
+#             'statistiques': {
+#                 'par_etat': stats_par_etat,
+#                 'total_corrigees': anomalies.filter(etat='ok').count(),
+#                 'total_non_corrigees': anomalies.exclude(etat='ok').count()
+#             }
+#         })
+
+
+
+class DetecterAnomaliesAPIView(APIView):
+    permission_classes = [AllowAny]
+
     def post(self, request):
         annee = request.data.get('annee')
         mois = request.data.get('mois')
-        
         if not annee or not mois:
-            return Response(
-                {"error": "Les paramètres 'annee' et 'mois' sont obligatoires"},
-                status=400
-            )
-        
+            return Response({"error": "annee et mois obligatoires"}, status=400)
         try:
-            annee = int(annee)
-            mois = int(mois)
+            annee, mois = int(annee), int(mois)
         except ValueError:
-            return Response({"error": "Année et mois doivent être des nombres"}, status=400)
-        
-        # Récupérer les dates de la période
+            return Response({"error": "Nombres attendus"}, status=400)
+
         dates_mois = Date.get_dates_par_mois(annee, mois, inclure_hors_periode=False)
-        
-        total_anomalies = 0
-        for date_obj in dates_mois:
-            count = Anomalie.detecter_anomalies_jour(date_obj.date)
-            total_anomalies += count
-        
-        # Statistiques détaillées
-        anomalies = Anomalie.objects.filter(date__in=dates_mois.values_list('date', flat=True))
-        stats_par_etat = {}
-        for etat_code, etat_libelle in Anomalie.ETATS_ANOMALIE:
-            count = anomalies.filter(etat=etat_code).count()
-            if count > 0:
-                stats_par_etat[etat_code] = {
-                    'libelle': etat_libelle,
-                    'count': count
-                }
-        
+        dates_liste = list(dates_mois.values_list('date', flat=True))
+        dates_map = {d.date: d for d in dates_mois}
+
+        if not dates_liste:
+            return Response({"error": "Générez d'abord les dates"}, status=400)
+
+        # ── 1. Charger les données statiques UNE SEULE FOIS ────────────────
+        from .utils import build_user_section_map, decimal_to_time, analyser_pointages_jour
+
+        user_section_map = build_user_section_map()  # {userid: section_nom}
+        horaires_dict    = {h.section: h for h in HoraireSection.objects.all()}
+        horaire_default  = horaires_dict.get('ADMINISTRATION')
+
+        # ── 2. Charger TOUS les pointages de la période EN UNE requête ─────
+        from django.db.models import Prefetch
+        tous_pointages = (
+            CheckInOut.objects
+            .filter(checktime__date__in=dates_liste)
+            .values('user_id', 'checktime', 'checktype')
+            .order_by('user_id', 'checktime')
+        )
+
+        # Regrouper en mémoire : {(userid, date): [pointages]}
+        pointages_map = {}
+        for p in tous_pointages:
+            key = (p['user_id'], p['checktime'].date())
+            pointages_map.setdefault(key, []).append(p)
+
+        # ── 3. Seuls les employés qui ont pointé ──────────────────────────
+        userids_actifs = {uid for (uid, _) in pointages_map.keys()}
+        employes_map = {
+            u.userid: u
+            for u in UserInfo.objects.filter(userid__in=userids_actifs)
+        }
+
+        # ── 4. Nettoyer les anomalies obsolètes (employés sans pointage) ──
+        Anomalie.objects.filter(
+            date__in=dates_liste
+        ).exclude(userid__in=userids_actifs).delete()
+
+        # ── 5. Boucle principale sans aucune requête DB dedans ─────────────
+        to_create = []
+        to_update = []
+        to_delete_ids = []
+        existing = {
+            (a.userid, a.date): a
+            for a in Anomalie.objects.filter(date__in=dates_liste)
+        }
+
+        for (userid, date_jour), pointages_raw in pointages_map.items():
+            employe = employes_map.get(userid)
+            if not employe:
+                continue
+
+            date_obj = dates_map.get(date_jour)
+            if not date_obj:
+                continue
+
+            section = user_section_map.get(userid, 'ADMINISTRATION')
+            horaire = horaires_dict.get(section, horaire_default)
+            if horaire is None:
+                continue
+
+            est_samedi   = date_jour.weekday() == 5
+            est_vendredi = date_jour.weekday() == 4
+            est_paiement = date_obj.est_jour_paiement
+
+            heure_reelle_entree = decimal_to_time(horaire.heure_entree)
+            if est_paiement and est_vendredi:
+                heure_reelle_sortie = decimal_to_time(horaire.sortie_vendredi_paiement)
+            elif est_paiement and est_samedi:
+                heure_reelle_sortie = decimal_to_time(horaire.sortie_samedi_paiement)
+            elif est_samedi:
+                heure_reelle_sortie = decimal_to_time(horaire.sortie_samedi)
+            else:
+                heure_reelle_sortie = decimal_to_time(horaire.heure_sortie)
+
+            # Convertir les dicts en objets compatibles avec analyser_pointages_jour
+            class FakePointage:
+                def __init__(self, d):
+                    self.checktime = d['checktime']
+                    self.checktype = d['checktype']
+
+            pointages_list = [FakePointage(p) for p in pointages_raw]
+            tries = sorted(pointages_list, key=lambda p: p.checktime)
+
+            entrees_brutes = [p for p in tries if p.checktype.upper() == 'O']
+            sorties_brutes = [p for p in tries if p.checktype.upper() == 'I']
+            heure_brute_entree = entrees_brutes[0].checktime.time() if entrees_brutes else None
+            heure_brute_sortie = sorties_brutes[-1].checktime.time() if sorties_brutes else None
+
+            h_entree, h_sortie, type_anomalie, liste_bruts = analyser_pointages_jour(
+                pointages_list, heure_reelle_entree, heure_reelle_sortie, seuil_minutes=30
+            )
+
+            if type_anomalie == 'multiples_pointages':
+                etat = 'multiples_pointages'
+                h_rect_entree = h_rect_sortie = None
+            elif type_anomalie == 'pas_entree' or h_entree is None:
+                etat = 'pas_entree'
+                h_rect_entree, h_rect_sortie = None, h_sortie
+            elif type_anomalie == 'pas_sortie' or h_sortie is None:
+                etat = 'pas_sortie'
+                h_rect_entree, h_rect_sortie = h_entree, None
+            else:
+                etat = 'ok'
+                h_rect_entree, h_rect_sortie = h_entree, h_sortie
+
+            # Les anomalies OK sont supprimées
+            key = (userid, date_jour)
+            if etat == 'ok':
+                if key in existing:
+                    to_delete_ids.append(existing[key].pk)
+                continue
+
+            fields = dict(
+                section=section,
+                code_date=date_obj.code_date,
+                heure_brute_entree=heure_brute_entree,
+                heure_brute_sortie=heure_brute_sortie,
+                heure_reelle_entree=heure_reelle_entree,
+                heure_reelle_sortie=heure_reelle_sortie,
+                heure_rectifiee_entree=h_rect_entree,
+                heure_rectifiee_sortie=h_rect_sortie,
+                pointages_bruts_json=liste_bruts,
+                etat=etat,
+                commentaire='',
+            )
+
+            if key in existing:
+                obj = existing[key]
+                for attr, val in fields.items():
+                    setattr(obj, attr, val)
+                to_update.append(obj)
+            else:
+                to_create.append(Anomalie(userid=userid, date=date_jour, **fields))
+
+        # ── 6. Opérations bulk ─────────────────────────────────────────────
+        if to_delete_ids:
+            Anomalie.objects.filter(pk__in=to_delete_ids).delete()
+
+        if to_create:
+            Anomalie.objects.bulk_create(to_create, ignore_conflicts=True)
+
+        if to_update:
+            Anomalie.objects.bulk_update(to_update, fields=[
+                'section', 'code_date',
+                'heure_brute_entree', 'heure_brute_sortie',
+                'heure_reelle_entree', 'heure_reelle_sortie',
+                'heure_rectifiee_entree', 'heure_rectifiee_sortie',
+                'pointages_bruts_json', 'etat', 'commentaire',
+            ])
+
+        total = len(to_create) + len(to_update)
+        anomalies = Anomalie.objects.filter(date__in=dates_liste)
+
         return Response({
-            'message': f'{total_anomalies} anomalies détectées pour {mois}/{annee}',
-            'total': total_anomalies,
-            'periode': {
-                'annee': annee,
-                'mois': mois,
-                'jours_analyses': dates_mois.count()
-            },
+            'message': f'{total} anomalies traitées pour {mois}/{annee}',
+            'total': total,
+            'periode': {'annee': annee, 'mois': mois, 'jours_analyses': len(dates_liste)},
             'statistiques': {
-                'par_etat': stats_par_etat,
-                'total_corrigees': anomalies.filter(etat='ok').count(),
-                'total_non_corrigees': anomalies.exclude(etat='ok').count()
+                'par_etat': {
+                    code: {'libelle': lib, 'count': anomalies.filter(etat=code).count()}
+                    for code, lib in Anomalie.ETATS_ANOMALIE
+                    if anomalies.filter(etat=code).exists()
+                },
+                'total_corrigees': 0,
+                'total_non_corrigees': total,
             }
         })
-
 
 class AnomalieParSectionAPIView(APIView):
     """

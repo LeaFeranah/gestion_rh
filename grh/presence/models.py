@@ -184,6 +184,7 @@ class UserInfo(models.Model):
     badgenumber = models.CharField(db_column='Badgenumber', max_length=50)
     ssn = models.CharField(db_column='ssn', max_length=50, null=True, blank=True)
     name = models.CharField(db_column='Name', max_length=150)
+    defaultdeptid = models.IntegerField(db_column='defaultdeptid', null=True, blank=True)
 
     class Meta:
         db_table = 'userinfo'
@@ -296,11 +297,89 @@ class HoraireSection(models.Model):
         """Retourne l'heure de sortie samedi paiement au format HH:MM"""
         return self.decimal_to_time(self.sortie_samedi_paiement)
     
+    #@classmethod
+    # def initialiser_horaires(cls):
+    #     """
+    #     Initialise les horaires de toutes les sections
+    #     À appeler une seule fois pour créer les données initiales
+    #     """
+    #     horaires_data = [
+    #         ('ADMINISTRATION', 7.50, 17.83, 15.50, 17.33, 13.00),
+    #         ('BRODERIE MACHINE', 7.50, 18.00, 15.50, 17.50, 13.00),
+    #         ('BRODERIE MAIN AK B', 7.33, 17.33, 15.33, 16.33, 13.00),
+    #         ('BRODERIE MAIN AK17', 7.00, 17.00, 15.00, 16.50, 12.00),
+    #         ('BRODERIE MAIN DEV', 7.50, 18.00, 15.50, 17.50, 13.00),
+    #         ('BUREAU DE METHODE', 7.41, 17.91, 12.00, 17.41, 12.00),
+    #         ('CONTROLE QUALITE AS', 7.50, 17.50, 15.50, 17.00, 13.00),
+    #         ('CHAINE 1', 7.41, 17.91, 15.41, 17.41, 12.91),
+    #         ('CHAINE 2', 7.41, 17.91, 15.41, 17.41, 12.91),
+    #         ('CHAINE 3', 7.41, 17.91, 15.41, 17.41, 12.91),
+    #         ('CHAINE 4', 7.41, 17.91, 15.41, 17.41, 12.91),
+    #         ('CHAINE 5', 7.41, 17.91, 15.41, 17.41, 12.91),
+    #         ('CHAINE 6', 7.41, 17.91, 15.41, 17.41, 12.91),
+    #         ('CHAINE 7', 7.41, 17.91, 15.41, 17.41, 12.91),
+    #         ('CHAINE 8', 7.41, 17.91, 15.41, 17.41, 12.91),
+    #         ('CHAINE 9', 7.41, 17.91, 15.41, 17.41, 12.91),
+    #         ('CHAINE 10', 7.41, 17.91, 15.41, 17.41, 12.91),
+    #         ('CHAINE 11', 7.41, 17.91, 15.41, 17.41, 12.91),
+    #         ('CHAINE 12', 7.41, 17.91, 15.41, 17.41, 12.91),
+    #         ('CHAINE CUIR', 7.41, 17.91, 15.41, 17.33, 12.83),
+    #         ('COLLECTION', 7.50, 17.50, 15.50, 17.50, 13.00),
+    #         ('COUPE', 7.50, 17.50, 15.50, 17.50, 13.00),
+    #         ('COUPE COLLECTION', 7.50, 17.50, 15.50, 17.50, 13.00),
+    #         ('CREATION', 7.00, 17.00, 15.00, 17.00, 12.00),
+    #         ('FINITION D', 7.33, 17.33, 15.33, 17.33, 12.83),
+    #         ('FINITION M', 7.33, 17.33, 15.33, 17.33, 12.83),
+    #         ('FINITION P', 7.33, 17.33, 15.33, 17.33, 12.83),
+    #         ('FINITION Q', 7.33, 17.33, 15.33, 17.33, 12.83),
+    #         ('FINITION R', 7.41, 17.41, 15.41, 17.41, 12.91),
+    #         ('LECTRA', 7.00, 17.00, 12.00, 17.00, 12.00),
+    #         ('LEMARIE HVA', 7.50, 17.50, 15.50, 17.50, 13.00),
+    #         ('MAINTENANCE', 7.50, 17.50, 15.50, 17.50, 13.00),
+    #         ('MAISON', 7.50, 17.50, 15.50, 17.50, 13.00),
+    #         ('MERCHANDISING', 7.00, 17.00, 12.00, 17.00, 12.00),
+    #         ('PACKING/EXPEDITION', 7.50, 18.00, 15.50, 17.50, 13.00),
+    #         ('PLISSE', 7.50, 18.00, 15.50, 17.50, 13.00),
+    #         ('POLE QUALITE 1', 7.33, 17.83, 15.33, 17.33, 12.83),
+    #         ('POLE QUALITE 2', 7.33, 17.83, 15.33, 17.33, 12.83),
+    #         ('RAPHIA 1', 7.33, 17.33, 15.33, 16.83, 12.83),
+    #         ('RAPHIA 2', 7.25, 17.25, 15.25, 16.75, 12.75),
+    #         ('RAPHIA 3', 7.16, 17.16, 15.16, 16.66, 12.66),
+    #         ('RAPHIA 4', 7.25, 17.25, 15.25, 16.75, 12.75),
+    #         ('RAPHIA 5', 7.16, 17.16, 15.16, 16.66, 12.66),
+    #         ('RAPHIA 6', 7.33, 17.33, 15.33, 16.83, 12.83),
+    #         ('RESPONSABLE 0', 7.50, 18.00, 15.50, 17.50, 13.00),
+    #         ('RESPONSABLE 1', 7.50, 17.83, 15.50, 17.33, 13.00),
+    #         ('RESPONSABLE 2', 7.41, 17.91, 15.41, 17.41, 12.91),
+    #         ('RESPONSABLE 3', 7.50, 17.50, 15.50, 17.00, 13.00),
+    #         ('RESPONSABLE RAPHIA', 7.33, 17.33, 15.33, 16.83, 12.83),
+    #         ('SECURITE', 6.50, 18.00, 18.00, 18.00, 18.00),
+    #     ]
+        
+    #     created_count = 0
+    #     for section, entree, sortie, samedi, vendredi_paiement, samedi_paiement in horaires_data:
+    #         obj, created = cls.objects.update_or_create(
+    #             section=section,
+    #             defaults={
+    #                 'heure_entree': entree,
+    #                 'heure_sortie': sortie,
+    #                 'sortie_samedi': samedi,
+    #                 'sortie_vendredi_paiement': vendredi_paiement,
+    #                 'sortie_samedi_paiement': samedi_paiement
+    #             }
+    #         )
+    #         if created:
+    #             created_count += 1
+        
+    #     return created_count
+    
+
     @classmethod
     def initialiser_horaires(cls):
         """
-        Initialise les horaires de toutes les sections
-        À appeler une seule fois pour créer les données initiales
+        Initialise les horaires de toutes les sections.
+        - Garde les horaires spécifiques déjà définis
+        - Ajoute automatiquement les sections manquantes avec les horaires par défaut
         """
         horaires_data = [
             ('ADMINISTRATION', 7.50, 17.83, 15.50, 17.33, 13.00),
@@ -354,10 +433,118 @@ class HoraireSection(models.Model):
             ('RESPONSABLE RAPHIA', 7.33, 17.33, 15.33, 16.83, 12.83),
             ('SECURITE', 6.50, 18.00, 18.00, 18.00, 18.00),
         ]
-        
-        created_count = 0
+
+        # Heures par défaut
+        default_values = {
+            'heure_entree': 7.50,
+            'heure_sortie': 17.83,
+            'sortie_samedi': 15.50,
+            'sortie_vendredi_paiement': 17.33,
+            'sortie_samedi_paiement': 13.00,
+        }
+
+        # Toutes les sections connues
+        all_sections = [
+            'CHAINE SOUS SOL',
+            'PLISSE',
+            'MERCHANDISING ET LECTRA',
+            'CHAINE IV',
+            'PINCEAU',
+            'LEMARIE HVA',
+            'MERCHANDISING',
+            'CHAINE 7',
+            'CHAINE CUIR',
+            'POLE QUALITE 2',
+            'BUREAU DE METHODE',
+            'COUPE COLLECTION',
+            'CREATION',
+            'CHAINE III',
+            'CHAINE 2',
+            'BRODERIE ET SMOCKS',
+            'C ONTROLE QUALITE II',
+            'RAPHIA 4',
+            'CHAINE 5',
+            'BRODERIE MACHINE',
+            'PACKING 2',
+            'BRODERIE MAIN AK',
+            'RESPONSABLE',
+            'CHAINE 11A',
+            'PACKING/EXPEDITION',
+            'POLE QUALITE',
+            'CHAINE 10',
+            'COMMUNICATION-DIGITAL',
+            'PACKING 1',
+            'PACKING',
+            'CHAINE 1',
+            'METIER D ART',
+            'BRODERIE MAIN ANDRALANITRA',
+            'SEMELLE',
+            'COLLECTION',
+            'FINITION 1',
+            'CHAINE 11',
+            'CHAINE TEE SHIRT',
+            'RESPONSABLE 2',
+            'FINITION 2',
+            'BRODERIE',
+            'SUPPLY-PLM',
+            'MAINTENANCE',
+            'CHAINE 11C',
+            'AMBODITSIRY',
+            'CHAINE 6',
+            'ADMINISTRATION',
+            'FINITION P',
+            'RAPHIA 2',
+            'BRODERIE MAIN',
+            'FINITION CQ',
+            'ATCARION 1',
+            'CHAINE I',
+            'BRODERIE MAIN DEV',
+            'MAISON',
+            'BRODEFEM',
+            'CHAINE PANTALON',
+            'FINITION',
+            'COUPE 1',
+            'CARION 2',
+            'FINITION M',
+            'BRODERIE MAIN AK17',
+            'CONTROLE INTERNE',
+            'ATELIERS',
+            'C ONTROLE QUALITE',
+            'POLE QUALITE 1',
+            'RAPHIA 6',
+            'RAPHIA 5',
+            'CHAINE 3',
+            'RAPHIA 3',
+            'CARION 1',
+            'SMOCKS',
+            'CHAINE 9',
+            'CHAINE II',
+            'CHAINE 12',
+            'RAPHIA 1',
+            'CEGCM',
+            'FINITION D',
+            'RESPONSABLE 1',
+            'CHAINE 11B',
+            'CHAINE 14',
+            'LECTRA',
+            'CHAINE 4',
+            'FINITION Q',
+            'COUPE 2',
+            'CHAINE 13',
+            'AMBODIMITA',
+            'COUPE',
+            'SECURITE',
+            'CHAINE 8',
+            'ATCARION',
+            'FINITION R',
+            'STAGIAIRE',
+            'JOURNALIER',
+        ]
+
+        # 1. Créer / mettre à jour les horaires spécifiques
+        specific_sections = set()
         for section, entree, sortie, samedi, vendredi_paiement, samedi_paiement in horaires_data:
-            obj, created = cls.objects.update_or_create(
+            cls.objects.update_or_create(
                 section=section,
                 defaults={
                     'heure_entree': entree,
@@ -367,11 +554,18 @@ class HoraireSection(models.Model):
                     'sortie_samedi_paiement': samedi_paiement
                 }
             )
-            if created:
-                created_count += 1
-        
-        return created_count
-    
+            specific_sections.add(section)
+
+        # 2. Ajouter les sections manquantes avec les heures par défaut
+        for section in all_sections:
+            if section not in specific_sections:
+                cls.objects.update_or_create(
+                    section=section,
+                    defaults=default_values
+                )
+
+        return cls.objects.count()
+
 
 class Evenement(models.Model):
     """
