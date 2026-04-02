@@ -163,8 +163,6 @@ class Date(models.Model):
         return dates_crees
     
 
-
-
     
     @classmethod
     def get_dates_par_mois(cls, annee, mois, inclure_hors_periode=False):
@@ -183,19 +181,31 @@ class Date(models.Model):
 
 
 # ===== USERINFO =====
+# class UserInfo(models.Model):
+#     userid = models.IntegerField(db_column='userid', primary_key=True)
+#     badgenumber = models.CharField(db_column='badgenumber', max_length=50)
+#     ssn = models.CharField(db_column='ssn', max_length=50, null=True, blank=True)
+#     name = models.CharField(db_column='name', max_length=150)
+#     defaultdeptid = models.IntegerField(db_column='defaultdeptid', null=True, blank=True)
+
+#     class Meta:
+#         db_table = 'userinfo'
+#         managed = False
+#         #managed = True
+
+#     def __str__(self):
+#         return self.name
+
 class UserInfo(models.Model):
     userid = models.IntegerField(db_column='userid', primary_key=True)
-    badgenumber = models.CharField(db_column='Badgenumber', max_length=50)
+    badgenumber = models.CharField(db_column='badgenumber', max_length=50)
     ssn = models.CharField(db_column='ssn', max_length=50, null=True, blank=True)
-    name = models.CharField(db_column='Name', max_length=150)
-    defaultdeptid = models.IntegerField(db_column='defaultdeptid', null=True, blank=True)
+    name = models.CharField(db_column='name', max_length=150)
+    defaultdeptid = models.IntegerField(db_column='defaultdeptid', null=True, blank=True)  # ✅ doit être INTEGER
 
     class Meta:
         db_table = 'userinfo'
         managed = False
-
-    def __str__(self):
-        return self.name
 
 
 # ===== CHECKINOUT =====
@@ -212,6 +222,7 @@ class CheckInOut(models.Model):
     class Meta:
         db_table = 'checkinout'
         managed = False
+        #managed = True
 
 
 class HoraireSection(models.Model):
@@ -301,81 +312,6 @@ class HoraireSection(models.Model):
         """Retourne l'heure de sortie samedi paiement au format HH:MM"""
         return self.decimal_to_time(self.sortie_samedi_paiement)
     
-    #@classmethod
-    # def initialiser_horaires(cls):
-    #     """
-    #     Initialise les horaires de toutes les sections
-    #     À appeler une seule fois pour créer les données initiales
-    #     """
-    #     horaires_data = [
-    #         ('ADMINISTRATION', 7.50, 17.83, 15.50, 17.33, 13.00),
-    #         ('BRODERIE MACHINE', 7.50, 18.00, 15.50, 17.50, 13.00),
-    #         ('BRODERIE MAIN AK B', 7.33, 17.33, 15.33, 16.33, 13.00),
-    #         ('BRODERIE MAIN AK17', 7.00, 17.00, 15.00, 16.50, 12.00),
-    #         ('BRODERIE MAIN DEV', 7.50, 18.00, 15.50, 17.50, 13.00),
-    #         ('BUREAU DE METHODE', 7.41, 17.91, 12.00, 17.41, 12.00),
-    #         ('CONTROLE QUALITE AS', 7.50, 17.50, 15.50, 17.00, 13.00),
-    #         ('CHAINE 1', 7.41, 17.91, 15.41, 17.41, 12.91),
-    #         ('CHAINE 2', 7.41, 17.91, 15.41, 17.41, 12.91),
-    #         ('CHAINE 3', 7.41, 17.91, 15.41, 17.41, 12.91),
-    #         ('CHAINE 4', 7.41, 17.91, 15.41, 17.41, 12.91),
-    #         ('CHAINE 5', 7.41, 17.91, 15.41, 17.41, 12.91),
-    #         ('CHAINE 6', 7.41, 17.91, 15.41, 17.41, 12.91),
-    #         ('CHAINE 7', 7.41, 17.91, 15.41, 17.41, 12.91),
-    #         ('CHAINE 8', 7.41, 17.91, 15.41, 17.41, 12.91),
-    #         ('CHAINE 9', 7.41, 17.91, 15.41, 17.41, 12.91),
-    #         ('CHAINE 10', 7.41, 17.91, 15.41, 17.41, 12.91),
-    #         ('CHAINE 11', 7.41, 17.91, 15.41, 17.41, 12.91),
-    #         ('CHAINE 12', 7.41, 17.91, 15.41, 17.41, 12.91),
-    #         ('CHAINE CUIR', 7.41, 17.91, 15.41, 17.33, 12.83),
-    #         ('COLLECTION', 7.50, 17.50, 15.50, 17.50, 13.00),
-    #         ('COUPE', 7.50, 17.50, 15.50, 17.50, 13.00),
-    #         ('COUPE COLLECTION', 7.50, 17.50, 15.50, 17.50, 13.00),
-    #         ('CREATION', 7.00, 17.00, 15.00, 17.00, 12.00),
-    #         ('FINITION D', 7.33, 17.33, 15.33, 17.33, 12.83),
-    #         ('FINITION M', 7.33, 17.33, 15.33, 17.33, 12.83),
-    #         ('FINITION P', 7.33, 17.33, 15.33, 17.33, 12.83),
-    #         ('FINITION Q', 7.33, 17.33, 15.33, 17.33, 12.83),
-    #         ('FINITION R', 7.41, 17.41, 15.41, 17.41, 12.91),
-    #         ('LECTRA', 7.00, 17.00, 12.00, 17.00, 12.00),
-    #         ('LEMARIE HVA', 7.50, 17.50, 15.50, 17.50, 13.00),
-    #         ('MAINTENANCE', 7.50, 17.50, 15.50, 17.50, 13.00),
-    #         ('MAISON', 7.50, 17.50, 15.50, 17.50, 13.00),
-    #         ('MERCHANDISING', 7.00, 17.00, 12.00, 17.00, 12.00),
-    #         ('PACKING/EXPEDITION', 7.50, 18.00, 15.50, 17.50, 13.00),
-    #         ('PLISSE', 7.50, 18.00, 15.50, 17.50, 13.00),
-    #         ('POLE QUALITE 1', 7.33, 17.83, 15.33, 17.33, 12.83),
-    #         ('POLE QUALITE 2', 7.33, 17.83, 15.33, 17.33, 12.83),
-    #         ('RAPHIA 1', 7.33, 17.33, 15.33, 16.83, 12.83),
-    #         ('RAPHIA 2', 7.25, 17.25, 15.25, 16.75, 12.75),
-    #         ('RAPHIA 3', 7.16, 17.16, 15.16, 16.66, 12.66),
-    #         ('RAPHIA 4', 7.25, 17.25, 15.25, 16.75, 12.75),
-    #         ('RAPHIA 5', 7.16, 17.16, 15.16, 16.66, 12.66),
-    #         ('RAPHIA 6', 7.33, 17.33, 15.33, 16.83, 12.83),
-    #         ('RESPONSABLE 0', 7.50, 18.00, 15.50, 17.50, 13.00),
-    #         ('RESPONSABLE 1', 7.50, 17.83, 15.50, 17.33, 13.00),
-    #         ('RESPONSABLE 2', 7.41, 17.91, 15.41, 17.41, 12.91),
-    #         ('RESPONSABLE 3', 7.50, 17.50, 15.50, 17.00, 13.00),
-    #         ('RESPONSABLE RAPHIA', 7.33, 17.33, 15.33, 16.83, 12.83),
-    #         ('SECURITE', 6.50, 18.00, 18.00, 18.00, 18.00),
-    #     ]
-        
-    #     created_count = 0
-    #     for section, entree, sortie, samedi, vendredi_paiement, samedi_paiement in horaires_data:
-    #         obj, created = cls.objects.update_or_create(
-    #             section=section,
-    #             defaults={
-    #                 'heure_entree': entree,
-    #                 'heure_sortie': sortie,
-    #                 'sortie_samedi': samedi,
-    #                 'sortie_vendredi_paiement': vendredi_paiement,
-    #                 'sortie_samedi_paiement': samedi_paiement
-    #             }
-    #         )
-    #         if created:
-    #             created_count += 1
-        
-    #     return created_count
     
 
     @classmethod
@@ -679,30 +615,7 @@ class Anomalie(models.Model):
         """Retourne True si l'anomalie est corrigée (état = ok)"""
         return self.etat == 'ok'
     
-    
-    # def _determiner_etat(self, ancien_etat=None):
-    #     """
-    #     Détermine l'état de l'anomalie selon les règles:
-    #     - Si pas d'entrée rectifiée → 'pas_entree'
-    #     - Si pas de sortie rectifiée → 'pas_sortie'
-    #     - Si les deux sont présentes ET égales aux heures réelles → 'ok'
-    #     - Sinon → on garde l'ancien état (ou 'pas_entree' par défaut)
-    #     """
-    #     # CAS 1: Pas d'entrée rectifiée
-    #     if not self.heure_rectifiee_entree:
-    #         return 'pas_entree'
-
-    #     # CAS 2: Pas de sortie rectifiée
-    #     if not self.heure_rectifiee_sortie:
-    #         return 'pas_sortie'
-
-    #     # CAS 3: Les deux sont présentes – on vérifie l'égalité avec les heures réelles
-    #     if (self.heure_rectifiee_entree == self.heure_reelle_entree and
-    #         self.heure_rectifiee_sortie == self.heure_reelle_sortie):
-    #         return 'ok'
-
-    #     # Sinon, on conserve l'ancien état s'il existe, sinon 'pas_entree'
-    #     return ancien_etat if ancien_etat else 'pas_entree'
+ 
 
     def _determiner_etat(self, ancien_etat=None):
         """
@@ -784,132 +697,6 @@ class Anomalie(models.Model):
         """
         from datetime import time
         return time(time_obj.hour, time_obj.minute, 0)
-
-    # @classmethod
-    # def detecter_anomalies_jour(cls, date_jour):
-    #     from .models import CheckInOut, UserInfo, HoraireSection, Date
-    #     from .utils import get_section_employe, decimal_to_time, analyser_pointages_jour
-
-    #     # ⚡️ STOP immédiat si aucun pointage
-    #     if not CheckInOut.objects.filter(checktime__date=date_jour).exists():
-    #         return 0
-
-    #     try:
-    #         date_obj = Date.objects.get(date=date_jour)
-    #     except Date.DoesNotExist:
-    #         logger.warning(f"Date {date_jour} non trouvée")
-    #         return 0
-
-    #     employes = UserInfo.objects.all()
-    #     count_anomalies = 0
-
-    #     for employe in employes:
-    #         pointages = CheckInOut.objects.filter(
-    #             user=employe,
-    #             checktime__date=date_jour
-    #         ).order_by('checktime')
-
-    #         if not pointages.exists():
-    #             cls.objects.filter(userid=employe.userid, date=date_jour).delete()
-    #             continue
-
-    #         section = get_section_employe(employe.badgenumber)
-    #         try:
-    #             horaire = HoraireSection.objects.get(section=section)
-    #         except HoraireSection.DoesNotExist:
-    #             horaire = HoraireSection.objects.get(section='ADMINISTRATION')
-
-    #         est_samedi   = date_jour.weekday() == 5
-    #         est_vendredi = date_jour.weekday() == 4
-    #         est_paiement = date_obj.est_jour_paiement
-
-    #         heure_reelle_entree = decimal_to_time(horaire.heure_entree)
-    #         if est_paiement and est_vendredi:
-    #             heure_reelle_sortie = decimal_to_time(horaire.sortie_vendredi_paiement)
-    #         elif est_paiement and est_samedi:
-    #             heure_reelle_sortie = decimal_to_time(horaire.sortie_samedi_paiement)
-    #         elif est_samedi:
-    #             heure_reelle_sortie = decimal_to_time(horaire.sortie_samedi)
-    #         else:
-    #             heure_reelle_sortie = decimal_to_time(horaire.heure_sortie)
-
-    #         pointages_list = list(pointages)
-    #         tries = sorted(pointages_list, key=lambda p: p.checktime)
-
-    #         # ── Heures brutes basées sur le checktype réel ─────────────────────
-    #         entrees_brutes = [p for p in tries if p.checktype.upper() == 'O']
-    #         sorties_brutes  = [p for p in tries if p.checktype.upper() == 'I']
-    #         heure_brute_entree = entrees_brutes[0].checktime.time() if entrees_brutes else None
-    #         heure_brute_sortie = sorties_brutes[-1].checktime.time() if sorties_brutes else None
-
-    #         # ── Analyse ────────────────────────────────────────────────────────
-    #         heure_entree_calc, heure_sortie_calc, type_anomalie, liste_bruts = analyser_pointages_jour(
-    #             pointages_list, heure_reelle_entree, heure_reelle_sortie, seuil_minutes=30,
-    #         )
-
-    #         # ── Déterminer état et heures rectifiées ───────────────────────────
-    #         if type_anomalie == 'multiples_pointages':
-    #             etat                   = 'multiples_pointages'
-    #             heure_rectifiee_entree = None
-    #             heure_rectifiee_sortie = None
-
-    #         elif type_anomalie == 'pas_entree':
-    #             etat                   = 'pas_entree'
-    #             heure_rectifiee_entree = None
-    #             heure_rectifiee_sortie = heure_sortie_calc
-
-    #         elif type_anomalie == 'pas_sortie':
-    #             etat                   = 'pas_sortie'
-    #             heure_rectifiee_entree = heure_entree_calc
-    #             heure_rectifiee_sortie = None
-
-    #         elif heure_entree_calc is None:
-    #             etat                   = 'pas_entree'
-    #             heure_rectifiee_entree = None
-    #             heure_rectifiee_sortie = heure_sortie_calc
-
-    #         elif heure_sortie_calc is None:
-    #             etat                   = 'pas_sortie'
-    #             heure_rectifiee_entree = heure_entree_calc
-    #             heure_rectifiee_sortie = None
-
-    #         else:
-    #             etat                   = 'ok'
-    #             heure_rectifiee_entree = heure_entree_calc
-    #             heure_rectifiee_sortie = heure_sortie_calc
-
-    #         defaults = {
-    #             'section':                section,
-    #             'code_date':              date_obj.code_date,
-    #             'heure_brute_entree':     heure_brute_entree,
-    #             'heure_brute_sortie':     heure_brute_sortie,
-    #             'heure_reelle_entree':    heure_reelle_entree,
-    #             'heure_reelle_sortie':    heure_reelle_sortie,
-    #             'heure_rectifiee_entree': heure_rectifiee_entree,
-    #             'heure_rectifiee_sortie': heure_rectifiee_sortie,
-    #             'pointages_bruts_json':   liste_bruts,
-    #             'etat':                   etat,
-    #             'commentaire':            '',
-    #         }
-
-    #         anomalie, created = cls.objects.update_or_create(
-    #             userid=employe.userid,
-    #             date=date_jour,
-    #             defaults=defaults,
-    #         )
-    #         if created:
-    #             count_anomalies += 1
-
-    #         if etat == 'ok':
-    #             anomalie.delete()
-    #             if created:
-    #                 count_anomalies -= 1
-
-    #     return count_anomalies
-
-
-
-
 
     @classmethod
     def detecter_anomalies_jour(cls, date_jour):
@@ -1024,10 +811,7 @@ class Anomalie(models.Model):
 
         return count_anomalies
 
-
-
-# ─── presence/models.py  ─── ajouter APRÈS la classe Anomalie ───────────────
-
+#Section 
 class Section(models.Model):
     nom_section = models.CharField(max_length=150, unique=True, verbose_name="Nom de la section")
 
@@ -1069,3 +853,22 @@ class UserSection(models.Model):
             return UserInfo.objects.get(userid=self.userid)
         except UserInfo.DoesNotExist:
             return None
+
+#Attendance Management 
+class AttParam(models.Model):
+    attparamid = models.AutoField(db_column='attparamid', primary_key=True)
+    paraname = models.CharField(db_column='paraname', max_length=50, null=True, blank=True)
+    paravalue = models.IntegerField(db_column='paravalue', null=True, blank=True)
+
+    class Meta:
+        db_table = 'attparam'
+        managed = False
+
+class Departments(models.Model):
+    deptid = models.AutoField(db_column='deptid', primary_key=True)      # ✅ minuscules
+    deptname = models.CharField(db_column='deptname', max_length=100, null=True, blank=True)  # ✅
+    supdeptid = models.IntegerField(db_column='supdeptid', null=True, blank=True, default=0)
+
+    class Meta:
+        db_table = 'departments'
+        managed = False

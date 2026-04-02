@@ -1,0 +1,8 @@
+2026-03-18 15:31:41,001 [INFO] =======================================================
+2026-03-18 15:31:41,001 [INFO]   DÉBUT SYNC  18/03/2026 15:31:41
+2026-03-18 15:31:41,001 [INFO] =======================================================
+2026-03-18 15:31:41,413 [INFO] ✅ Access connecté : C:\Users\admin\Desktop\Grand_projet_rh\att2000.mdb
+2026-03-18 15:31:41,635 [INFO] ✅ PostgreSQL connecté : localhost/db_rh
+2026-03-18 15:31:41,648 [INFO] ✅ Tables vérifiées / créées dans PostgreSQL
+2026-03-18 15:31:41,688 [ERROR] ❌ ERREUR CRITIQUE : ERREUR:  il n'existe aucune contrainte unique ou contrainte d'exclusion correspondant à la spécification ON CONFLICT
+

@@ -18,6 +18,9 @@ class InformationPersonnelle(TimeStampModel):
     SEXE_CHOICES = [
         ('Masculin', 'Masculin'),
         ('Féminin', 'Féminin'),
+        ('MASCULIN','MASCULIN'),
+        ('FEMININ','FEMININ'),
+        ('FÉMININ','FÉMININ')
     ]
 
     numero_matricule = models.CharField(max_length=50, unique=True)
