@@ -1450,9 +1450,9 @@ class AnomalieDetailAPIView(APIView):
             anomalie_updated = serializer.save()
             
             # Vérifier si l'anomalie est maintenant OK
-            if anomalie_updated.etat == 'ok':
-                # Optionnel : synchroniser avec CheckInOut si nécessaire
-                self._synchroniser_avec_checkinout(anomalie_updated)
+            # if anomalie_updated.etat == 'ok':
+            #     # Optionnel : synchroniser avec CheckInOut si nécessaire
+            #     self._synchroniser_avec_checkinout(anomalie_updated)
             
             return Response(AnomalieSerializer(anomalie_updated).data)
         
