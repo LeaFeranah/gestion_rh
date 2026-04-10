@@ -201,7 +201,7 @@ class UserInfo(models.Model):
     badgenumber = models.CharField(db_column='badgenumber', max_length=50)
     ssn = models.CharField(db_column='ssn', max_length=50, null=True, blank=True)
     name = models.CharField(db_column='name', max_length=150)
-    defaultdeptid = models.IntegerField(db_column='defaultdeptid', null=True, blank=True)  # ✅ doit être INTEGER
+    defaultdeptid = models.IntegerField(db_column='defaultdeptid', null=True, blank=True)  
 
     class Meta:
         db_table = 'userinfo'
@@ -617,33 +617,54 @@ class Anomalie(models.Model):
     
  
 
+    # def _determiner_etat(self, ancien_etat=None):
+    #     """
+    #     Détermine l'état de l'anomalie selon les règles.
+    #     Ne touche pas à multiples_pointages si les heures rectifiées sont vides.
+    #     """
+    #     # CAS SPÉCIAL : pointages multiples avec choix manuel pas encore fait
+    #     # → on garde l'état multiples_pointages tant que les rectifiées ne sont pas remplies
+    #     if ancien_etat == 'multiples_pointages':
+    #         if not self.heure_rectifiee_entree or not self.heure_rectifiee_sortie:
+    #             return 'multiples_pointages'
+
+    #     # CAS 1 : Pas d'entrée rectifiée
+    #     if not self.heure_rectifiee_entree:
+    #         return 'pas_entree'
+
+    #     # CAS 2 : Pas de sortie rectifiée
+    #     if not self.heure_rectifiee_sortie:
+    #         return 'pas_sortie'
+
+    #     # CAS 3 : Les deux sont présentes → vérifier égalité avec réelles
+    #     if (self.heure_rectifiee_entree == self.heure_reelle_entree and
+    #             self.heure_rectifiee_sortie == self.heure_reelle_sortie):
+    #         return 'ok'
+
+    #     # Sinon conserver l'ancien état
+    #     return ancien_etat if ancien_etat else 'pas_entree'
+    # AVANT
+    # APRÈS
+    # APRÈS
     def _determiner_etat(self, ancien_etat=None):
-        """
-        Détermine l'état de l'anomalie selon les règles.
-        Ne touche pas à multiples_pointages si les heures rectifiées sont vides.
-        """
-        # CAS SPÉCIAL : pointages multiples avec choix manuel pas encore fait
-        # → on garde l'état multiples_pointages tant que les rectifiées ne sont pas remplies
         if ancien_etat == 'multiples_pointages':
             if not self.heure_rectifiee_entree or not self.heure_rectifiee_sortie:
                 return 'multiples_pointages'
 
-        # CAS 1 : Pas d'entrée rectifiée
         if not self.heure_rectifiee_entree:
             return 'pas_entree'
 
-        # CAS 2 : Pas de sortie rectifiée
         if not self.heure_rectifiee_sortie:
             return 'pas_sortie'
 
-        # CAS 3 : Les deux sont présentes → vérifier égalité avec réelles
-        if (self.heure_rectifiee_entree == self.heure_reelle_entree and
-                self.heure_rectifiee_sortie == self.heure_reelle_sortie):
-            return 'ok'
+        # ← Si les deux heures rectifiées sont présentes → toujours OK
+        # peu importe si elles correspondent ou non aux heures par défaut
+        return 'ok'
+        
 
-        # Sinon conserver l'ancien état
-        return ancien_etat if ancien_etat else 'pas_entree'
-   
+
+        # Les deux heures sont présentes → OK peu importe les valeurs
+        return 'ok'
 
     def save(self, *args, **kwargs):
         ancien_etat = self.etat

@@ -20,6 +20,7 @@ urlpatterns = [
     
     # Authentification
     path('login/', login_api, name='login'),
+    path('utilisateurs/<int:user_id>/modifier/', modifier_utilisateur, name='modifier_utilisateur'),
     path('logout/', logout_api, name='logout'),
     
     # Dashboard et profil

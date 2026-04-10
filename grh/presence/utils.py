@@ -168,28 +168,106 @@ def analyser_presence(heure_entree_reelle, heure_sortie_reelle, heure_entree_pre
 
 # presence/utils.py — remplacer get_section_employe
 
+# def get_section_employe(badgenumber: str) -> str:
+#     """
+#     Recherche rapide via UserSection (db_user_section).
+#     Fallback sur InformationPersonnelle si la table n'est pas encore peuplée.
+#     """
+#     try:
+#         from presence.models import UserSection, UserInfo
+#         user = UserInfo.objects.get(badgenumber=badgenumber)
+#         us   = UserSection.objects.select_related('section').get(user=user)
+#         return us.section.nom_section if us.section else 'ADMINISTRATION'
+#     except Exception:
+#         pass
+#     # Fallback legacy
+#     try:
+#         from personnel.models import InformationPersonnelle
+#         emp = InformationPersonnelle.objects.select_related(
+#             'information_professionnelle'
+#         ).get(numero_matricule=badgenumber)
+#         if hasattr(emp, 'information_professionnelle'):
+#             ip  = emp.information_professionnelle
+#             raw = ip.responsable_section.strip() if ip.responsable_section else ""
+#             return raw.upper() if raw else (ip.section.strip().upper() if ip.section else 'ADMINISTRATION')
+#     except Exception as e:
+#         logger.warning(f"Section non trouvée pour {badgenumber}: {e}")
+#     return 'ADMINISTRATION'
+
+
+# def build_user_section_map() -> dict:
+#     """
+#     Retourne {userid: nom_section} en UNE seule requête SQL.
+#     """
+#     from presence.models import UserSection
+#     return {
+#         us.userid: us.section.nom_section
+#         for us in UserSection.objects.select_related('section').all()
+#         if us.section_id is not None
+#     }
+
+# def build_user_section_map() -> dict:
+#     from presence.models import UserSection, UserInfo
+
+#     active_badges = set(get_active_badgenumbers())
+#     active_userids = set(
+#         UserInfo.objects.filter(
+#             badgenumber__in=active_badges
+#         ).values_list('userid', flat=True)
+#     )
+
+#     return {
+#         us.userid: us.section.nom_section
+#         for us in UserSection.objects.select_related('section').filter(userid__in=active_userids)
+#         if us.section_id is not None
+#     }
+
+
+
+# ── Constantes RESPONSABLE ──────────────────────────────────────────────────
+RESPONSABLE_VARIANTS = {
+    'RESPONSABLE', 'RESPONSABLE 0', 'RESPONSABLE 1',
+    'RESPONSABLE 2', 'RESPONSABLE 3', 'RESPONSABLE RAPHIA'
+}
+
+def _effective_section(ip_section: str, ip_responsable_section: str) -> str:
+    """Retourne la section effective : responsable_section pour les RESPONSABLE."""
+    section_upper = (ip_section or '').strip().upper()
+    if section_upper in RESPONSABLE_VARIANTS or section_upper.startswith('RESPONSABLE '):
+        return (ip_responsable_section or '').strip() or ip_section or 'ADMINISTRATION'
+    return (ip_section or 'ADMINISTRATION').strip()
+
+
 def get_section_employe(badgenumber: str) -> str:
-    """
-    Recherche rapide via UserSection (db_user_section).
-    Fallback sur InformationPersonnelle si la table n'est pas encore peuplée.
-    """
     try:
         from presence.models import UserSection, UserInfo
         user = UserInfo.objects.get(badgenumber=badgenumber)
-        us   = UserSection.objects.select_related('section').get(user=user)
-        return us.section.nom_section if us.section else 'ADMINISTRATION'
+        us = UserSection.objects.select_related('section').get(user=user)
+        if us.section:
+            # On vérifie si c'est un RESPONSABLE via InformationProfessionnelle
+            try:
+                from personnel.models import InformationPersonnelle
+                emp = InformationPersonnelle.objects.select_related(
+                    'information_professionnelle'
+                ).get(numero_matricule=badgenumber)
+                if hasattr(emp, 'information_professionnelle'):
+                    ip = emp.information_professionnelle
+                    return _effective_section(ip.section, ip.responsable_section)
+            except Exception:
+                pass
+            return us.section.nom_section
     except Exception:
         pass
-    # Fallback legacy
+
+    # Fallback InformationProfessionnelle
     try:
         from personnel.models import InformationPersonnelle
         emp = InformationPersonnelle.objects.select_related(
             'information_professionnelle'
         ).get(numero_matricule=badgenumber)
         if hasattr(emp, 'information_professionnelle'):
-            ip  = emp.information_professionnelle
-            raw = ip.responsable_section.strip() if ip.responsable_section else ""
-            return raw.upper() if raw else (ip.section.strip().upper() if ip.section else 'ADMINISTRATION')
+            ip = emp.information_professionnelle
+            return _effective_section(ip.section, ip.responsable_section)
     except Exception as e:
         logger.warning(f"Section non trouvée pour {badgenumber}: {e}")
     return 'ADMINISTRATION'
@@ -197,14 +275,50 @@ def get_section_employe(badgenumber: str) -> str:
 
 def build_user_section_map() -> dict:
     """
-    Retourne {userid: nom_section} en UNE seule requête SQL.
+    Retourne {userid: section_effective} pour les employés ACTIFS uniquement.
+    Les RESPONSABLE utilisent responsable_section.
     """
-    from presence.models import UserSection
-    return {
-        us.userid: us.section.nom_section
-        for us in UserSection.objects.select_related('section').all()
-        if us.section_id is not None
+    from presence.models import UserInfo
+    from personnel.models import InformationPersonnelle, InformationProfessionnelle
+
+    active_badges = set(get_active_badgenumbers())
+
+    # userid → badge (pour les actifs seulement)
+    userid_to_badge = {
+        u.userid: u.badgenumber
+        for u in UserInfo.objects.filter(badgenumber__in=active_badges)
     }
+    active_userids = set(userid_to_badge.keys())
+
+    # badge → section effective via InformationProfessionnelle
+    badge_to_section = {}
+    for ip in (
+        InformationProfessionnelle.objects
+        .select_related('employe')
+        .filter(employe__numero_matricule__in=active_badges)
+    ):
+        badge = ip.employe.numero_matricule
+        badge_to_section[badge] = _effective_section(ip.section, ip.responsable_section)
+
+    # Construction du résultat final
+    result = {}
+    for userid, badge in userid_to_badge.items():
+        if badge in badge_to_section and badge_to_section[badge]:
+            result[userid] = badge_to_section[badge]
+
+    # Fallback : UserSection pour ceux sans InformationProfessionnelle
+    from presence.models import UserSection
+    for us in (
+        UserSection.objects
+        .select_related('section')
+        .filter(userid__in=active_userids)
+    ):
+        if us.userid not in result and us.section_id is not None:
+            result[us.userid] = us.section.nom_section
+
+    return result
+
+
 
 def format_duree(minutes):
     if minutes is None or minutes == 0:
@@ -446,3 +560,26 @@ def corriger_pointages_automatique(pointages_bruts, heure_entree_prevue, heure_s
         pointages_bruts, heure_entree_prevue, heure_sortie_prevue, seuil_minutes
     )
     return entree, sortie, (type_anomalie is not None)
+
+
+
+
+
+
+from django.db.models import Q
+
+def get_active_badgenumbers():
+    from personnel.models import InformationPersonnelle
+
+    return list(
+        InformationPersonnelle.objects.filter(
+            Q(depart__isnull=True) | Q(depart='') | Q(depart='0')
+        ).values_list('numero_matricule', flat=True)
+    )
+
+
+def get_active_userinfo_queryset():
+    from presence.models import UserInfo
+
+    active_badges = get_active_badgenumbers()
+    return UserInfo.objects.filter(badgenumber__in=active_badges)

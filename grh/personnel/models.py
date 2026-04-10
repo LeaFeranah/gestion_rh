@@ -38,6 +38,7 @@ class InformationPersonnelle(TimeStampModel):
     adresse = models.TextField(null=True, blank=True)
     telephone = models.CharField(max_length=50, null=True, blank=True)
     email = models.EmailField(null=True, blank=True)
+    depart = models.CharField(max_length=100, null=True, blank=True)
     
     # 🔹 DUPLICATA CIN
     date_duplicata = models.DateField(null=True, blank=True, verbose_name="Date du duplicata")

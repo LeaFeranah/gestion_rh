@@ -6,69 +6,14 @@ from django.db.models import Min, Max, Q
 from datetime import date, datetime
 from .models import CheckInOut, UserInfo, Date, Evenement, HoraireSection, Anomalie
 from .serializers import DateSerializer, HoraireSectionSerializer, EvenementSerializer, AnomalieSerializer
-from .utils import decimal_to_time, analyser_presence, get_section_employe, corriger_pointages_automatique
+from .utils import decimal_to_time, analyser_presence, get_section_employe, corriger_pointages_automatique,get_active_badgenumbers
+from .utils import get_active_userinfo_queryset
+from .utils import decimal_to_time, analyser_presence, get_section_employe, \
+    corriger_pointages_automatique, get_active_badgenumbers, \
+    get_active_userinfo_queryset, calculer_heures_travaillees  # ← ajouter
 import logging
 
 logger = logging.getLogger(__name__)
-# ========== GESTION DES DATES ==========
-
-# class DateGenerationAPIView(APIView):
-#     """
-#     Générer les dates pour un mois donné ET créer les événements par défaut
-#     GET /api/presence/generer-dates/?annee=2024&mois=8
-#     """
-#     permission_classes = [AllowAny]
-    
-#     def get(self, request):
-#         annee = int(request.query_params.get('annee', date.today().year))
-#         mois = int(request.query_params.get('mois', date.today().month))
-        
-#         # Générer les dates
-#         dates_crees = Date.generer_dates_mois(annee, mois)
-        
-#         # CRÉER LES ÉVÉNEMENTS PAR DÉFAUT POUR TOUS LES EMPLOYÉS
-#         mois_ref = date(annee, mois, 1)
-#         dates_periode = Date.objects.filter(
-#             mois_reference=mois_ref,
-#             hors_periode=False
-#         ).values_list('date', flat=True)
-        
-#         # Récupérer tous les employés
-#         employes = UserInfo.objects.all()
-        
-#         evenements_crees = 0
-#         for employe in employes:
-#             for date_jour in dates_periode:
-#                 # Créer l'événement "X" par défaut s'il n'existe pas
-#                 _, created = Evenement.objects.get_or_create(
-#                     userid=employe.userid,
-#                     date=date_jour,
-#                     defaults={
-#                         'type_evenement': 'X',
-#                         'commentaire': 'Créé automatiquement'
-#                     }
-#                 )
-#                 if created:
-#                     evenements_crees += 1
-        
-#         serializer = DateSerializer(dates_crees, many=True)
-        
-#         mois_fr = [
-#             'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
-#             'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
-#         ]
-        
-#         mois_precedent = mois - 1 if mois > 1 else 12
-        
-#         return Response({
-#             "message": f"Dates générées pour {mois_fr[mois-1]} {annee}",
-#             "periode": f"21 {mois_fr[mois_precedent-1]} → 20 {mois_fr[mois-1]}",
-#             "count": len(dates_crees),
-#             "evenements_crees": evenements_crees,
-#             "dates": serializer.data
-#         })
-
-
 
 class DateGenerationAPIView(APIView):
     """
@@ -93,7 +38,8 @@ class DateGenerationAPIView(APIView):
             ).values_list('date', flat=True)
         )
 
-        employes = list(UserInfo.objects.all())
+        #employes = list(UserInfo.objects.all())
+        employes = list(get_active_userinfo_queryset())
 
         # ── 3. Créer les événements manquants en BULK (une seule requête) ───
         # Récupérer les paires (userid, date) déjà existantes
@@ -367,7 +313,8 @@ class PresenceMoisRecapAPIView(APIView):
         dates_mois = Date.get_dates_par_mois(annee, mois, inclure_hors_periode=False)
         dates_liste = list(dates_mois.values_list('date', flat=True))
         
-        employes = UserInfo.objects.all()
+        #employes = UserInfo.objects.all()
+        employes = get_active_userinfo_queryset()
         
         resultat = []
         
@@ -743,6 +690,8 @@ class PresenceMoisCalculeeAPIView(APIView):
 
 
 
+
+
 class PresenceMoisDetailCalculeeAPIView(APIView):
     permission_classes = [AllowAny]
 
@@ -805,11 +754,13 @@ class PresenceMoisDetailCalculeeAPIView(APIView):
         # 3. Section -> liste des userids
         userids_section = None
         if section_filter:
-            userids_section = set(
-                UserSection.objects
-                .filter(section__nom_section=section_filter)
-                .values_list('userid', flat=True)
-            )
+            # Récupérer la map section effective pour trouver les userids correspondants
+            from .utils import build_user_section_map
+            user_section_map_full = build_user_section_map()  # {userid: section_effective}
+            userids_section = {
+                uid for uid, sec in user_section_map_full.items()
+                if sec.upper() == section_filter
+            }
 
             if not userids_section:
                 return Response({
@@ -826,81 +777,14 @@ class PresenceMoisDetailCalculeeAPIView(APIView):
                     "presences": []
                 })
 
-        # 4. Pointages -> récupérer seulement les userids candidats
-        pointages_qs = CheckInOut.objects.filter(checktime__date__in=dates_liste)
-
-        if badgenumber:
-            pointages_qs = pointages_qs.filter(user__badgenumber=badgenumber)
-
-        if userids_section is not None:
-            pointages_qs = pointages_qs.filter(user_id__in=userids_section)
-
-        user_ids_avec_pointages = set(
-            pointages_qs.values_list('user_id', flat=True).distinct()
-        )
-
-        # 5. Anomalies -> récupérer seulement les userids candidats
-        anomalies_qs_base = Anomalie.objects.filter(
-            date__in=dates_liste,
-            etat='ok'
-        )
-
-        if badgenumber:
-            user_ids_badge = set(
-                UserInfo.objects.filter(badgenumber=badgenumber).values_list('userid', flat=True)
-            )
-            anomalies_qs_base = anomalies_qs_base.filter(userid__in=user_ids_badge)
-
-        if userids_section is not None:
-            anomalies_qs_base = anomalies_qs_base.filter(userid__in=userids_section)
-
-        user_ids_avec_anomalies = set(
-            anomalies_qs_base.values_list('userid', flat=True).distinct()
-        )
-
-        # 6. Événements -> récupérer seulement les userids candidats
-        evenements_qs_base = Evenement.objects.filter(date__in=dates_liste)
-
-        if badgenumber:
-            user_ids_badge = set(
-                UserInfo.objects.filter(badgenumber=badgenumber).values_list('userid', flat=True)
-            )
-            evenements_qs_base = evenements_qs_base.filter(userid__in=user_ids_badge)
-
-        if userids_section is not None:
-            evenements_qs_base = evenements_qs_base.filter(userid__in=userids_section)
-
-        user_ids_avec_evenements = set(
-            evenements_qs_base.values_list('userid', flat=True).distinct()
-        )
-
-        # 7. Tous les utilisateurs concernés
-        user_ids_a_traiter = (
-            user_ids_avec_pointages
-            .union(user_ids_avec_anomalies)
-            .union(user_ids_avec_evenements)
-        )
-
-        if not user_ids_a_traiter:
-            return Response({
-                "periode": periode_data,
-                "statistiques": {},
-                "pagination": {
-                    "page": page,
-                    "page_size": page_size,
-                    "total_employees": 0,
-                    "total_pages": 0,
-                    "has_next": False,
-                    "has_previous": False,
-                },
-                "presences": []
-            })
-
-        # 8. Filtrage utilisateurs + recherche + pagination
-        users_qs = UserInfo.objects.filter(userid__in=user_ids_a_traiter)
+        # 4. Base : tous les employés actifs
+        users_qs = get_active_userinfo_queryset()
 
         if badgenumber:
             users_qs = users_qs.filter(badgenumber=badgenumber)
+
+        if userids_section is not None:
+            users_qs = users_qs.filter(userid__in=userids_section)
 
         if search:
             users_qs = users_qs.filter(
@@ -909,9 +793,7 @@ class PresenceMoisDetailCalculeeAPIView(APIView):
             )
 
         users_qs = users_qs.order_by('badgenumber', 'userid')
-
         total_employees = users_qs.count()
-        total_pages = (total_employees + page_size - 1) // page_size if total_employees > 0 else 0
 
         if total_employees == 0:
             return Response({
@@ -928,21 +810,21 @@ class PresenceMoisDetailCalculeeAPIView(APIView):
                 "presences": []
             })
 
+        total_pages = (total_employees + page_size - 1) // page_size
         if page > total_pages:
             page = total_pages
 
         start = (page - 1) * page_size
         end = start + page_size
-
         users_page = list(users_qs[start:end])
         user_ids_page = {u.userid for u in users_page}
 
-        # 9. Recharger seulement les données utiles à la page
-        pointages_data = (
-            pointages_qs
-            .filter(user_id__in=user_ids_page)
-            .values('user_id', 'checktime', 'checktype')
+        # 5. Pointages pour la page courante
+        pointages_qs = CheckInOut.objects.filter(
+            checktime__date__in=dates_liste,
+            user_id__in=user_ids_page
         )
+        pointages_data = pointages_qs.values('user_id', 'checktime', 'checktype')
 
         pointages_par_jour = {}
         for p in pointages_data:
@@ -952,7 +834,12 @@ class PresenceMoisDetailCalculeeAPIView(APIView):
                 'checktype': p['checktype']
             })
 
-        anomalies_qs = anomalies_qs_base.filter(userid__in=user_ids_page)
+        # 6. Anomalies corrigées pour la page courante
+        anomalies_qs = Anomalie.objects.filter(
+            date__in=dates_liste,
+            etat='ok',
+            userid__in=user_ids_page
+        )
         anomalies_map = {}
         for a in anomalies_qs:
             key = (a.userid, str(a.date))
@@ -967,7 +854,11 @@ class PresenceMoisDetailCalculeeAPIView(APIView):
                 'synchronise_le': a.synchronise_le,
             }
 
-        evenements_qs = evenements_qs_base.filter(userid__in=user_ids_page)
+        # 7. Événements pour la page courante
+        evenements_qs = Evenement.objects.filter(
+            date__in=dates_liste,
+            userid__in=user_ids_page
+        )
         evenements_map = {}
         for e in evenements_qs:
             key = (e.userid, str(e.date))
@@ -976,23 +867,34 @@ class PresenceMoisDetailCalculeeAPIView(APIView):
                 'commentaire': e.commentaire,
             }
 
-        # 10. Map section utilisateur seulement pour la page
-        user_section_qs = UserSection.objects.select_related('section').filter(userid__in=user_ids_page)
+        # 8. Map section utilisateur pour la page courante
+        # Utiliser build_user_section_map filtré sur la page
+        from .utils import build_user_section_map, RESPONSABLE_VARIANTS
+        user_section_map_full = build_user_section_map()
         user_section_map = {
-            us.userid: us.section.nom_section
-            for us in user_section_qs
-            if us.section_id is not None
+            uid: sec for uid, sec in user_section_map_full.items()
+            if uid in user_ids_page
         }
 
-        # 11. Horaires
+        # Fallback UserSection pour ceux non couverts
+        missing_ids = user_ids_page - set(user_section_map.keys())
+        if missing_ids:
+            for us in UserSection.objects.select_related('section').filter(userid__in=missing_ids):
+                if us.section_id is not None:
+                    user_section_map[us.userid] = us.section.nom_section
+
+        # 9. Horaires
         sections_page = set(user_section_map.values()) | {'ADMINISTRATION'}
         horaires_dict = {
             h.section: h
             for h in HoraireSection.objects.filter(section__in=sections_page)
         }
+        # Fallback si section non trouvée dans horaires
         horaire_default = horaires_dict.get('ADMINISTRATION')
+        if not horaire_default:
+            horaire_default = HoraireSection.objects.first()
 
-        # 12. Construction du résultat page courante
+        # 10. Construction du résultat
         resultat = []
 
         for user in users_page:
@@ -1011,9 +913,6 @@ class PresenceMoisDetailCalculeeAPIView(APIView):
                 pointages_du_jour = pointages_par_jour.get(key, [])
 
                 present = bool(pointages_du_jour) or (anomalie_corrigee is not None)
-
-                if not present and not evenement_data:
-                    continue
 
                 est_samedi = date_obj.date.weekday() == 5
                 est_vendredi = date_obj.date.weekday() == 4
@@ -1037,8 +936,11 @@ class PresenceMoisDetailCalculeeAPIView(APIView):
                     heure_rectifiee_sortie = anomalie_corrigee['heure_rectifiee_sortie']
                     synchronise_le = anomalie_corrigee['synchronise_le']
                     if anomalie_corrigee.get('section'):
-                        section = anomalie_corrigee['section']
+                        section_affichee = anomalie_corrigee['section']
+                    else:
+                        section_affichee = section
                 else:
+                    section_affichee = section
                     if pointages_du_jour:
                         tries = sorted(pointages_du_jour, key=lambda p: p['checktime'])
                         heure_brute_entree = tries[0]['checktime'].time()
@@ -1052,19 +954,51 @@ class PresenceMoisDetailCalculeeAPIView(APIView):
                         heure_rectifiee_sortie = None
                     synchronise_le = None
 
-                analyse = analyser_presence(
-                    heure_rectifiee_entree,
-                    heure_rectifiee_sortie,
-                    heure_entree_prevue,
-                    heure_sortie_prevue,
-                    date_obj.date
-                )
+                # analyse = analyser_presence(
+                #     heure_rectifiee_entree,
+                #     heure_rectifiee_sortie,
+                #     heure_entree_prevue,
+                #     heure_sortie_prevue,
+                #     date_obj.date
+                # )
+
+                # APRÈS - bypass les règles si correction manuelle
+                if anomalie_corrigee is not None:
+                    # Correction manuelle : on affiche exactement ce qui a été saisi
+                    analyse = {
+                        'heure_entree_comptabilisee': heure_rectifiee_entree,
+                        'heure_sortie_comptabilisee': heure_rectifiee_sortie,
+                        'retard_minutes': 0,
+                        'sortie_anticipee_minutes': 0,
+                        'heures_travaillees': float(
+                            calculer_heures_travaillees(heure_rectifiee_entree, heure_rectifiee_sortie)
+                        ) if heure_rectifiee_entree and heure_rectifiee_sortie else 0.0,
+                        'heures_prevues': float(
+                            calculer_heures_travaillees(heure_entree_prevue, heure_sortie_prevue)
+                        ),
+                        'est_en_retard': False,
+                        'est_sorti_en_avance': False,
+                        'difference_heures': 0.0,
+                    }
+                else:
+                    # Calcul automatique avec les règles habituelles
+                    analyse = analyser_presence(
+                        heure_rectifiee_entree,
+                        heure_rectifiee_sortie,
+                        heure_entree_prevue,
+                        heure_sortie_prevue,
+                        date_obj.date
+                    )
+
+
+
+
 
                 resultat.append({
                     "userid": user.userid,
                     "badgenumber": user.badgenumber,
                     "name": user.name,
-                    "section": section,
+                    "section": section_affichee,
                     "date": date_str,
                     "code_date": date_obj.code_date,
                     "code_affichage": date_obj.code_affichage,
@@ -1103,7 +1037,7 @@ class PresenceMoisDetailCalculeeAPIView(APIView):
 
         resultat.sort(key=lambda x: (x['badgenumber'], x['date']))
 
-        # 13. Statistiques de la page courante
+        # 11. Statistiques
         total_retard_minutes = sum(r['retard_minutes'] for r in resultat)
         total_sortie_anticipee_minutes = sum(r['sortie_anticipee_minutes'] for r in resultat)
         total_heures_travaillees = sum(r['heures_travaillees'] for r in resultat)
@@ -1139,9 +1073,6 @@ class PresenceMoisDetailCalculeeAPIView(APIView):
             },
             "presences": resultat
         })
-
-
-
 
 
 # ========== GESTION DES ÉVÉNEMENTS ==========
@@ -2044,20 +1975,36 @@ class ModifierHeuresManuellementAPIView(APIView):
 
             # --- RÉCUPÉRATION DES HEURES BRUTES (pointages d'origine) ---
             # On interroge la table CheckInOut pour obtenir les vrais pointages du jour
-            pointages_bruts = CheckInOut.objects.filter(
-                user=user,
-                checktime__date=date_jour
-            ).order_by('checktime')
+            # pointages_bruts = CheckInOut.objects.filter(
+            #     user=user,
+            #     checktime__date=date_jour
+            # ).order_by('checktime')
+
+            # heure_brute_entree = None
+            # heure_brute_sortie = None
+            # if pointages_bruts.exists():
+            #     # Premier pointage = entrée brute
+            #     heure_brute_entree = pointages_bruts[0].checktime.time()
+            #     # Dernier pointage = sortie brute (si plusieurs)
+            #     if len(pointages_bruts) > 1:
+            #         heure_brute_sortie = pointages_bruts[-1].checktime.time()
+                # Si un seul pointage, la sortie brute reste None (absence de sortie)
+            # Après
+            pointages_bruts = list(
+                CheckInOut.objects.filter(
+                    user=user,
+                    checktime__date=date_jour
+                ).order_by('checktime')
+            )
 
             heure_brute_entree = None
             heure_brute_sortie = None
-            if pointages_bruts.exists():
-                # Premier pointage = entrée brute
+            if pointages_bruts:
                 heure_brute_entree = pointages_bruts[0].checktime.time()
-                # Dernier pointage = sortie brute (si plusieurs)
                 if len(pointages_bruts) > 1:
-                    heure_brute_sortie = pointages_bruts[-1].checktime.time()
-                # Si un seul pointage, la sortie brute reste None (absence de sortie)
+                    heure_brute_sortie = pointages_bruts[-1].checktime.time()  # ✅ fonctionne sur une liste
+
+
 
             # --- CRÉATION / MISE À JOUR DE L'ANOMALIE ---
             # On conserve systématiquement les heures brutes, on ne les écrase jamais.
@@ -2324,28 +2271,73 @@ class GetHeuresJourAPIView(APIView):
         
 
 
+# class SearchEmployeesAPIView(APIView):
+#     """
+#     Recherche d'employés par badge ou nom
+#     GET /api/presence/search-employees/?q=recherche
+#     """
+#     permission_classes = [AllowAny]
+    
+#     def get(self, request):
+#         query = request.query_params.get('q', '').strip()
+        
+#         if not query or len(query) < 2:
+#             return Response({
+#                 'employees': [],
+#                 'message': 'Saisissez au moins 2 caractères'
+#             })
+        
+#         # Rechercher par badge ou nom
+#         employees = (
+#             get_active_userinfo_queryset()
+#             .filter(
+#                 Q(badgenumber__icontains=query) |
+#                 Q(name__icontains=query)
+#             )
+#             .order_by('badgenumber')[:20]
+#         )
+#         results = []
+#         for emp in employees:
+#             section = get_section_employe(emp.badgenumber)
+#             results.append({
+#                 'userid': emp.userid,
+#                 'badgenumber': emp.badgenumber,
+#                 'name': emp.name,
+#                 'section': section
+#             })
+        
+#         return Response({
+#             'employees': results,
+#             'count': len(results)
+#         })
+    
+
+
 class SearchEmployeesAPIView(APIView):
     """
     Recherche d'employés par badge ou nom
     GET /api/presence/search-employees/?q=recherche
     """
     permission_classes = [AllowAny]
-    
+
     def get(self, request):
         query = request.query_params.get('q', '').strip()
-        
+
         if not query or len(query) < 2:
             return Response({
                 'employees': [],
                 'message': 'Saisissez au moins 2 caractères'
             })
-        
-        # Rechercher par badge ou nom
+
+        active_badges = set(get_active_badgenumbers())
+
         employees = UserInfo.objects.filter(
+            badgenumber__in=active_badges
+        ).filter(
             Q(badgenumber__icontains=query) |
             Q(name__icontains=query)
         ).order_by('badgenumber')[:20]
-        
+
         results = []
         for emp in employees:
             section = get_section_employe(emp.badgenumber)
@@ -2355,15 +2347,11 @@ class SearchEmployeesAPIView(APIView):
                 'name': emp.name,
                 'section': section
             })
-        
+
         return Response({
             'employees': results,
             'count': len(results)
         })
-    
-
-
-
 
 
 
@@ -2372,30 +2360,70 @@ class SearchEmployeesAPIView(APIView):
 
 # presence/views.py — ajouter en bas
 
+# class SectionListAPIView(APIView):
+#     """
+#     Liste toutes les sections de db_section
+#     GET /api/presence/sections/
+#     GET /api/presence/sections/?search=BRODERIE
+#     """
+#     permission_classes = [AllowAny]
+
+#     def get(self, request):
+#         from .models import Section, UserSection
+#         sections = Section.objects.all()
+#         search = request.query_params.get('search', '').strip()
+#         if search:
+#             sections = sections.filter(nom_section__icontains=search)
+
+#         data = []
+#         for s in sections:
+#             count = UserSection.objects.filter(section=s).count()
+#             data.append({
+#                 'section_id': s.pk,
+#                 'nom_section': s.nom_section,
+#                 'nb_employes': count,
+#             })
+#         return Response({'count': len(data), 'sections': data})
+
+
+
 class SectionListAPIView(APIView):
-    """
-    Liste toutes les sections de db_section
-    GET /api/presence/sections/
-    GET /api/presence/sections/?search=BRODERIE
-    """
     permission_classes = [AllowAny]
 
     def get(self, request):
-        from .models import Section, UserSection
-        sections = Section.objects.all()
-        search = request.query_params.get('search', '').strip()
-        if search:
-            sections = sections.filter(nom_section__icontains=search)
+        from .models import UserSection, UserInfo
+        from personnel.models import InformationPersonnelle, InformationProfessionnelle
+        from django.db.models import Q
+        from .utils import build_user_section_map
 
+        search = request.query_params.get('search', '').strip()
+
+        # Construire la map userid→section_effective (actifs uniquement, RESPONSABLE remplacés)
+        user_section_map = build_user_section_map()  # {userid: section_effective}
+
+        # Compter les employés par section_effective
+        section_counts = {}
+        for section in user_section_map.values():
+            if section:
+                section_counts[section] = section_counts.get(section, 0) + 1
+
+        # Filtrer par recherche si demandé
         data = []
-        for s in sections:
-            count = UserSection.objects.filter(section=s).count()
-            data.append({
-                'section_id': s.pk,
-                'nom_section': s.nom_section,
-                'nb_employes': count,
-            })
-        return Response({'count': len(data), 'sections': data})
+        for nom_section, nb in sorted(section_counts.items()):
+            if search and search.upper() not in nom_section.upper():
+                continue
+            if nb > 0:
+                data.append({
+                    'section_id': nom_section,   # on utilise le nom comme id
+                    'nom_section': nom_section,
+                    'nb_employes': nb,
+                })
+
+        return Response({
+            'count': len(data),
+            'sections': data
+        })
+
 
 
 class SectionEmployesAPIView(APIView):

@@ -5,6 +5,8 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.authentication import SessionAuthentication, TokenAuthentication
 from django.contrib.auth import login, logout, authenticate
+from django.contrib.auth.models import User
+from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from .models import *
 from .serializers import *
 
@@ -479,6 +481,33 @@ def login_api(request):
             {'error': 'Identifiants incorrects'}, 
             status=status.HTTP_401_UNAUTHORIZED
         )
+
+
+
+
+
+
+@api_view(['PUT', 'PATCH'])
+@permission_classes([IsAuthenticated])
+@authentication_classes([TokenAuthentication, SessionAuthentication])  # ← ajoute ça
+def modifier_utilisateur(request, user_id):
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return Response({'error': 'Utilisateur non trouvé'}, status=status.HTTP_404_NOT_FOUND)
+
+    username = request.data.get('username')
+    password = request.data.get('password')
+
+    if username:
+        user.username = username
+    if password:
+        user.set_password(password)
+
+    user.save()
+    return Response({'message': 'Utilisateur mis à jour avec succès', 'username': user.username})
+
+
 
 
 @api_view(['POST'])
