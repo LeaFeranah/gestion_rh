@@ -463,6 +463,40 @@ class HoraireSection(models.Model):
         return cls.objects.count()
 
 
+
+class HoraireException(models.Model):
+    """
+    Surcharge d'horaire pour une date spécifique.
+    Si section est None → s'applique à toutes les sections.
+    """
+    date    = models.DateField()
+    section = models.CharField(
+        max_length=100, null=True, blank=True,
+        help_text="Laisser vide = toutes les sections"
+    )
+    heure_entree = models.TimeField(
+        null=True, blank=True,
+        help_text="Surcharge heure d'entrée (optionnel)"
+    )
+    heure_sortie = models.TimeField(
+        null=True, blank=True,
+        help_text="Surcharge heure de sortie"
+    )
+    motif = models.CharField(max_length=200, blank=True)
+    cree_le = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'horaire_exception'
+        unique_together = ('date', 'section')
+        ordering = ['-date']
+
+    def __str__(self):
+        section_str = self.section or "toutes sections"
+        return f"{self.date} – {section_str} – {self.motif}"
+    
+
+    
+
 class Evenement(models.Model):
     """
     Événements de présence (absences, congés, etc.)
@@ -478,6 +512,8 @@ class Evenement(models.Model):
         ('F', 'Fonction (délégués)'),
         ('PS', 'Permission Spéciale'),
         ('A', 'Absent'),
+        ('HA', 'Allaitement'), 
+        ('OS', 'Ostie'), 
         ('AUT', 'Autre'),
     ]
     

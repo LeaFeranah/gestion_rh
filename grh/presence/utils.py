@@ -583,3 +583,53 @@ def get_active_userinfo_queryset():
 
     active_badges = get_active_badgenumbers()
     return UserInfo.objects.filter(badgenumber__in=active_badges)
+
+
+
+
+
+def get_horaire_pour_date(horaire_section, date_jour, est_jour_paiement,
+                           section=None):
+    """
+    Retourne (heure_entree: time, heure_sortie: time) en tenant compte :
+    1. D'une HoraireException pour ce jour (globale ou par section)
+    2. Des règles samedi / vendredi paiement / samedi paiement
+    3. De l'horaire de section par défaut
+    """
+    from .models import HoraireException
+    from datetime import time as dtime
+
+    est_samedi   = date_jour.weekday() == 5
+    est_vendredi = date_jour.weekday() == 4
+
+    # ── 1. Chercher une exception spécifique à la section ──────────────────
+    exception = None
+    if section:
+        exception = HoraireException.objects.filter(
+            date=date_jour, section=section
+        ).first()
+    # ── 2. Sinon exception globale (section=None) ───────────────────────────
+    if not exception:
+        exception = HoraireException.objects.filter(
+            date=date_jour, section__isnull=True
+        ).first()
+
+    # ── 3. Appliquer l'exception si trouvée ────────────────────────────────
+    if exception:
+        entree = exception.heure_entree or decimal_to_time(horaire_section.heure_entree)
+        sortie = exception.heure_sortie or decimal_to_time(horaire_section.heure_sortie)
+        return entree, sortie
+
+    # ── 4. Logique habituelle ───────────────────────────────────────────────
+    entree = decimal_to_time(horaire_section.heure_entree)
+
+    if est_jour_paiement and est_vendredi:
+        sortie = decimal_to_time(horaire_section.sortie_vendredi_paiement)
+    elif est_jour_paiement and est_samedi:
+        sortie = decimal_to_time(horaire_section.sortie_samedi_paiement)
+    elif est_samedi:
+        sortie = decimal_to_time(horaire_section.sortie_samedi)
+    else:
+        sortie = decimal_to_time(horaire_section.heure_sortie)
+
+    return entree, sortie

@@ -48,4 +48,22 @@ urlpatterns = [
     # Ajouter dans urlpatterns
     path('sections/', SectionListAPIView.as_view(), name='section-list'),
     path('sections/<int:section_id>/employes/', SectionEmployesAPIView.as_view(), name='section-employes'),
+
+    # Horaires exceptionnels
+    path('horaire-exceptions/',
+        HoraireExceptionListAPIView.as_view(),
+        name='horaire-exception-list'),
+    path('horaire-exceptions/<int:pk>/',
+        HoraireExceptionDetailAPIView.as_view(),
+        name='horaire-exception-detail'),
+
+    # Suppression d'une journée complète
+    path('supprimer-jour/',
+        SupprimerPresencesJourAPIView.as_view(),
+        name='supprimer-jour'),
+
+
+
+    path('heures-travail/', HeuresTravailAPIView.as_view(), name='heures-travail'),
+    path('indemnite-repas/', IndemniteRepasAPIView.as_view(), name='indemnite-repas'),
 ]

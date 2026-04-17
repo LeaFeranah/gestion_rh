@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from decimal import Decimal
-from .models import Date, HoraireSection, Evenement, Anomalie
+from .models import Date, HoraireSection, Evenement, Anomalie, HoraireException
 
 
 class DateSerializer(serializers.ModelSerializer):
@@ -95,6 +95,14 @@ class EvenementSerializer(serializers.ModelSerializer):
                 f"Type d'événement invalide. Choix: {', '.join(valid_types)}")
         return value
 
+
+class HoraireExceptionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model  = HoraireException
+        fields = ['id', 'date', 'section', 'heure_entree',
+                  'heure_sortie', 'motif', 'cree_le']
+        read_only_fields = ['id', 'cree_le']
+        
 
 class AnomalieSerializer(serializers.ModelSerializer):
     etat_display  = serializers.CharField(source='get_etat_display', read_only=True)
