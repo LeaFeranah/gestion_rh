@@ -687,14 +687,7 @@ class PresenceMoisCalculeeAPIView(APIView):
             },
             "presences": resultat
         })
-
-
-
-
-
-
-
-
+    
 
 class PresenceMoisDetailCalculeeAPIView(APIView):
     permission_classes = [AllowAny]
@@ -918,20 +911,6 @@ class PresenceMoisDetailCalculeeAPIView(APIView):
 
                 present = bool(pointages_du_jour) or (anomalie_corrigee is not None)
 
-                # est_samedi = date_obj.date.weekday() == 5
-                # est_vendredi = date_obj.date.weekday() == 4
-                # est_jour_paiement = date_obj.est_jour_paiement
-
-                # heure_entree_prevue = decimal_to_time(horaire.heure_entree)
-
-                # if est_jour_paiement and est_vendredi:
-                #     heure_sortie_prevue = decimal_to_time(horaire.sortie_vendredi_paiement)
-                # elif est_jour_paiement and est_samedi:
-                #     heure_sortie_prevue = decimal_to_time(horaire.sortie_samedi_paiement)
-                # elif est_samedi:
-                #     heure_sortie_prevue = decimal_to_time(horaire.sortie_samedi)
-                # else:
-                #     heure_sortie_prevue = decimal_to_time(horaire.heure_sortie)
                 est_samedi = date_obj.date.weekday() == 5
                 est_vendredi = date_obj.date.weekday() == 4
                 est_jour_paiement = date_obj.est_jour_paiement
@@ -969,15 +948,6 @@ class PresenceMoisDetailCalculeeAPIView(APIView):
                         heure_rectifiee_sortie = None
                     synchronise_le = None
 
-                # analyse = analyser_presence(
-                #     heure_rectifiee_entree,
-                #     heure_rectifiee_sortie,
-                #     heure_entree_prevue,
-                #     heure_sortie_prevue,
-                #     date_obj.date
-                # )
-
-                # APRÈS - bypass les règles si correction manuelle
                 if anomalie_corrigee is not None:
                     # Correction manuelle : on affiche exactement ce qui a été saisi
                     analyse = {
@@ -1004,9 +974,6 @@ class PresenceMoisDetailCalculeeAPIView(APIView):
                         heure_sortie_prevue,
                         date_obj.date
                     )
-
-
-
 
 
                 resultat.append({
@@ -1281,7 +1248,6 @@ class TypesEvenementAPIView(APIView):
 
 
 
-
 class AnomalieListAPIView(APIView):
     """
     Liste des anomalies avec filtres
@@ -1455,31 +1421,6 @@ class AnomalieDetailAPIView(APIView):
 
 
 
-
-
-# class HoraireExceptionListAPIView(APIView):
-#     """
-#     GET  /api/presence/horaire-exceptions/?date=2025-04-13
-#     POST /api/presence/horaire-exceptions/
-#     """
-#     permission_classes = [AllowAny]
-
-#     def get(self, request):
-#         qs = HoraireException.objects.all()
-#         date_filter = request.query_params.get('date')
-#         if date_filter:
-#             qs = qs.filter(date=date_filter)
-#         return Response(HoraireExceptionSerializer(qs, many=True).data)
-
-#     def post(self, request):
-#         serializer = HoraireExceptionSerializer(data=request.data)
-#         if serializer.is_valid():
-#             serializer.save()
-#             return Response(serializer.data, status=status.HTTP_201_CREATED)
-#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-
 class HoraireExceptionListAPIView(APIView):
     permission_classes = [AllowAny]
 
@@ -1586,10 +1527,6 @@ class HoraireExceptionDetailAPIView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-
-
-
-
 class SupprimerPresencesJourAPIView(APIView):
     """
     Supprime TOUS les pointages d'une journée donnée
@@ -1644,11 +1581,6 @@ class SupprimerPresencesJourAPIView(APIView):
                 f"supprimés pour le {date_str}"
             )
         })
-
-
-
-
-
 
 class DetecterAnomaliesAPIView(APIView):
     permission_classes = [AllowAny]
@@ -1731,15 +1663,6 @@ class DetecterAnomaliesAPIView(APIView):
             est_vendredi = date_jour.weekday() == 4
             est_paiement = date_obj.est_jour_paiement
 
-            # heure_reelle_entree = decimal_to_time(horaire.heure_entree)
-            # if est_paiement and est_vendredi:
-            #     heure_reelle_sortie = decimal_to_time(horaire.sortie_vendredi_paiement)
-            # elif est_paiement and est_samedi:
-            #     heure_reelle_sortie = decimal_to_time(horaire.sortie_samedi_paiement)
-            # elif est_samedi:
-            #     heure_reelle_sortie = decimal_to_time(horaire.sortie_samedi)
-            # else:
-            #     heure_reelle_sortie = decimal_to_time(horaire.heure_sortie)
 
             from .utils import get_horaire_pour_date
             heure_reelle_entree, heure_reelle_sortie = get_horaire_pour_date(
@@ -2129,23 +2052,6 @@ class ModifierHeuresManuellementAPIView(APIView):
             else:
                 heure_reelle_sortie = decimal_to_time(horaire.heure_sortie)
 
-            # --- RÉCUPÉRATION DES HEURES BRUTES (pointages d'origine) ---
-            # On interroge la table CheckInOut pour obtenir les vrais pointages du jour
-            # pointages_bruts = CheckInOut.objects.filter(
-            #     user=user,
-            #     checktime__date=date_jour
-            # ).order_by('checktime')
-
-            # heure_brute_entree = None
-            # heure_brute_sortie = None
-            # if pointages_bruts.exists():
-            #     # Premier pointage = entrée brute
-            #     heure_brute_entree = pointages_bruts[0].checktime.time()
-            #     # Dernier pointage = sortie brute (si plusieurs)
-            #     if len(pointages_bruts) > 1:
-            #         heure_brute_sortie = pointages_bruts[-1].checktime.time()
-                # Si un seul pointage, la sortie brute reste None (absence de sortie)
-            # Après
             pointages_bruts = list(
                 CheckInOut.objects.filter(
                     user=user,
@@ -2171,7 +2077,7 @@ class ModifierHeuresManuellementAPIView(APIView):
                 defaults={
                     'section': section,
                     'code_date': code_date,
-                    'heure_brute_entree': heure_brute_entree,   # ← inchangées, jamais None sauf si aucun pointage
+                    'heure_brute_entree': heure_brute_entree,   
                     'heure_brute_sortie': heure_brute_sortie,
                     'heure_reelle_entree': heure_reelle_entree,
                     'heure_reelle_sortie': heure_reelle_sortie,
@@ -2185,7 +2091,7 @@ class ModifierHeuresManuellementAPIView(APIView):
             # On rafraîchit l'instance pour obtenir l'état à jour
             anomalie.refresh_from_db()
 
-            # ⚠️ SUPPRESSION DE TOUTE SYNCHRONISATION AVEC CheckInOut
+            # SUPPRESSION DE TOUTE SYNCHRONISATION AVEC CheckInOut
             # Les pointages bruts restent intacts dans la table d'origine.
             # Aucune création / suppression / modification n'est effectuée sur CheckInOut.
 
@@ -2426,49 +2332,6 @@ class GetHeuresJourAPIView(APIView):
             )
         
 
-
-# class SearchEmployeesAPIView(APIView):
-#     """
-#     Recherche d'employés par badge ou nom
-#     GET /api/presence/search-employees/?q=recherche
-#     """
-#     permission_classes = [AllowAny]
-    
-#     def get(self, request):
-#         query = request.query_params.get('q', '').strip()
-        
-#         if not query or len(query) < 2:
-#             return Response({
-#                 'employees': [],
-#                 'message': 'Saisissez au moins 2 caractères'
-#             })
-        
-#         # Rechercher par badge ou nom
-#         employees = (
-#             get_active_userinfo_queryset()
-#             .filter(
-#                 Q(badgenumber__icontains=query) |
-#                 Q(name__icontains=query)
-#             )
-#             .order_by('badgenumber')[:20]
-#         )
-#         results = []
-#         for emp in employees:
-#             section = get_section_employe(emp.badgenumber)
-#             results.append({
-#                 'userid': emp.userid,
-#                 'badgenumber': emp.badgenumber,
-#                 'name': emp.name,
-#                 'section': section
-#             })
-        
-#         return Response({
-#             'employees': results,
-#             'count': len(results)
-#         })
-    
-
-
 class SearchEmployeesAPIView(APIView):
     """
     Recherche d'employés par badge ou nom
@@ -2508,39 +2371,6 @@ class SearchEmployeesAPIView(APIView):
             'employees': results,
             'count': len(results)
         })
-
-
-
-
-
-
-# presence/views.py — ajouter en bas
-
-# class SectionListAPIView(APIView):
-#     """
-#     Liste toutes les sections de db_section
-#     GET /api/presence/sections/
-#     GET /api/presence/sections/?search=BRODERIE
-#     """
-#     permission_classes = [AllowAny]
-
-#     def get(self, request):
-#         from .models import Section, UserSection
-#         sections = Section.objects.all()
-#         search = request.query_params.get('search', '').strip()
-#         if search:
-#             sections = sections.filter(nom_section__icontains=search)
-
-#         data = []
-#         for s in sections:
-#             count = UserSection.objects.filter(section=s).count()
-#             data.append({
-#                 'section_id': s.pk,
-#                 'nom_section': s.nom_section,
-#                 'nb_employes': count,
-#             })
-#         return Response({'count': len(data), 'sections': data})
-
 
 
 class SectionListAPIView(APIView):
@@ -2602,863 +2432,6 @@ class SectionEmployesAPIView(APIView):
             for us in employes
         ]
         return Response({'section': section.nom_section, 'count': len(data), 'employes': data})
-
-
-
-
-
-
-
-
-
-
-# class HeuresTravailAPIView(APIView):
-#     """
-#     Calcul des heures travaillées par employé actif.
-#     Formule : (sortie - entrée) - 30min, sauf si sortie <= 13h00 → pas de déduction.
-#     GET /api/presence/heures-travail/?annee=2025&mois=4&section=BRODERIE&page=1&page_size=50&q=
-#     """
-#     permission_classes = [AllowAny]
-
-#     @staticmethod
-#     def _calculer_minutes(entree, sortie):
-#         from datetime import datetime as _dt, date as _date
-#         if not entree or not sortie:
-#             return 0
-#         ref  = _date.today()
-#         diff = int(
-#             (_dt.combine(ref, sortie) - _dt.combine(ref, entree)).total_seconds() / 60
-#         )
-#         if diff <= 0:
-#             return 0
-#         # Sortie midi (≤ 13h00) : pas de pause déduite
-#         if sortie.hour < 13 or (sortie.hour == 13 and sortie.minute == 0):
-#             return diff
-#         # Sinon : -30 min pause déjeuner
-#         return max(0, diff - 30)
-
-#     def get(self, request):
-#         try:
-#             annee     = int(request.query_params.get('annee', date.today().year))
-#             mois      = int(request.query_params.get('mois',  date.today().month))
-#             page      = max(1, int(request.query_params.get('page', 1)))
-#             page_size = min(200, max(1, int(request.query_params.get('page_size', 50))))
-#         except ValueError:
-#             return Response({"error": "Paramètres invalides"}, status=400)
-
-#         section_filter = request.query_params.get('section', '').strip().upper()
-#         q              = request.query_params.get('q', '').strip()
-
-#         from .utils import (
-#             build_user_section_map,
-#             analyser_pointages_jour,
-#             get_horaire_pour_date,
-#         )
-
-#         # ── Dates de la période ──────────────────────────────────────────────
-#         dates_mois_qs = Date.get_dates_par_mois(annee, mois, inclure_hors_periode=False)
-#         if not dates_mois_qs.exists():
-#             return Response({"error": "Générez d'abord les dates pour ce mois."}, status=400)
-
-#         dates_mois  = list(dates_mois_qs)
-#         dates_liste = [d.date for d in dates_mois]
-
-#         # Regroupement par semaine
-#         semaines_dates: dict = {}
-#         for d in dates_mois:
-#             s = d.code_date[0] if d.code_date else '1'
-#             semaines_dates.setdefault(s, []).append(d)
-#         semaine_nums = sorted(semaines_dates.keys())
-
-#         # ── Employés actifs ──────────────────────────────────────────────────
-#         user_section_map = build_user_section_map()
-
-#         users_qs = get_active_userinfo_queryset().order_by('badgenumber')
-
-#         if section_filter:
-#             ids_sec  = {uid for uid, sec in user_section_map.items()
-#                         if sec.upper() == section_filter}
-#             users_qs = users_qs.filter(userid__in=ids_sec)
-
-#         if q:
-#             users_qs = users_qs.filter(
-#                 Q(name__icontains=q) | Q(badgenumber__icontains=q)
-#             )
-
-#         total_employees = users_qs.count()
-#         if total_employees == 0:
-#             return self._empty_response(annee, mois, semaine_nums, page, page_size)
-
-#         total_pages = (total_employees + page_size - 1) // page_size
-#         page        = min(page, total_pages)
-#         users_page  = list(users_qs[(page - 1) * page_size: page * page_size])
-#         user_ids    = {u.userid for u in users_page}
-
-#         # ── Pré-chargements ──────────────────────────────────────────────────
-#         anomalies_map: dict = {}
-#         for a in Anomalie.objects.filter(
-#             date__in=dates_liste, etat='ok', userid__in=user_ids
-#         ):
-#             anomalies_map[(a.userid, a.date)] = a
-
-#         pointages_map: dict = {}
-#         for p in (
-#             CheckInOut.objects
-#             .filter(checktime__date__in=dates_liste, user_id__in=user_ids)
-#             .values('user_id', 'checktime', 'checktype')
-#         ):
-#             pointages_map.setdefault(
-#                 (p['user_id'], p['checktime'].date()), []
-#             ).append(p)
-
-#         horaires_dict   = {h.section: h for h in HoraireSection.objects.all()}
-#         horaire_default = horaires_dict.get('ADMINISTRATION')
-
-#         # Classe légère pour analyser_pointages_jour
-#         class FP:
-#             __slots__ = ('checktime', 'checktype')
-#             def __init__(self, d):
-#                 self.checktime = d['checktime']
-#                 self.checktype = d['checktype']
-
-#         # ── Calcul par employé ───────────────────────────────────────────────
-#         results = []
-
-#         for user in users_page:
-#             section_emp = user_section_map.get(user.userid, 'ADMINISTRATION')
-#             horaire     = horaires_dict.get(section_emp, horaire_default)
-
-#             par_semaine = {
-#                 s: {'minutes': 0, 'heures': 0.0, 'jours': 0}
-#                 for s in semaine_nums
-#             }
-#             total_minutes = 0
-
-#             for date_obj in dates_mois:
-#                 date_jour = date_obj.date
-#                 semaine   = date_obj.code_date[0] if date_obj.code_date else '1'
-#                 key       = (user.userid, date_jour)
-
-#                 entree = sortie = None
-
-#                 # 1. Anomalie corrigée en priorité
-#                 anomalie = anomalies_map.get(key)
-#                 if (anomalie
-#                         and anomalie.heure_rectifiee_entree
-#                         and anomalie.heure_rectifiee_sortie):
-#                     entree = anomalie.heure_rectifiee_entree
-#                     sortie = anomalie.heure_rectifiee_sortie
-
-#                 # 2. Sinon pointages bruts analysés
-#                 elif key in pointages_map and horaire:
-#                     h_e, h_s = get_horaire_pour_date(
-#                         horaire, date_jour,
-#                         date_obj.est_jour_paiement,
-#                         section=section_emp,
-#                     )
-#                     pts = [FP(p) for p in pointages_map[key]]
-#                     he, hs, type_a, _ = analyser_pointages_jour(
-#                         pts, h_e, h_s, seuil_minutes=30
-#                     )
-#                     if type_a is None and he and hs:
-#                         entree, sortie = he, hs
-
-#                 if entree and sortie:
-#                     minutes = self._calculer_minutes(entree, sortie)
-#                     par_semaine[semaine]['minutes'] += minutes
-#                     par_semaine[semaine]['jours']   += 1
-#                     total_minutes                  += minutes
-
-#             # Convertir minutes → heures arrondies
-#             for s in semaine_nums:
-#                 par_semaine[s]['heures'] = round(par_semaine[s]['minutes'] / 60, 2)
-
-#             results.append({
-#                 'userid':        user.userid,
-#                 'badgenumber':   user.badgenumber,
-#                 'name':          user.name,
-#                 'section':       section_emp,
-#                 'par_semaine':   par_semaine,
-#                 'total_minutes': total_minutes,
-#                 'total_heures':  round(total_minutes / 60, 2),
-#             })
-
-#         mois_fr        = ['Janvier','Février','Mars','Avril','Mai','Juin',
-#                           'Juillet','Août','Septembre','Octobre','Novembre','Décembre']
-#         mois_precedent = mois - 1 if mois > 1 else 12
-
-#         return Response({
-#             'periode': {
-#                 'mois':  mois_fr[mois - 1],
-#                 'annee': annee,
-#                 'du':    f"21 {mois_fr[mois_precedent - 1]}",
-#                 'au':    f"20 {mois_fr[mois - 1]}",
-#             },
-#             'semaines':   semaine_nums,
-#             'pagination': {
-#                 'page':            page,
-#                 'page_size':       page_size,
-#                 'total_employees': total_employees,
-#                 'total_pages':     total_pages,
-#                 'has_next':        page < total_pages,
-#                 'has_previous':    page > 1,
-#             },
-#             'employes': results,
-#         })
-
-#     @staticmethod
-#     def _empty_response(annee, mois, semaine_nums, page, page_size):
-#         mois_fr = ['Janvier','Février','Mars','Avril','Mai','Juin',
-#                    'Juillet','Août','Septembre','Octobre','Novembre','Décembre']
-#         return Response({
-#             'periode': {
-#                 'mois':  mois_fr[mois - 1],
-#                 'annee': annee,
-#                 'du':    '',
-#                 'au':    '',
-#             },
-#             'semaines': semaine_nums,
-#             'pagination': {
-#                 'page':            page,
-#                 'page_size':       page_size,
-#                 'total_employees': 0,
-#                 'total_pages':     0,
-#                 'has_next':        False,
-#                 'has_previous':    False,
-#             },
-#             'employes': [],
-#         })
-
-
-
-
-# class HeuresTravailAPIView(APIView):
-#     """
-#     Calcul des heures travaillées (HT) et supplémentaires (HS) selon les règles :
-#     - Pour les jours normaux (lundi→vendredi) selon le type d'événement (X, HA, OS, PS)
-#     - Pour le samedi : règle unique pour X, HA, OS, PS ; 0 pour les autres événements
-#     Les heures sont calculées à partir des pointages bruts ou des anomalies corrigées.
-#     """
-#     permission_classes = [AllowAny]
-
-#     @staticmethod
-#     def _calculer_ht_et_hs(entree, sortie, est_samedi, type_evenement):
-#         """
-#         Retourne (heures_travaillees, heures_supp) au format décimal.
-#         Formules Excel fournies :
-#         - Jour normal :
-#             * X : HS = SI(durée<8; durée-8; durée-0.5-8) ; HT = durée - (0.5 si durée>=8)
-#             * HA : HS = SI(durée<8; durée-7; durée-0.5-7) ; HT = durée - (0.5 si durée>=8)
-#             * OS ou PS : HS = durée - 8.5 ; HT = durée - (0.5 si durée>=8.5)
-#             * autre : HS = 0 ; HT = durée
-#         - Samedi (pour X, HA, OS, PS) :
-#             * HS = SI(durée<6; durée; durée-0.5)
-#             * HT = durée - (0.5 si durée>=6)
-#             * autre événement : HS = 0 ; HT = durée
-#         """
-#         if not entree or not sortie:
-#             return 0.0, 0.0
-
-#         # Durée en heures décimales
-#         ref = date.today()
-#         delta_minutes = (datetime.combine(ref, sortie) - datetime.combine(ref, entree)).total_seconds() / 60
-#         duree_heures = delta_minutes / 60.0
-#         if duree_heures <= 0:
-#             return 0.0, 0.0
-
-#         if est_samedi:
-#             # Règle samedi : s'applique à X, HA, OS, PS
-#             if type_evenement in ('X', 'HA', 'OS', 'PS'):
-#                 if duree_heures < 6:
-#                     hs = duree_heures
-#                 else:
-#                     hs = duree_heures - 0.5
-#                 pause = 0.5 if duree_heures >= 6 else 0
-#                 ht = duree_heures - pause
-#             else:
-#                 hs = 0.0
-#                 ht = duree_heures   # pas de pause pour les autres
-#             return max(0, ht), max(0, hs)
-
-#         # Jour normal (lundi à vendredi)
-#         if type_evenement == 'X':
-#             if duree_heures < 8:
-#                 hs = duree_heures - 8
-#                 pause = 0
-#             else:
-#                 hs = duree_heures - 0.5 - 8
-#                 pause = 0.5
-#             ht = duree_heures - pause
-#         elif type_evenement == 'HA':
-#             if duree_heures < 8:
-#                 hs = duree_heures - 7
-#                 pause = 0
-#             else:
-#                 hs = duree_heures - 0.5 - 7
-#                 pause = 0.5
-#             ht = duree_heures - pause
-#         elif type_evenement in ('OS', 'PS'):
-#             hs = duree_heures - 8.5
-#             pause = 0.5 if duree_heures >= 8.5 else 0
-#             ht = duree_heures - pause
-#         else:
-#             hs = 0.0
-#             ht = duree_heures
-
-#         return max(0, ht), max(0, hs)
-
-#     def get(self, request):
-#         try:
-#             annee     = int(request.query_params.get('annee', date.today().year))
-#             mois      = int(request.query_params.get('mois',  date.today().month))
-#             page      = max(1, int(request.query_params.get('page', 1)))
-#             page_size = min(200, max(1, int(request.query_params.get('page_size', 50))))
-#         except ValueError:
-#             return Response({"error": "Paramètres invalides"}, status=400)
-
-#         section_filter = request.query_params.get('section', '').strip().upper()
-#         q              = request.query_params.get('q', '').strip()
-
-#         from .utils import (
-#             build_user_section_map,
-#             analyser_pointages_jour,
-#             get_horaire_pour_date,
-#             get_active_userinfo_queryset,
-#         )
-
-#         # ── Dates de la période ──────────────────────────────────────────────
-#         dates_mois_qs = Date.get_dates_par_mois(annee, mois, inclure_hors_periode=False)
-#         if not dates_mois_qs.exists():
-#             return Response({"error": "Générez d'abord les dates pour ce mois."}, status=400)
-
-#         dates_mois  = list(dates_mois_qs)
-#         dates_liste = [d.date for d in dates_mois]
-
-#         # Regroupement par semaine
-#         semaines_dates: dict = {}
-#         for d in dates_mois:
-#             s = d.code_date[0] if d.code_date else '1'
-#             semaines_dates.setdefault(s, []).append(d)
-#         semaine_nums = sorted(semaines_dates.keys())
-
-#         # ── Employés actifs ──────────────────────────────────────────────────
-#         user_section_map = build_user_section_map()
-
-#         users_qs = get_active_userinfo_queryset().order_by('badgenumber')
-
-#         if section_filter:
-#             ids_sec  = {uid for uid, sec in user_section_map.items()
-#                         if sec.upper() == section_filter}
-#             users_qs = users_qs.filter(userid__in=ids_sec)
-
-#         if q:
-#             users_qs = users_qs.filter(
-#                 Q(name__icontains=q) | Q(badgenumber__icontains=q)
-#             )
-
-#         total_employees = users_qs.count()
-#         if total_employees == 0:
-#             return self._empty_response(annee, mois, semaine_nums, page, page_size)
-
-#         total_pages = (total_employees + page_size - 1) // page_size
-#         page        = min(page, total_pages)
-#         users_page  = list(users_qs[(page - 1) * page_size: page * page_size])
-#         user_ids    = {u.userid for u in users_page}
-
-#         # ── Pré-chargements ──────────────────────────────────────────────────
-#         # Anomalies corrigées (état 'ok')
-#         anomalies_map: dict = {}
-#         for a in Anomalie.objects.filter(
-#             date__in=dates_liste, etat='ok', userid__in=user_ids
-#         ):
-#             anomalies_map[(a.userid, a.date)] = a
-
-#         # Pointages bruts
-#         pointages_map: dict = {}
-#         for p in (
-#             CheckInOut.objects
-#             .filter(checktime__date__in=dates_liste, user_id__in=user_ids)
-#             .values('user_id', 'checktime', 'checktype')
-#         ):
-#             pointages_map.setdefault(
-#                 (p['user_id'], p['checktime'].date()), []
-#             ).append(p)
-
-#         # Événements (type d'absence)
-#         evenements_map: dict = {}
-#         for ev in Evenement.objects.filter(
-#             userid__in=user_ids,
-#             date__in=dates_liste
-#         ).values('userid', 'date', 'type_evenement'):
-#             evenements_map[(ev['userid'], ev['date'])] = ev['type_evenement']
-
-#         # Horaires des sections
-#         horaires_dict   = {h.section: h for h in HoraireSection.objects.all()}
-#         horaire_default = horaires_dict.get('ADMINISTRATION')
-
-#         # Classe légère pour analyser_pointages_jour
-#         class FP:
-#             __slots__ = ('checktime', 'checktype')
-#             def __init__(self, d):
-#                 self.checktime = d['checktime']
-#                 self.checktype = d['checktype']
-
-#         # ── Calcul par employé ───────────────────────────────────────────────
-#         results = []
-
-#         for user in users_page:
-#             section_emp = user_section_map.get(user.userid, 'ADMINISTRATION')
-#             horaire     = horaires_dict.get(section_emp, horaire_default)
-
-#             # Initialisation des accumulateurs par semaine
-#             par_semaine = {
-#                 s: {'ht': 0.0, 'hs': 0.0, 'jours': 0}
-#                 for s in semaine_nums
-#             }
-#             # Détails journaliers
-#             details_jours = []
-
-#             total_ht = 0.0
-#             total_hs = 0.0
-
-#             for date_obj in dates_mois:
-#                 date_jour = date_obj.date
-#                 semaine   = date_obj.code_date[0] if date_obj.code_date else '1'
-#                 key       = (user.userid, date_jour)
-
-#                 entree = sortie = None
-#                 type_evenement = evenements_map.get(key, 'X')
-
-#                 # 1. Anomalie corrigée en priorité
-#                 anomalie = anomalies_map.get(key)
-#                 if (anomalie
-#                         and anomalie.heure_rectifiee_entree
-#                         and anomalie.heure_rectifiee_sortie):
-#                     entree = anomalie.heure_rectifiee_entree
-#                     sortie = anomalie.heure_rectifiee_sortie
-
-#                 # 2. Sinon pointages bruts analysés
-#                 elif key in pointages_map and horaire:
-#                     h_e, h_s = get_horaire_pour_date(
-#                         horaire, date_jour,
-#                         date_obj.est_jour_paiement,
-#                         section=section_emp,
-#                     )
-#                     pts = [FP(p) for p in pointages_map[key]]
-#                     he, hs, type_a, _ = analyser_pointages_jour(
-#                         pts, h_e, h_s, seuil_minutes=30
-#                     )
-#                     if type_a is None and he and hs:
-#                         entree, sortie = he, hs
-
-#                 if entree and sortie:
-#                     est_samedi = (date_jour.weekday() == 5)
-#                     ht, hs = self._calculer_ht_et_hs(
-#                         entree, sortie, est_samedi, type_evenement
-#                     )
-#                     par_semaine[semaine]['ht'] += ht
-#                     par_semaine[semaine]['hs'] += hs
-#                     par_semaine[semaine]['jours'] += 1
-#                     total_ht += ht
-#                     total_hs += hs
-
-#                     details_jours.append({
-#                         'date': date_jour.isoformat(),
-#                         'code_date': date_obj.code_affichage,
-#                         'ht': round(ht, 2),
-#                         'hs': round(hs, 2),
-#                         'type_evenement': type_evenement,
-#                     })
-#                 else:
-#                     details_jours.append({
-#                         'date': date_jour.isoformat(),
-#                         'code_date': date_obj.code_affichage,
-#                         'ht': 0,
-#                         'hs': 0,
-#                         'type_evenement': type_evenement,
-#                     })
-
-#             # Arrondir à 2 décimales
-#             for s in semaine_nums:
-#                 par_semaine[s]['ht'] = round(par_semaine[s]['ht'], 2)
-#                 par_semaine[s]['hs'] = round(par_semaine[s]['hs'], 2)
-
-#             results.append({
-#                 'userid':        user.userid,
-#                 'badgenumber':   user.badgenumber,
-#                 'name':          user.name,
-#                 'section':       section_emp,
-#                 'par_semaine':   par_semaine,
-#                 'details_jours': details_jours,
-#                 'total_ht':      round(total_ht, 2),
-#                 'total_hs':      round(total_hs, 2),
-#                 'total_jours':   sum(par_semaine[s]['jours'] for s in semaine_nums),
-#             })
-
-#         mois_fr        = ['Janvier','Février','Mars','Avril','Mai','Juin',
-#                           'Juillet','Août','Septembre','Octobre','Novembre','Décembre']
-#         mois_precedent = mois - 1 if mois > 1 else 12
-
-#         return Response({
-#             'periode': {
-#                 'mois':  mois_fr[mois - 1],
-#                 'annee': annee,
-#                 'du':    f"21 {mois_fr[mois_precedent - 1]}",
-#                 'au':    f"20 {mois_fr[mois - 1]}",
-#             },
-#             'semaines':   semaine_nums,
-#             'pagination': {
-#                 'page':            page,
-#                 'page_size':       page_size,
-#                 'total_employees': total_employees,
-#                 'total_pages':     total_pages,
-#                 'has_next':        page < total_pages,
-#                 'has_previous':    page > 1,
-#             },
-#             'employes': results,
-#         })
-
-#     @staticmethod
-#     def _empty_response(annee, mois, semaine_nums, page, page_size):
-#         mois_fr = ['Janvier','Février','Mars','Avril','Mai','Juin',
-#                    'Juillet','Août','Septembre','Octobre','Novembre','Décembre']
-#         return Response({
-#             'periode': {
-#                 'mois':  mois_fr[mois - 1],
-#                 'annee': annee,
-#                 'du':    '',
-#                 'au':    '',
-#             },
-#             'semaines': semaine_nums,
-#             'pagination': {
-#                 'page':            page,
-#                 'page_size':       page_size,
-#                 'total_employees': 0,
-#                 'total_pages':     0,
-#                 'has_next':        False,
-#                 'has_previous':    False,
-#             },
-#             'employes': [],
-#         })
-
-
-
-
-
-# class HeuresTravailAPIView(APIView):
-#     """
-#     Calcul des heures travaillées (HT) et supplémentaires (HS) selon les règles :
-#     - Pour les jours normaux (lundi→vendredi) selon le type d'événement (X, HA, OS, PS)
-#     - Pour le samedi : règle unique pour X, HA, OS, PS ; 0 pour les autres événements
-#     Les heures sont calculées à partir des pointages bruts ou des anomalies corrigées.
-#     """
-#     permission_classes = [AllowAny]
-
-#     @staticmethod
-#     def _calculer_ht_et_hs(entree, sortie, est_samedi, type_evenement):
-#         """
-#         Retourne (heures_travaillees, heures_supp) au format décimal.
-#         Formules Excel fournies :
-#         - Jour normal :
-#             * X : HS = SI(durée<8; durée-8; durée-0.5-8) ; HT = durée - (0.5 si durée>=8)
-#             * HA : HS = SI(durée<8; durée-7; durée-0.5-7) ; HT = durée - (0.5 si durée>=8)
-#             * OS ou PS : HS = durée - 8.5 ; HT = durée - (0.5 si durée>=8.5)
-#             * autre : HS = 0 ; HT = durée
-#         - Samedi (pour X, HA, OS, PS) :
-#             * HS = SI(durée<6; durée; durée-0.5)
-#             * HT = durée - (0.5 si durée>=6)
-#             * autre événement : HS = 0 ; HT = durée
-#         """
-#         if not entree or not sortie:
-#             return 0.0, 0.0
-
-#         # Durée en heures décimales
-#         ref = date.today()
-#         delta_minutes = (datetime.combine(ref, sortie) - datetime.combine(ref, entree)).total_seconds() / 60
-#         duree_heures = delta_minutes / 60.0
-#         if duree_heures <= 0:
-#             return 0.0, 0.0
-
-#         if est_samedi:
-#             # Règle samedi : s'applique à X, HA, OS, PS
-#             if type_evenement in ('X', 'HA', 'OS', 'PS'):
-#                 if duree_heures < 6:
-#                     hs = duree_heures
-#                 else:
-#                     hs = duree_heures - 0.5
-#                 pause = 0.5 if duree_heures >= 6 else 0
-#                 ht = duree_heures - pause
-#             else:
-#                 hs = 0.0
-#                 ht = duree_heures   # pas de pause pour les autres
-#             return max(0, ht), max(0, hs)
-
-#         # Jour normal (lundi à vendredi)
-#         if type_evenement == 'X':
-#             if duree_heures < 8:
-#                 hs = duree_heures - 8
-#                 pause = 0
-#             else:
-#                 hs = duree_heures - 0.5 - 8
-#                 pause = 0.5
-#             ht = duree_heures - pause
-#         elif type_evenement == 'HA':
-#             if duree_heures < 8:
-#                 hs = duree_heures - 7
-#                 pause = 0
-#             else:
-#                 hs = duree_heures - 0.5 - 7
-#                 pause = 0.5
-#             ht = duree_heures - pause
-#         elif type_evenement in ('OS', 'PS'):
-#             hs = duree_heures - 8.5
-#             pause = 0.5 if duree_heures >= 8.5 else 0
-#             ht = duree_heures - pause
-#         else:
-#             hs = 0.0
-#             ht = duree_heures
-
-#         return max(0, ht), max(0, hs)
-
-#     def get(self, request):
-#         try:
-#             annee     = int(request.query_params.get('annee', date.today().year))
-#             mois      = int(request.query_params.get('mois',  date.today().month))
-#             page      = max(1, int(request.query_params.get('page', 1)))
-#             page_size = min(200, max(1, int(request.query_params.get('page_size', 50))))
-#         except ValueError:
-#             return Response({"error": "Paramètres invalides"}, status=400)
-
-#         section_filter = request.query_params.get('section', '').strip().upper()
-#         q              = request.query_params.get('q', '').strip()
-
-#         from .utils import (
-#             build_user_section_map,
-#             analyser_pointages_jour,
-#             get_horaire_pour_date,
-#             get_active_userinfo_queryset,
-#         )
-
-#         # ── Dates de la période ──────────────────────────────────────────────
-#         dates_mois_qs = Date.get_dates_par_mois(annee, mois, inclure_hors_periode=False)
-#         if not dates_mois_qs.exists():
-#             return Response({"error": "Générez d'abord les dates pour ce mois."}, status=400)
-
-#         dates_mois  = list(dates_mois_qs)
-#         dates_liste = [d.date for d in dates_mois]
-
-#         # Regroupement par semaine
-#         semaines_dates: dict = {}
-#         for d in dates_mois:
-#             s = d.code_date[0] if d.code_date else '1'
-#             semaines_dates.setdefault(s, []).append(d)
-#         semaine_nums = sorted(semaines_dates.keys())
-
-#         # ── Employés actifs ──────────────────────────────────────────────────
-#         user_section_map = build_user_section_map()
-
-#         users_qs = get_active_userinfo_queryset().order_by('badgenumber')
-
-#         if section_filter:
-#             ids_sec  = {uid for uid, sec in user_section_map.items()
-#                         if sec.upper() == section_filter}
-#             users_qs = users_qs.filter(userid__in=ids_sec)
-
-#         if q:
-#             users_qs = users_qs.filter(
-#                 Q(name__icontains=q) | Q(badgenumber__icontains=q)
-#             )
-
-#         total_employees = users_qs.count()
-#         if total_employees == 0:
-#             return self._empty_response(annee, mois, semaine_nums, page, page_size)
-
-#         total_pages = (total_employees + page_size - 1) // page_size
-#         page        = min(page, total_pages)
-#         users_page  = list(users_qs[(page - 1) * page_size: page * page_size])
-#         user_ids    = {u.userid for u in users_page}
-
-#         # ── Pré-chargements ──────────────────────────────────────────────────
-#         # Anomalies corrigées (état 'ok')
-#         anomalies_map: dict = {}
-#         for a in Anomalie.objects.filter(
-#             date__in=dates_liste, etat='ok', userid__in=user_ids
-#         ):
-#             anomalies_map[(a.userid, a.date)] = a
-
-#         # Pointages bruts
-#         pointages_map: dict = {}
-#         for p in (
-#             CheckInOut.objects
-#             .filter(checktime__date__in=dates_liste, user_id__in=user_ids)
-#             .values('user_id', 'checktime', 'checktype')
-#         ):
-#             pointages_map.setdefault(
-#                 (p['user_id'], p['checktime'].date()), []
-#             ).append(p)
-
-#         # Événements (type d'absence)
-#         evenements_map: dict = {}
-#         for ev in Evenement.objects.filter(
-#             userid__in=user_ids,
-#             date__in=dates_liste
-#         ).values('userid', 'date', 'type_evenement'):
-#             evenements_map[(ev['userid'], ev['date'])] = ev['type_evenement']
-
-#         # Horaires des sections
-#         horaires_dict   = {h.section: h for h in HoraireSection.objects.all()}
-#         horaire_default = horaires_dict.get('ADMINISTRATION')
-
-#         # Classe légère pour analyser_pointages_jour
-#         class FP:
-#             __slots__ = ('checktime', 'checktype')
-#             def __init__(self, d):
-#                 self.checktime = d['checktime']
-#                 self.checktype = d['checktype']
-
-#         # ── Calcul par employé ───────────────────────────────────────────────
-#         results = []
-
-#         for user in users_page:
-#             section_emp = user_section_map.get(user.userid, 'ADMINISTRATION')
-#             horaire     = horaires_dict.get(section_emp, horaire_default)
-
-#             # Initialisation des accumulateurs par semaine
-#             par_semaine = {
-#                 s: {'ht': 0.0, 'hs': 0.0, 'jours': 0}
-#                 for s in semaine_nums
-#             }
-#             # Détails journaliers
-#             details_jours = []
-
-#             total_ht = 0.0
-#             total_hs = 0.0
-
-#             for date_obj in dates_mois:
-#                 date_jour = date_obj.date
-#                 semaine   = date_obj.code_date[0] if date_obj.code_date else '1'
-#                 key       = (user.userid, date_jour)
-
-#                 entree = sortie = None
-#                 type_evenement = evenements_map.get(key, 'X')
-
-#                 # 1. Anomalie corrigée en priorité (heures rectifiées)
-#                 anomalie = anomalies_map.get(key)
-#                 if (anomalie
-#                         and anomalie.heure_rectifiee_entree
-#                         and anomalie.heure_rectifiee_sortie):
-#                     entree = anomalie.heure_rectifiee_entree
-#                     sortie = anomalie.heure_rectifiee_sortie
-
-#                 # 2. Sinon pointages bruts analysés
-#                 elif key in pointages_map and horaire:
-#                     h_e, h_s = get_horaire_pour_date(
-#                         horaire, date_jour,
-#                         date_obj.est_jour_paiement,
-#                         section=section_emp,
-#                     )
-#                     pts = [FP(p) for p in pointages_map[key]]
-#                     he, hs, type_a, _ = analyser_pointages_jour(
-#                         pts, h_e, h_s, seuil_minutes=30
-#                     )
-#                     # 🔧 CORRECTION : on prend les heures dès qu'elles existent
-#                     # (même en cas de multiples_pointages, pas_entree, pas_sortie)
-#                     if he and hs:
-#                         entree, sortie = he, hs
-
-#                 if entree and sortie:
-#                     est_samedi = (date_jour.weekday() == 5)
-#                     ht, hs = self._calculer_ht_et_hs(
-#                         entree, sortie, est_samedi, type_evenement
-#                     )
-#                     par_semaine[semaine]['ht'] += ht
-#                     par_semaine[semaine]['hs'] += hs
-#                     par_semaine[semaine]['jours'] += 1
-#                     total_ht += ht
-#                     total_hs += hs
-
-#                     details_jours.append({
-#                         'date': date_jour.isoformat(),
-#                         'code_date': date_obj.code_affichage,
-#                         'ht': round(ht, 2),
-#                         'hs': round(hs, 2),
-#                         'type_evenement': type_evenement,
-#                     })
-#                 else:
-#                     details_jours.append({
-#                         'date': date_jour.isoformat(),
-#                         'code_date': date_obj.code_affichage,
-#                         'ht': 0,
-#                         'hs': 0,
-#                         'type_evenement': type_evenement,
-#                     })
-
-#             # Arrondir à 2 décimales
-#             for s in semaine_nums:
-#                 par_semaine[s]['ht'] = round(par_semaine[s]['ht'], 2)
-#                 par_semaine[s]['hs'] = round(par_semaine[s]['hs'], 2)
-
-#             results.append({
-#                 'userid':        user.userid,
-#                 'badgenumber':   user.badgenumber,
-#                 'name':          user.name,
-#                 'section':       section_emp,
-#                 'par_semaine':   par_semaine,
-#                 'details_jours': details_jours,
-#                 'total_ht':      round(total_ht, 2),
-#                 'total_hs':      round(total_hs, 2),
-#                 'total_jours':   sum(par_semaine[s]['jours'] for s in semaine_nums),
-#             })
-
-#         mois_fr        = ['Janvier','Février','Mars','Avril','Mai','Juin',
-#                           'Juillet','Août','Septembre','Octobre','Novembre','Décembre']
-#         mois_precedent = mois - 1 if mois > 1 else 12
-
-#         return Response({
-#             'periode': {
-#                 'mois':  mois_fr[mois - 1],
-#                 'annee': annee,
-#                 'du':    f"21 {mois_fr[mois_precedent - 1]}",
-#                 'au':    f"20 {mois_fr[mois - 1]}",
-#             },
-#             'semaines':   semaine_nums,
-#             'pagination': {
-#                 'page':            page,
-#                 'page_size':       page_size,
-#                 'total_employees': total_employees,
-#                 'total_pages':     total_pages,
-#                 'has_next':        page < total_pages,
-#                 'has_previous':    page > 1,
-#             },
-#             'employes': results,
-#         })
-
-#     @staticmethod
-#     def _empty_response(annee, mois, semaine_nums, page, page_size):
-#         mois_fr = ['Janvier','Février','Mars','Avril','Mai','Juin',
-#                    'Juillet','Août','Septembre','Octobre','Novembre','Décembre']
-#         return Response({
-#             'periode': {
-#                 'mois':  mois_fr[mois - 1],
-#                 'annee': annee,
-#                 'du':    '',
-#                 'au':    '',
-#             },
-#             'semaines': semaine_nums,
-#             'pagination': {
-#                 'page':            page,
-#                 'page_size':       page_size,
-#                 'total_employees': 0,
-#                 'total_pages':     0,
-#                 'has_next':        False,
-#                 'has_previous':    False,
-#             },
-#             'employes': [],y
-#         })
-
-
-
-
 
 
 class HeuresTravailAPIView(APIView):
@@ -3750,13 +2723,14 @@ class HeuresTravailAPIView(APIView):
     @staticmethod
     def _empty_response(annee, mois, semaine_nums, page, page_size):
         mois_fr = ['Janvier','Février','Mars','Avril','Mai','Juin',
-                   'Juillet','Août','Septembre','Octobre','Novembre','Décembre']
+                'Juillet','Août','Septembre','Octobre','Novembre','Décembre']
+        mois_precedent = mois - 1 if mois > 1 else 12  # ← ajouter cette ligne
         return Response({
             'periode': {
                 'mois':  mois_fr[mois - 1],
                 'annee': annee,
-                'du':    '',
-                'au':    '',
+                'du':    f"21 {mois_fr[mois_precedent - 1]}",  # ← était ''
+                'au':    f"20 {mois_fr[mois - 1]}",             # ← était ''
             },
             'semaines': semaine_nums,
             'pagination': {
@@ -3769,11 +2743,6 @@ class HeuresTravailAPIView(APIView):
             },
             'employes': [],
         })
-
-
-
-
-
 
 
 class IndemniteRepasAPIView(APIView):
