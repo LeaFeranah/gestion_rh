@@ -1529,56 +1529,171 @@ class HoraireExceptionDetailAPIView(APIView):
 
 class SupprimerPresencesJourAPIView(APIView):
     """
-    Supprime TOUS les pointages d'une journée donnée
-    et nettoie les anomalies associées.
+    Supprime les présences d'une journée donnée (par section ou toutes sections).
+    - Heures brutes (CheckInOut) : conservées
+    - Heures rectifiées : vidées (None)
+    - Événements : réinitialisés à 'X'
     DELETE /api/presence/supprimer-jour/
-    Body: { "date": "2025-04-13", "motif": "Jour férié" }
+    Body: { "date": "2025-04-13", "motif": "Jour férié", "section": "ADMINISTRATION" }
     """
     permission_classes = [AllowAny]
 
     def delete(self, request):
         date_str = request.data.get('date')
         motif    = request.data.get('motif', '')
+        section  = request.data.get('section', None)
 
         if not date_str:
-            return Response(
-                {"error": "Le paramètre 'date' est obligatoire"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({"error": "Le paramètre 'date' est obligatoire"}, status=400)
         try:
             date_jour = datetime.strptime(date_str, "%Y-%m-%d").date()
         except ValueError:
-            return Response(
-                {"error": "Format YYYY-MM-DD attendu"},
-                status=status.HTTP_400_BAD_REQUEST
+            return Response({"error": "Format YYYY-MM-DD attendu"}, status=400)
+
+        # ── Tous les pointages du jour ───────────────────────────────────────
+        pointages_jour = (
+            CheckInOut.objects
+            .filter(checktime__date=date_jour)
+            .values('user_id', 'checktime', 'checktype')
+            .order_by('user_id', 'checktime')
+        )
+
+        pointages_par_user = {}
+        for p in pointages_jour:
+            pointages_par_user.setdefault(p['user_id'], []).append(p)
+
+        if not pointages_par_user:
+            return Response({
+                "success": True,
+                "date": date_str,
+                "message": "Aucun pointage trouvé pour cette date."
+            })
+
+        # ── Map section ──────────────────────────────────────────────────────
+        from .utils import build_user_section_map
+        from .models import UserSection, Section as SectionModel
+
+        user_section_map = build_user_section_map()
+
+        # ── Filtrer par section si précisée ──────────────────────────────────
+        if section:
+            sec_obj = SectionModel.objects.filter(nom_section=section).first()
+            userids_usersection = set()
+            if sec_obj:
+                userids_usersection = set(
+                    UserSection.objects.filter(section=sec_obj)
+                    .values_list('userid', flat=True)
+                )
+
+            userids_cibles = {
+                uid for uid in pointages_par_user
+                if user_section_map.get(uid) == section or uid in userids_usersection
+            }
+        else:
+            userids_cibles = set(pointages_par_user.keys())
+
+        if not userids_cibles:
+            return Response({
+                "success": True,
+                "date": date_str,
+                "section": section or "",
+                "message": f"Aucun employé trouvé pour la section '{section}'."
+            })
+
+        # ── Infos date ───────────────────────────────────────────────────────
+        try:
+            date_obj     = Date.objects.get(date=date_jour)
+            code_date    = date_obj.code_date
+            est_paiement = date_obj.est_jour_paiement
+        except Date.DoesNotExist:
+            code_date    = ''
+            est_paiement = False
+
+        horaires_dict   = {h.section: h for h in HoraireSection.objects.all()}
+        horaire_default = horaires_dict.get('ADMINISTRATION')
+
+        from .utils import get_horaire_pour_date
+        from datetime import datetime as dt
+
+        # ── Boucle : créer anomalie avec heures brutes / rectifiées vides ────
+        count = 0
+        for userid in userids_cibles:
+            pts = pointages_par_user.get(userid, [])
+            if not pts:
+                continue
+
+            entrees = [p for p in pts if p['checktype'].upper() == 'O']
+            sorties = [p for p in pts if p['checktype'].upper() == 'I']
+
+            heure_brute_entree = (
+                entrees[0]['checktime'].time() if entrees
+                else pts[0]['checktime'].time()
+            )
+            heure_brute_sortie = (
+                sorties[-1]['checktime'].time() if sorties
+                else (pts[-1]['checktime'].time() if len(pts) > 1 else None)
             )
 
-        # 1. Compter avant suppression (pour le rapport)
-        nb_pointages = CheckInOut.objects.filter(
-            checktime__date=date_jour
-        ).count()
-        nb_anomalies = Anomalie.objects.filter(date=date_jour).count()
+            sec     = user_section_map.get(userid, section or 'ADMINISTRATION')
+            horaire = horaires_dict.get(sec, horaire_default)
 
-        # 2. Supprimer les pointages
-        CheckInOut.objects.filter(checktime__date=date_jour).delete()
+            heure_reelle_entree = heure_reelle_sortie = None
+            if horaire:
+                heure_reelle_entree, heure_reelle_sortie = get_horaire_pour_date(
+                    horaire, date_jour, est_paiement, section=sec
+                )
 
-        # 3. Supprimer les anomalies du jour
-        Anomalie.objects.filter(date=date_jour).delete()
+            # Créer/mettre à jour l'anomalie
+            Anomalie.objects.update_or_create(
+                userid=userid,
+                date=date_jour,
+                defaults={
+                    'section':                sec,
+                    'code_date':              code_date,
+                    'heure_brute_entree':     heure_brute_entree,
+                    'heure_brute_sortie':     heure_brute_sortie,
+                    'heure_reelle_entree':    heure_reelle_entree,
+                    'heure_reelle_sortie':    heure_reelle_sortie,
+                    'heure_rectifiee_entree': None,
+                    'heure_rectifiee_sortie': None,
+                    'commentaire':            motif or 'Supprimé',
+                }
+            )
+
+            # Forcer etat='ok' + rectifiées=None via update() direct (bypass save())
+            Anomalie.objects.filter(userid=userid, date=date_jour).update(
+                heure_rectifiee_entree=None,
+                heure_rectifiee_sortie=None,
+                etat='ok',
+                synchronise_le=dt.now(),
+            )
+            count += 1
+
+        # ── Réinitialiser les événements à 'X' ──────────────────────────────
+        Evenement.objects.filter(
+            userid__in=userids_cibles,
+            date=date_jour
+        ).update(
+            type_evenement='X',
+            commentaire=''
+        )
+
+        section_label = section if section else "toutes les sections"
 
         logger.info(
-            f"Suppression journée {date_jour} – "
-            f"{nb_pointages} pointages, {nb_anomalies} anomalies. Motif: {motif}"
+            f"Suppression présences {date_jour} [{section_label}] – "
+            f"{count} employés. Motif: {motif}"
         )
 
         return Response({
             "success": True,
             "date": date_str,
+            "section": section or "",
             "motif": motif,
-            "nb_pointages_supprimes": nb_pointages,
-            "nb_anomalies_supprimees": nb_anomalies,
+            "nb_presences_supprimees": count,
             "message": (
-                f"{nb_pointages} pointage(s) et {nb_anomalies} anomalie(s) "
-                f"supprimés pour le {date_str}"
+                f"{count} présence(s) et événement(s) supprimés pour le {date_str} "
+                f"[{section_label}]. Heures brutes conservées."
             )
         })
 
