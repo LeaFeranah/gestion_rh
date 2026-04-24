@@ -232,3 +232,23 @@ class HistoriqueSalaireSerializer(serializers.ModelSerializer):
         read_only_fields = ['modifie_par']
 
 
+
+class InformationPersonnelleLightSerializer(serializers.ModelSerializer):
+    """Serializer léger pour la liste — pas de relations imbriquées lourdes"""
+    fonction = serializers.CharField(
+        source='information_professionnelle.fonction', read_only=True, default=None
+    )
+    section = serializers.CharField(
+        source='information_professionnelle.section', read_only=True, default=None
+    )
+    responsable_section = serializers.CharField(
+        source='information_professionnelle.responsable_section', read_only=True, default=None
+    )
+
+    class Meta:
+        model = InformationPersonnelle
+        fields = [
+            'id', 'numero_matricule', 'nom_complet', 'sexe',
+            'appellation', 'photo', 'depart',
+            'fonction', 'section', 'responsable_section',
+        ]

@@ -208,51 +208,126 @@ class EvolutionPosteViewSet(viewsets.ModelViewSet):
             )
 
 
+# class InformationPersonnelleViewSet(viewsets.ModelViewSet):
+#     queryset = InformationPersonnelle.objects.all()
+#     authentication_classes = [SessionAuthentication, TokenAuthentication]
+#     permission_classes = [IsAuthenticated]
+    
+#     def get_queryset(self):
+#         """Chaque RH ne voit que les employés qu'elle a créés"""
+#         return InformationPersonnelle.objects.filter(created_by=self.request.user)
+    
+#     def get_serializer_class(self):
+#         """Choisir serializer selon l'action"""
+#         if self.action in ['update', 'partial_update']:
+#             return InformationPersonnellePUTSerializer
+#         return InformationPersonnelleSerializer
+    
+#     def perform_create(self, serializer):
+#         """Automatiquement assigner l'utilisateur connecté comme créateur"""
+#         serializer.save(created_by=self.request.user)
+    
+#     @action(detail=True, methods=['post'], url_path='creer-professionnelle')
+#     def creer_information_professionnelle(self, request, pk=None):
+#         """Créer l'information professionnelle pour un employé"""
+#         employe = self.get_object()
+        
+#         # Vérifier que l'employé appartient au RH connecté
+#         if employe.created_by != request.user:
+#             return Response(
+#                 {'error': "Vous n'êtes pas autorisé à créer l'information professionnelle pour cet employé."},
+#                 status=status.HTTP_403_FORBIDDEN
+#             )
+        
+#         # Vérifier si une information professionnelle existe déjà
+#         if hasattr(employe, 'information_professionnelle'):
+#             return Response(
+#                 {'error': "Une information professionnelle existe déjà pour cet employé."},
+#                 status=status.HTTP_400_BAD_REQUEST
+#             )
+        
+#         # Ajouter l'employe aux données
+#         data = request.data.copy()
+#         data['employe'] = employe.id
+        
+#         # Créer l'information professionnelle
+#         serializer = InformationProfessionnelleCreateSerializer(
+#             data=data, 
+#             context={'request': request}
+#         )
+        
+#         if serializer.is_valid():
+#             info_pro = serializer.save()
+#             return Response(
+#                 InformationProfessionnelleSerializer(info_pro).data,
+#                 status=status.HTTP_201_CREATED
+#             )
+        
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
 class InformationPersonnelleViewSet(viewsets.ModelViewSet):
-    queryset = InformationPersonnelle.objects.all()
+    queryset = InformationPersonnelle.objects.none()  # pour DRF basename
     authentication_classes = [SessionAuthentication, TokenAuthentication]
     permission_classes = [IsAuthenticated]
-    
+
     def get_queryset(self):
-        """Chaque RH ne voit que les employés qu'elle a créés"""
-        return InformationPersonnelle.objects.filter(created_by=self.request.user)
-    
+        if self.action == 'list':
+            return InformationPersonnelle.objects.filter(
+                created_by=self.request.user
+            ).select_related('information_professionnelle').only(
+                'id', 'numero_matricule', 'nom_complet', 'sexe',
+                'appellation', 'photo', 'depart',
+                # Champs du related nécessaires au serializer léger
+                'information_professionnelle__fonction',
+                'information_professionnelle__section',
+                'information_professionnelle__responsable_section',
+            )
+        
+        return InformationPersonnelle.objects.filter(
+            created_by=self.request.user
+        ).select_related(
+            'information_professionnelle',
+            'bancaire',
+            'sociale',
+            'salaire_personnel',
+            'familiale',
+        ).prefetch_related(
+            'evolutions_poste',
+            'familiale__enfants',
+        )
+
     def get_serializer_class(self):
-        """Choisir serializer selon l'action"""
-        if self.action in ['update', 'partial_update']:
+        if self.action == 'list':
+            return InformationPersonnelleLightSerializer
+        elif self.action in ['update', 'partial_update']:
             return InformationPersonnellePUTSerializer
         return InformationPersonnelleSerializer
-    
+
     def perform_create(self, serializer):
-        """Automatiquement assigner l'utilisateur connecté comme créateur"""
         serializer.save(created_by=self.request.user)
-    
+
     @action(detail=True, methods=['post'], url_path='creer-professionnelle')
     def creer_information_professionnelle(self, request, pk=None):
-        """Créer l'information professionnelle pour un employé"""
         employe = self.get_object()
         
-        # Vérifier que l'employé appartient au RH connecté
         if employe.created_by != request.user:
             return Response(
                 {'error': "Vous n'êtes pas autorisé à créer l'information professionnelle pour cet employé."},
                 status=status.HTTP_403_FORBIDDEN
             )
         
-        # Vérifier si une information professionnelle existe déjà
         if hasattr(employe, 'information_professionnelle'):
             return Response(
                 {'error': "Une information professionnelle existe déjà pour cet employé."},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # Ajouter l'employe aux données
         data = request.data.copy()
         data['employe'] = employe.id
         
-        # Créer l'information professionnelle
         serializer = InformationProfessionnelleCreateSerializer(
-            data=data, 
+            data=data,
             context={'request': request}
         )
         
@@ -264,6 +339,9 @@ class InformationPersonnelleViewSet(viewsets.ModelViewSet):
             )
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+
 
 
 class DossierPersonnelViewSet(viewsets.ModelViewSet):
@@ -481,10 +559,6 @@ def login_api(request):
             {'error': 'Identifiants incorrects'}, 
             status=status.HTTP_401_UNAUTHORIZED
         )
-
-
-
-
 
 
 @api_view(['PUT', 'PATCH'])
