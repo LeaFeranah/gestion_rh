@@ -503,17 +503,20 @@ class Evenement(models.Model):
     """
     TYPES_EVENEMENT = [
         ('X', 'Travail normal'),
-        ('RM', 'Repos Médical'),
-        ('HP', 'Hospitalisation'),
-        ('RC', 'Repos de convalescence'),
+        ('A', 'Absent'),
         ('ANO', 'Absence Non Autorisée'),
+        ('AMP', ''),
+        ('CM', 'Congé de matérnité'),
         ('CP', 'Congé Payé'),
         ('EF', 'Événement familial'),
         ('F', 'Fonction (délégués)'),
+        ('HA', 'Allaitement'),
+        ('HP', 'Hospitalisation'),
+        ('MP','Mise à pied'),
+        ('OS', 'Ostie'),
         ('PS', 'Permission Spéciale'),
-        ('A', 'Absent'),
-        ('HA', 'Allaitement'), 
-        ('OS', 'Ostie'), 
+        ('RC', 'Repos de convalescence'),
+        ('RM', 'Repos Médical'),
         ('AUT', 'Autre'),
     ]
     

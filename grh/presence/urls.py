@@ -66,4 +66,7 @@ urlpatterns = [
 
     path('heures-travail/', HeuresTravailAPIView.as_view(), name='heures-travail'),
     path('indemnite-repas/', IndemniteRepasAPIView.as_view(), name='indemnite-repas'),
+
+
+    path('absences-mois/', AbsencesMoisAPIView.as_view(), name='absences-mois')
 ]

@@ -633,3 +633,19 @@ def get_horaire_pour_date(horaire_section, date_jour, est_jour_paiement,
         sortie = decimal_to_time(horaire_section.heure_sortie)
 
     return entree, sortie
+
+
+
+
+def get_appellation_map():
+    """
+    Retourne {badgenumber: appellation} depuis InformationPersonnelle.
+    Fallback sur nom_complet si appellation est vide.
+    """
+    from personnel.models import InformationPersonnelle
+    return {
+        emp.numero_matricule: emp.appellation or emp.nom_complet
+        for emp in InformationPersonnelle.objects.only(
+            'numero_matricule', 'appellation', 'nom_complet'
+        )
+    }
