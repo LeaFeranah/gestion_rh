@@ -2228,34 +2228,104 @@ class ModifierHeuresManuellementAPIView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-class SupprimerHeuresManuellementAPIView(APIView):
-    """
-    API pour supprimer les heures modifiées manuellement
-    DELETE /api/presence/supprimer-heures/
-    """
-    permission_classes = [AllowAny]
+# class SupprimerHeuresManuellementAPIView(APIView):
+#     """
+#     API pour supprimer les heures modifiées manuellement
+#     DELETE /api/presence/supprimer-heures/
+#     """
+#     permission_classes = [AllowAny]
     
-    def delete(self, request):
-        """
-        Supprime les modifications manuelles et rétablit les pointages bruts
+#     def delete(self, request):
+#         """
+#         Supprime les modifications manuelles et rétablit les pointages bruts
         
-        Body:
-        {
-            "userid": 123,
-            "date": "2024-08-15"
-        }
-        """
-        try:
-            userid = request.data.get('userid')
-            date_str = request.data.get('date')
+#         Body:
+#         {
+#             "userid": 123,
+#             "date": "2024-08-15"
+#         }
+#         """
+#         try:
+#             userid = request.data.get('userid')
+#             date_str = request.data.get('date')
             
+#             if not userid or not date_str:
+#                 return Response(
+#                     {"error": "Les paramètres 'userid' et 'date' sont obligatoires"},
+#                     status=status.HTTP_400_BAD_REQUEST
+#                 )
+            
+#             # Convertir la date
+#             try:
+#                 date_jour = datetime.strptime(date_str, "%Y-%m-%d").date()
+#             except ValueError:
+#                 return Response(
+#                     {"error": "Format de date invalide. Utilisez YYYY-MM-DD"},
+#                     status=status.HTTP_400_BAD_REQUEST
+#                 )
+            
+#             # Supprimer l'anomalie
+#             try:
+#                 anomalie = Anomalie.objects.get(userid=userid, date=date_jour)
+                
+#                 # Si c'était une anomalie corrigée, supprimer les pointages synchronisés
+#                 if anomalie.etat == 'ok':
+#                     user = UserInfo.objects.get(userid=userid)
+                    
+#                     # Supprimer tous les pointages du jour
+#                     CheckInOut.objects.filter(
+#                         user=user,
+#                         checktime__date=date_jour
+#                     ).delete()
+                    
+#                     # Recréer les pointages bruts s'ils existaient
+#                     if anomalie.heure_brute_entree:
+#                         CheckInOut.objects.create(
+#                             user=user,
+#                             checktime=datetime.combine(date_jour, anomalie.heure_brute_entree),
+#                             checktype='O'
+#                         )
+                    
+#                     if anomalie.heure_brute_sortie:
+#                         CheckInOut.objects.create(
+#                             user=user,
+#                             checktime=datetime.combine(date_jour, anomalie.heure_brute_sortie),
+#                             checktype='I'
+#                         )
+                
+#                 anomalie.delete()
+                
+#                 return Response({
+#                     "success": True,
+#                     "message": "Modifications supprimées et pointages rétablis"
+#                 })
+                
+#             except Anomalie.DoesNotExist:
+#                 return Response(
+#                     {"error": "Aucune modification manuelle trouvée pour cette date"},
+#                     status=status.HTTP_404_NOT_FOUND
+#                 )
+            
+#         except Exception as e:
+#             logger.error(f"Erreur lors de la suppression des heures: {e}")
+#             return Response(
+#                 {"error": f"Erreur: {str(e)}"},
+#                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
+#             )
+
+class SupprimerHeuresManuellementAPIView(APIView):
+    permission_classes = [AllowAny]
+
+    def delete(self, request):
+        try:
+            userid   = request.data.get('userid')
+            date_str = request.data.get('date')
+
             if not userid or not date_str:
                 return Response(
                     {"error": "Les paramètres 'userid' et 'date' sont obligatoires"},
                     status=status.HTTP_400_BAD_REQUEST
                 )
-            
-            # Convertir la date
             try:
                 date_jour = datetime.strptime(date_str, "%Y-%m-%d").date()
             except ValueError:
@@ -2263,57 +2333,70 @@ class SupprimerHeuresManuellementAPIView(APIView):
                     {"error": "Format de date invalide. Utilisez YYYY-MM-DD"},
                     status=status.HTTP_400_BAD_REQUEST
                 )
-            
-            # Supprimer l'anomalie
+
             try:
-                anomalie = Anomalie.objects.get(userid=userid, date=date_jour)
-                
-                # Si c'était une anomalie corrigée, supprimer les pointages synchronisés
-                if anomalie.etat == 'ok':
-                    user = UserInfo.objects.get(userid=userid)
-                    
-                    # Supprimer tous les pointages du jour
-                    CheckInOut.objects.filter(
-                        user=user,
-                        checktime__date=date_jour
-                    ).delete()
-                    
-                    # Recréer les pointages bruts s'ils existaient
-                    if anomalie.heure_brute_entree:
-                        CheckInOut.objects.create(
-                            user=user,
-                            checktime=datetime.combine(date_jour, anomalie.heure_brute_entree),
-                            checktype='O'
-                        )
-                    
-                    if anomalie.heure_brute_sortie:
-                        CheckInOut.objects.create(
-                            user=user,
-                            checktime=datetime.combine(date_jour, anomalie.heure_brute_sortie),
-                            checktype='I'
-                        )
-                
-                anomalie.delete()
-                
-                return Response({
-                    "success": True,
-                    "message": "Modifications supprimées et pointages rétablis"
-                })
-                
-            except Anomalie.DoesNotExist:
-                return Response(
-                    {"error": "Aucune modification manuelle trouvée pour cette date"},
-                    status=status.HTTP_404_NOT_FOUND
-                )
-            
-        except Exception as e:
-            logger.error(f"Erreur lors de la suppression des heures: {e}")
-            return Response(
-                {"error": f"Erreur: {str(e)}"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                user = UserInfo.objects.get(userid=userid)
+            except UserInfo.DoesNotExist:
+                return Response({"error": f"Utilisateur {userid} non trouvé"}, status=404)
+
+            # ── Pointages bruts du jour ────────────────────────────────────
+            pointages = list(
+                CheckInOut.objects.filter(
+                    user=user, checktime__date=date_jour
+                ).order_by('checktime')
             )
 
+            if pointages:
+                # Des bruts existent → poser un marqueur "suppression" pour
+                # empêcher la vue de les réafficher
+                try:
+                    date_obj     = Date.objects.get(date=date_jour)
+                    code_date    = date_obj.code_date
+                except Date.DoesNotExist:
+                    code_date = ''
 
+                section = get_section_employe(user.badgenumber)
+                heure_brute_entree = pointages[0].checktime.time()
+                heure_brute_sortie = pointages[-1].checktime.time() if len(pointages) > 1 else None
+
+                Anomalie.objects.update_or_create(
+                    userid=userid,
+                    date=date_jour,
+                    defaults={
+                        'section':                section,
+                        'code_date':              code_date,
+                        'heure_brute_entree':     heure_brute_entree,
+                        'heure_brute_sortie':     heure_brute_sortie,
+                        'heure_reelle_entree':    None,
+                        'heure_reelle_sortie':    None,
+                        'heure_rectifiee_entree': None,
+                        'heure_rectifiee_sortie': None,
+                        'commentaire':            'Présence supprimée manuellement',
+                    }
+                )
+                # bypass save() pour forcer etat='ok' avec heures null
+                Anomalie.objects.filter(userid=userid, date=date_jour).update(
+                    heure_rectifiee_entree=None,
+                    heure_rectifiee_sortie=None,
+                    etat='ok',
+                    synchronise_le=datetime.now(),
+                )
+                return Response({
+                    "success": True,
+                    "message": "Présence supprimée. Les pointages bruts sont conservés en base."
+                })
+
+            else:
+                # Pas de bruts → simple suppression de l'Anomalie
+                Anomalie.objects.filter(userid=userid, date=date_jour).delete()
+                return Response({
+                    "success": True,
+                    "message": "Présence supprimée."
+                })
+
+        except Exception as e:
+            logger.error(f"Erreur suppression heures: {e}", exc_info=True)
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 class GetHeuresJourAPIView(APIView):
     """
     API pour récupérer toutes les heures disponibles pour un jour donné
