@@ -110,58 +110,120 @@ class Date(models.Model):
         
         return jours_paiement
     
+    # @classmethod
+    # def generer_dates_mois(cls, annee, mois):
+    #     """
+    #     Génère toutes les dates pour un mois de référence donné
+    #     Ex: mois=8 (août) → période du 21 juillet au 20 août
+    #     """
+    #     mois_ref = date(annee, mois, 1)
+        
+    #     # Période du 21 du mois précédent au 20 du mois courant
+    #     if mois == 1:
+    #         debut_periode = date(annee - 1, 12, 21)
+    #     else:
+    #         debut_periode = date(annee, mois - 1, 21)
+        
+    #     fin_periode = date(annee, mois, 20)
+        
+    #     # Commencer au lundi précédent ou égal au 21
+    #     lundi_debut = cls.get_lundi_precedent(debut_periode)
+        
+    #     # CALCULER LES JOURS DE PAIEMENT
+    #     jours_paiement = cls.calculer_jours_paiement(annee, mois)
+        
+    #     # Générer toutes les dates (6 semaines complètes)
+    #     date_courante = lundi_debut
+    #     dates_crees = []
+        
+    #     fin_generation = lundi_debut + timedelta(days=6*7-1)  # 6 semaines
+        
+    #     while date_courante <= fin_generation:
+    #         # Toujours calculer le code_date
+    #         code = cls.calculer_code_date(date_courante, lundi_debut)
+            
+    #         # Déterminer si hors période (F)
+    #         hors_periode = (date_courante < debut_periode or date_courante > fin_periode)
+            
+    #         # DÉTERMINER SI JOUR DE PAIEMENT (P)
+    #         est_jour_paiement = date_courante in jours_paiement
+            
+    #         obj, created = cls.objects.update_or_create(
+    #             date=date_courante,
+    #             defaults={
+    #                 'code_date': code,
+    #                 'hors_periode': hors_periode,
+    #                 'mois_reference': mois_ref,
+    #                 'est_jour_paiement': est_jour_paiement,
+    #             }
+    #         )
+    #         dates_crees.append(obj)
+    #         date_courante += timedelta(days=1)
+        
+    #     return dates_crees
+    
+
     @classmethod
     def generer_dates_mois(cls, annee, mois):
         """
-        Génère toutes les dates pour un mois de référence donné
-        Ex: mois=8 (août) → période du 21 juillet au 20 août
+        Génère toutes les dates pour un mois de référence donné.
+        Tient compte des fermetures anticipées (PeriodeFermeture).
         """
+        # Import tardif pour éviter la référence circulaire (PeriodeFermeture est défini après Date)
+        from .models import PeriodeFermeture
+
         mois_ref = date(annee, mois, 1)
-        
-        # Période du 21 du mois précédent au 20 du mois courant
+
+        # ── Mois précédent ───────────────────────────────────────────────────────
         if mois == 1:
-            debut_periode = date(annee - 1, 12, 21)
+            annee_prec, mois_prec = annee - 1, 12
         else:
-            debut_periode = date(annee, mois - 1, 21)
-        
-        fin_periode = date(annee, mois, 20)
-        
-        # Commencer au lundi précédent ou égal au 21
+            annee_prec, mois_prec = annee, mois - 1
+
+        # Date d'ouverture = fermeture du mois précédent + 1 jour (ou 21 par défaut)
+        try:
+            fermeture_prec = PeriodeFermeture.objects.get(annee=annee_prec, mois=mois_prec)
+            debut_periode  = fermeture_prec.date_fermeture + timedelta(days=1)
+        except PeriodeFermeture.DoesNotExist:
+            debut_periode = date(annee_prec, mois_prec, 21)
+
+        # Date de fermeture du mois courant (20 par défaut)
+        try:
+            fermeture_curr = PeriodeFermeture.objects.get(annee=annee, mois=mois)
+            fin_periode    = fermeture_curr.date_fermeture
+        except PeriodeFermeture.DoesNotExist:
+            fin_periode = date(annee, mois, 20)
+
+        # Lundi précédent ou égal au début de période
         lundi_debut = cls.get_lundi_precedent(debut_periode)
-        
-        # CALCULER LES JOURS DE PAIEMENT
+
+        # Jours de paiement (inchangé — basé sur le calendrier civil)
         jours_paiement = cls.calculer_jours_paiement(annee, mois)
-        
-        # Générer toutes les dates (6 semaines complètes)
-        date_courante = lundi_debut
-        dates_crees = []
-        
-        fin_generation = lundi_debut + timedelta(days=6*7-1)  # 6 semaines
-        
+
+        # Générer 6 semaines complètes
+        date_courante  = lundi_debut
+        dates_crees    = []
+        fin_generation = lundi_debut + timedelta(days=6 * 7 - 1)
+
         while date_courante <= fin_generation:
-            # Toujours calculer le code_date
             code = cls.calculer_code_date(date_courante, lundi_debut)
-            
-            # Déterminer si hors période (F)
-            hors_periode = (date_courante < debut_periode or date_courante > fin_periode)
-            
-            # DÉTERMINER SI JOUR DE PAIEMENT (P)
+            hors_periode     = (date_courante < debut_periode or date_courante > fin_periode)
             est_jour_paiement = date_courante in jours_paiement
-            
-            obj, created = cls.objects.update_or_create(
+
+            obj, _ = cls.objects.update_or_create(
                 date=date_courante,
                 defaults={
-                    'code_date': code,
-                    'hors_periode': hors_periode,
-                    'mois_reference': mois_ref,
+                    'code_date':        code,
+                    'hors_periode':     hors_periode,
+                    'mois_reference':   mois_ref,
                     'est_jour_paiement': est_jour_paiement,
                 }
             )
             dates_crees.append(obj)
             date_courante += timedelta(days=1)
-        
+
         return dates_crees
-    
+
 
     
     @classmethod
@@ -913,6 +975,35 @@ class UserSection(models.Model):
             return UserInfo.objects.get(userid=self.userid)
         except UserInfo.DoesNotExist:
             return None
+
+
+
+class PeriodeFermeture(models.Model):
+    """
+    Fermeture anticipée d'un compte mensuel.
+    Par défaut : ouverture le 21, fermeture le 20.
+    Si défini : fermeture = date_fermeture, ouverture du mois suivant = date_fermeture + 1 jour.
+    """
+    annee = models.IntegerField(verbose_name="Année")
+    mois  = models.IntegerField(verbose_name="Mois (1-12)")
+    date_fermeture = models.DateField(verbose_name="Date de fermeture")
+    motif = models.CharField(max_length=200, blank=True, verbose_name="Motif")
+    cree_le    = models.DateTimeField(auto_now_add=True)
+    modifie_le = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table      = 'presence_periode_fermeture'
+        unique_together = ('annee', 'mois')
+        ordering      = ['-annee', '-mois']
+        verbose_name  = "Fermeture de période"
+        verbose_name_plural = "Fermetures de période"
+
+    def __str__(self):
+        mois_fr = ['Jan','Fév','Mar','Avr','Mai','Jun',
+                   'Jul','Aoû','Sep','Oct','Nov','Déc']
+        return f"Fermeture {mois_fr[self.mois-1]} {self.annee} → {self.date_fermeture}"
+
+
 
 #Attendance Management 
 class AttParam(models.Model):

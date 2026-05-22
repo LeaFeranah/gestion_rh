@@ -68,5 +68,8 @@ urlpatterns = [
     path('indemnite-repas/', IndemniteRepasAPIView.as_view(), name='indemnite-repas'),
 
 
-    path('absences-mois/', AbsencesMoisAPIView.as_view(), name='absences-mois')
+    path('absences-mois/', AbsencesMoisAPIView.as_view(), name='absences-mois'),
+
+    path('periodes-fermeture/',PeriodeFermetureListAPIView.as_view(), name='periodes-fermeture-list'),
+    path('periodes-fermeture/<int:pk>/',PeriodeFermetureDetailAPIView.as_view(),name='periodes-fermeture-detail')
 ]

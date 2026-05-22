@@ -15,6 +15,22 @@ from .models import HoraireException
 from .serializers import HoraireExceptionSerializer
 from .utils import get_horaire_pour_date
 
+
+from .models import CheckInOut, UserInfo, Date, Evenement, HoraireSection, Anomalie, PeriodeFermeture
+from .serializers import (DateSerializer, HoraireSectionSerializer, EvenementSerializer,
+                           AnomalieSerializer, PeriodeFermetureSerializer)
+from .utils import (decimal_to_time, analyser_presence, get_section_employe,
+                    corriger_pointages_automatique, get_active_badgenumbers,
+                    get_active_userinfo_queryset, calculer_heures_travaillees,
+                    get_horaire_pour_date, get_periode_dates)
+
+def _periode_labels(annee: int, mois: int, mois_fr: list) -> tuple:
+    """Retourne (du_str, au_str) en tenant compte des fermetures anticipées."""
+    debut, fin = get_periode_dates(annee, mois)
+    du = f"{debut.day} {mois_fr[debut.month - 1]}"
+    au = f"{fin.day} {mois_fr[fin.month - 1]}"
+    return du, au
+
 import logging
 
 logger = logging.getLogger(__name__)
@@ -73,18 +89,29 @@ class DateGenerationAPIView(APIView):
         # ── 4. Réponse ───────────────────────────────────────────────────────
         serializer = DateSerializer(dates_crees, many=True)
 
-        mois_fr = [
-            'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
-            'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
-        ]
-        mois_precedent = mois - 1 if mois > 1 else 12
+        # mois_fr = [
+        #     'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+        #     'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
+        # ]
+        # mois_precedent = mois - 1 if mois > 1 else 12
+
+        # return Response({
+        #     "message":           f"Dates générées pour {mois_fr[mois-1]} {annee}",
+        #     "periode":           f"21 {mois_fr[mois_precedent-1]} → 20 {mois_fr[mois-1]}",
+        #     "count":             len(dates_crees),
+        #     "evenements_crees":  evenements_crees,
+        #     "dates":             serializer.data
+        # })
+        mois_fr = ['Janvier','Février','Mars','Avril','Mai','Juin',
+                   'Juillet','Août','Septembre','Octobre','Novembre','Décembre']
+        du, au = _periode_labels(annee, mois, mois_fr)
 
         return Response({
-            "message":           f"Dates générées pour {mois_fr[mois-1]} {annee}",
-            "periode":           f"21 {mois_fr[mois_precedent-1]} → 20 {mois_fr[mois-1]}",
-            "count":             len(dates_crees),
-            "evenements_crees":  evenements_crees,
-            "dates":             serializer.data
+            "message":          f"Dates générées pour {mois_fr[mois-1]} {annee}",
+            "periode":          f"{du} → {au}",
+            "count":            len(dates_crees),
+            "evenements_crees": evenements_crees,
+            "dates":            serializer.data
         })
 
 
@@ -727,6 +754,8 @@ class PresenceMoisDetailCalculeeAPIView(APIView):
             'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
         ]
         mois_precedent = mois - 1 if mois > 1 else 12
+        du, au = _periode_labels(annee, mois, mois_fr)   # ← ligne ajoutée ici
+
 
         # 2. Dates de la période
         dates_mois = Date.get_dates_par_mois(annee, mois, inclure_hors_periode)
@@ -741,8 +770,10 @@ class PresenceMoisDetailCalculeeAPIView(APIView):
         periode_data = {
             "mois": mois_fr[mois - 1],
             "annee": annee,
-            "du": f"21 {mois_fr[mois_precedent - 1]}",
-            "au": f"20 {mois_fr[mois - 1]}",
+            # "du": f"21 {mois_fr[mois_precedent - 1]}",
+            # "au": f"20 {mois_fr[mois - 1]}",
+            "du": du,   # ← remplacé
+            "au": au,   # ← remplacé
             "nombre_jours": len(dates_liste)
         }
 
@@ -2885,13 +2916,16 @@ class HeuresTravailAPIView(APIView):
         mois_fr        = ['Janvier','Février','Mars','Avril','Mai','Juin',
                           'Juillet','Août','Septembre','Octobre','Novembre','Décembre']
         mois_precedent = mois - 1 if mois > 1 else 12
+        du, au = _periode_labels(annee, mois, mois_fr)
 
         return Response({
             'periode': {
                 'mois':  mois_fr[mois - 1],
                 'annee': annee,
-                'du':    f"21 {mois_fr[mois_precedent - 1]}",
-                'au':    f"20 {mois_fr[mois - 1]}",
+                # 'du':    f"21 {mois_fr[mois_precedent - 1]}",
+                # 'au':    f"20 {mois_fr[mois - 1]}",
+                'du':    du,   
+                'au':    au,   
             },
             'semaines':   semaine_nums,
             'pagination': {
@@ -2909,13 +2943,16 @@ class HeuresTravailAPIView(APIView):
     def _empty_response(annee, mois, semaine_nums, page, page_size):
         mois_fr = ['Janvier','Février','Mars','Avril','Mai','Juin',
                 'Juillet','Août','Septembre','Octobre','Novembre','Décembre']
-        mois_precedent = mois - 1 if mois > 1 else 12  # ← ajouter cette ligne
+        mois_precedent = mois - 1 if mois > 1 else 12
+        du, au = _periode_labels(annee, mois, mois_fr)
         return Response({
             'periode': {
                 'mois':  mois_fr[mois - 1],
                 'annee': annee,
-                'du':    f"21 {mois_fr[mois_precedent - 1]}",  # ← était ''
-                'au':    f"20 {mois_fr[mois - 1]}",             # ← était ''
+                # 'du':    f"21 {mois_fr[mois_precedent - 1]}",  
+                # 'au':    f"20 {mois_fr[mois - 1]}",
+                'du':    du,   # ← remplacé
+                'au':    au,   # ← remplacé            
             },
             'semaines': semaine_nums,
             'pagination': {
@@ -3121,13 +3158,16 @@ class IndemniteRepasAPIView(APIView):
 
         mois_fr = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre']
         mois_precedent = mois - 1 if mois > 1 else 12
+        du, au = _periode_labels(annee, mois, mois_fr)
 
         return Response({
             'periode': {
                 'mois': mois_fr[mois - 1],
                 'annee': annee,
-                'du': f"21 {mois_fr[mois_precedent - 1]}",
-                'au': f"20 {mois_fr[mois - 1]}",
+                # 'du': f"21 {mois_fr[mois_precedent - 1]}",
+                # 'au': f"20 {mois_fr[mois - 1]}",
+                'du': du,   # ← remplacé
+                'au': au,
             },
             'dates': dates_serialized,
             'semaines': semaine_nums,
@@ -3145,13 +3185,16 @@ class IndemniteRepasAPIView(APIView):
     def _empty_response(self, annee, mois, dates_mois, semaine_nums, page, page_size):
         mois_fr = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre']
         mois_precedent = mois - 1 if mois > 1 else 12
+        du, au = _periode_labels(annee, mois, mois_fr)
         dates_serialized = [{'date': d.date.isoformat(), 'code_date': d.code_affichage} for d in dates_mois]
         return Response({
             'periode': {
                 'mois': mois_fr[mois - 1],
                 'annee': annee,
-                'du': f"21 {mois_fr[mois_precedent - 1]}",
-                'au': f"20 {mois_fr[mois - 1]}",
+                # 'du': f"21 {mois_fr[mois_precedent - 1]}",
+                # 'au': f"20 {mois_fr[mois - 1]}",
+                'du' : du,
+                'au': au,
             },
             'dates': dates_serialized,
             'semaines': semaine_nums,
@@ -3471,3 +3514,82 @@ class AbsencesMoisAPIView(APIView):
         })
 
 
+class PeriodeFermetureListAPIView(APIView):
+    """
+    GET  /api/presence/periodes-fermeture/          → liste
+    GET  /api/presence/periodes-fermeture/?annee=X&mois=Y → filtré
+    POST /api/presence/periodes-fermeture/          → créer
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        qs = PeriodeFermeture.objects.all()
+        annee = request.query_params.get('annee')
+        mois  = request.query_params.get('mois')
+        if annee:
+            qs = qs.filter(annee=int(annee))
+        if mois:
+            qs = qs.filter(mois=int(mois))
+        return Response(PeriodeFermetureSerializer(qs, many=True).data)
+
+    def post(self, request):
+        # Vérifier si une fermeture existe déjà pour ce mois/année
+        annee = request.data.get('annee')
+        mois  = request.data.get('mois')
+        if annee and mois:
+            existing = PeriodeFermeture.objects.filter(
+                annee=int(annee), mois=int(mois)
+            ).first()
+            if existing:
+                # Mise à jour si elle existe déjà
+                serializer = PeriodeFermetureSerializer(existing, data=request.data, partial=True)
+            else:
+                serializer = PeriodeFermetureSerializer(data=request.data)
+        else:
+            serializer = PeriodeFermetureSerializer(data=request.data)
+
+        if serializer.is_valid():
+            obj = serializer.save()
+            return Response(
+                PeriodeFermetureSerializer(obj).data,
+                status=status.HTTP_201_CREATED
+            )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class PeriodeFermetureDetailAPIView(APIView):
+    """
+    GET    /api/presence/periodes-fermeture/<pk>/
+    PATCH  /api/presence/periodes-fermeture/<pk>/
+    DELETE /api/presence/periodes-fermeture/<pk>/
+    """
+    permission_classes = [AllowAny]
+
+    def get_object(self, pk):
+        try:
+            return PeriodeFermeture.objects.get(pk=pk)
+        except PeriodeFermeture.DoesNotExist:
+            return None
+
+    def get(self, request, pk):
+        obj = self.get_object(pk)
+        if not obj:
+            return Response({'error': 'Non trouvé'}, status=404)
+        return Response(PeriodeFermetureSerializer(obj).data)
+
+    def patch(self, request, pk):
+        obj = self.get_object(pk)
+        if not obj:
+            return Response({'error': 'Non trouvé'}, status=404)
+        serializer = PeriodeFermetureSerializer(obj, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=400)
+
+    def delete(self, request, pk):
+        obj = self.get_object(pk)
+        if not obj:
+            return Response({'error': 'Non trouvé'}, status=404)
+        obj.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)

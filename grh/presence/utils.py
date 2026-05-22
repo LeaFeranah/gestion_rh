@@ -649,3 +649,38 @@ def get_appellation_map():
             'numero_matricule', 'appellation', 'nom_complet'
         )
     }
+
+
+
+
+
+
+
+def get_periode_dates(annee: int, mois: int):
+    """
+    Retourne (debut_periode: date, fin_periode: date) en tenant compte
+    des fermetures anticipées (PeriodeFermeture).
+    """
+    from presence.models import PeriodeFermeture
+
+    if mois == 1:
+        annee_prec, mois_prec = annee - 1, 12
+    else:
+        annee_prec, mois_prec = annee, mois - 1
+
+    try:
+        fp = PeriodeFermeture.objects.get(annee=annee_prec, mois=mois_prec)
+        from datetime import date as d_cls, timedelta as td
+        debut = fp.date_fermeture + td(days=1)
+    except PeriodeFermeture.DoesNotExist:
+        from datetime import date as d_cls
+        debut = d_cls(annee_prec, mois_prec, 21)
+
+    try:
+        fc = PeriodeFermeture.objects.get(annee=annee, mois=mois)
+        fin = fc.date_fermeture
+    except PeriodeFermeture.DoesNotExist:
+        from datetime import date as d_cls
+        fin = d_cls(annee, mois, 20)
+
+    return debut, fin

@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from decimal import Decimal
 from .models import Date, HoraireSection, Evenement, Anomalie, HoraireException
+from .models import Date, HoraireSection, Evenement, Anomalie, HoraireException, PeriodeFermeture
 
 
 class DateSerializer(serializers.ModelSerializer):
@@ -198,3 +199,37 @@ class AnomalieSerializer(serializers.ModelSerializer):
             setattr(instance, attr, value)
         instance.save()
         return instance
+    
+
+
+
+
+
+class PeriodeFermetureSerializer(serializers.ModelSerializer):
+    mois_nom = serializers.SerializerMethodField()
+
+    class Meta:
+        model  = PeriodeFermeture
+        fields = ['id', 'annee', 'mois', 'mois_nom', 'date_fermeture', 'motif',
+                  'cree_le', 'modifie_le']
+        read_only_fields = ['id', 'cree_le', 'modifie_le']
+
+    def get_mois_nom(self, obj):
+        mois_fr = ['Janvier','Février','Mars','Avril','Mai','Juin',
+                   'Juillet','Août','Septembre','Octobre','Novembre','Décembre']
+        return mois_fr[obj.mois - 1]
+
+    def validate(self, data):
+        annee          = data.get('annee',          getattr(self.instance, 'annee',          None))
+        mois           = data.get('mois',           getattr(self.instance, 'mois',           None))
+        date_fermeture = data.get('date_fermeture', getattr(self.instance, 'date_fermeture', None))
+
+        if annee and mois and date_fermeture:
+            from calendar import monthrange
+            from datetime import date as d_cls
+            last_day = monthrange(annee, mois)[1]
+            if not (d_cls(annee, mois, 1) <= date_fermeture <= d_cls(annee, mois, last_day)):
+                raise serializers.ValidationError(
+                    f"La date de fermeture doit être dans le mois {mois}/{annee}."
+                )
+        return data
