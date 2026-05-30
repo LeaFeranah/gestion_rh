@@ -19,9 +19,11 @@ class InformationProfessionnelleViewSet(viewsets.ModelViewSet):
     authentication_classes = [SessionAuthentication, TokenAuthentication]
     permission_classes = [IsAuthenticated]
     
+    # def get_queryset(self):
+    #     """Chaque RH ne voit que les informations professionnelles des employés qu'elle a créés"""
+    #     return InformationProfessionnelle.objects.filter(employe__created_by=self.request.user)
     def get_queryset(self):
-        """Chaque RH ne voit que les informations professionnelles des employés qu'elle a créés"""
-        return InformationProfessionnelle.objects.filter(employe__created_by=self.request.user)
+        return InformationProfessionnelle.objects.all()
     
     def get_serializer_class(self):
         """Choisir serializer selon l'action"""
@@ -32,13 +34,16 @@ class InformationProfessionnelleViewSet(viewsets.ModelViewSet):
         else:
             return InformationProfessionnelleSerializer
     
+    # def perform_create(self, serializer):
+    #     """Vérifier que l'employé appartient bien au RH connecté"""
+    #     employe = serializer.validated_data.get('employe')
+    #     if employe.created_by != self.request.user:
+    #         raise serializers.ValidationError(
+    #             {"employe": "Vous ne pouvez pas créer d'informations professionnelles pour cet employé."}
+    #         )
+    #     serializer.save()
     def perform_create(self, serializer):
-        """Vérifier que l'employé appartient bien au RH connecté"""
-        employe = serializer.validated_data.get('employe')
-        if employe.created_by != self.request.user:
-            raise serializers.ValidationError(
-                {"employe": "Vous ne pouvez pas créer d'informations professionnelles pour cet employé."}
-            )
+        # Supprimer la vérification created_by
         serializer.save()
     
     def perform_update(self, serializer):
@@ -58,8 +63,8 @@ class InformationProfessionnelleViewSet(viewsets.ModelViewSet):
         # Vérifier que l'employé appartient au RH connecté
         if info_pro.employe.created_by != request.user:
             return Response(
-                {'error': "Vous n'êtes pas autorisé à créer une évolution pour cet employé."},
-                status=status.HTTP_403_FORBIDDEN
+                # {'error': "Vous n'êtes pas autorisé à créer une évolution pour cet employé."},
+                # status=status.HTTP_403_FORBIDDEN
             )
         
         # Préparer les données avec l'employé
@@ -92,10 +97,10 @@ class InformationProfessionnelleViewSet(viewsets.ModelViewSet):
         serializer = EvolutionPosteSerializer(evolutions, many=True)
         
         return Response({
-            'employe': info_pro.employe.nom_complet,
-            'information_professionnelle_id': info_pro.id,
-            'evolutions_count': evolutions.count(),
-            'evolutions': serializer.data
+            # 'employe': info_pro.employe.nom_complet,
+            # 'information_professionnelle_id': info_pro.id,
+            # 'evolutions_count': evolutions.count(),
+            # 'evolutions': serializer.data
         })
 
 
@@ -106,21 +111,26 @@ class EvolutionPosteViewSet(viewsets.ModelViewSet):
     authentication_classes = [SessionAuthentication, TokenAuthentication]
     permission_classes = [IsAuthenticated]
     
+    # def get_queryset(self):
+    #     """Filtrer par employés du RH connecté"""
+    #     return EvolutionPoste.objects.filter(
+    #         employe__created_by=self.request.user
+    #     ).select_related('employe', 'modifie_par')
     def get_queryset(self):
-        """Filtrer par employés du RH connecté"""
-        return EvolutionPoste.objects.filter(
-            employe__created_by=self.request.user
-        ).select_related('employe', 'modifie_par')
+        return EvolutionPoste.objects.all().select_related('employe', 'modifie_par')
     
+    # def perform_create(self, serializer):
+    #     """Vérifier que l'employé appartient bien au RH connecté"""
+    #     employe = serializer.validated_data.get('employe')
+        
+    #     if employe.created_by != self.request.user:
+    #         raise serializers.ValidationError(
+    #             {"employe": "Vous ne pouvez pas créer d'évolution de poste pour cet employé."}
+    #         )
+        
+    #     serializer.save()
     def perform_create(self, serializer):
-        """Vérifier que l'employé appartient bien au RH connecté"""
-        employe = serializer.validated_data.get('employe')
-        
-        if employe.created_by != self.request.user:
-            raise serializers.ValidationError(
-                {"employe": "Vous ne pouvez pas créer d'évolution de poste pour cet employé."}
-            )
-        
+        # Supprimer la vérification created_by
         serializer.save()
     
     @action(detail=True, methods=['post'], url_path='appliquer')
@@ -129,11 +139,11 @@ class EvolutionPosteViewSet(viewsets.ModelViewSet):
         evolution = self.get_object()
         
         # Vérifier que l'évolution appartient à un employé du RH connecté
-        if evolution.employe.created_by != request.user:
-            return Response(
-                {'error': "Vous n'êtes pas autorisé à appliquer cette évolution."},
-                status=status.HTTP_403_FORBIDDEN
-            )
+        # if evolution.employe.created_by != request.user:
+        #     return Response(
+        #         {'error': "Vous n'êtes pas autorisé à appliquer cette évolution."},
+        #         status=status.HTTP_403_FORBIDDEN
+        #     )
         
         # Vérifier le statut
         if evolution.statut == 'REALISEE':
@@ -160,11 +170,11 @@ class EvolutionPosteViewSet(viewsets.ModelViewSet):
         evolution = self.get_object()
         nouveau_statut = request.data.get('statut')
         
-        if evolution.employe.created_by != request.user:
-            return Response(
-                {'error': "Vous n'êtes pas autorisé à modifier cette évolution."},
-                status=status.HTTP_403_FORBIDDEN
-            )
+        # if evolution.employe.created_by != request.user:
+        #     return Response(
+        #         {'error': "Vous n'êtes pas autorisé à modifier cette évolution."},
+        #         status=status.HTTP_403_FORBIDDEN
+        #     )
         
         if nouveau_statut not in [choice[0] for choice in EvolutionPoste.STATUT_CHOICES]:
             return Response(
@@ -186,8 +196,8 @@ class EvolutionPosteViewSet(viewsets.ModelViewSet):
         """Récupérer toutes les évolutions d'un employé spécifique"""
         try:
             employe = InformationPersonnelle.objects.get(
-                id=employe_id,
-                created_by=request.user
+                id=employe_id
+                # created_by=request.user
             )
             
             evolutions = EvolutionPoste.objects.filter(
@@ -271,31 +281,46 @@ class InformationPersonnelleViewSet(viewsets.ModelViewSet):
     authentication_classes = [SessionAuthentication, TokenAuthentication]
     permission_classes = [IsAuthenticated]
 
+    # def get_queryset(self):
+    #     if self.action == 'list':
+    #         return InformationPersonnelle.objects.filter(
+    #             created_by=self.request.user
+    #         ).select_related('information_professionnelle').only(
+    #             'id', 'numero_matricule', 'nom_complet', 'sexe',
+    #             'appellation', 'photo', 'depart',
+    #             # Champs du related nécessaires au serializer léger
+    #             'information_professionnelle__fonction',
+    #             'information_professionnelle__section',
+    #             'information_professionnelle__responsable_section',
+    #         )
+        
+    #     return InformationPersonnelle.objects.filter(
+    #         created_by=self.request.user
+    #     ).select_related(
+    #         'information_professionnelle',
+    #         'bancaire',
+    #         'sociale',
+    #         'salaire_personnel',
+    #         'familiale',
+    #     ).prefetch_related(
+    #         'evolutions_poste',
+    #         'familiale__enfants',
+    #     )
     def get_queryset(self):
         if self.action == 'list':
-            return InformationPersonnelle.objects.filter(
-                created_by=self.request.user
-            ).select_related('information_professionnelle').only(
+            return InformationPersonnelle.objects.all().select_related(
+                'information_professionnelle'
+            ).only(
                 'id', 'numero_matricule', 'nom_complet', 'sexe',
                 'appellation', 'photo', 'depart',
-                # Champs du related nécessaires au serializer léger
                 'information_professionnelle__fonction',
                 'information_professionnelle__section',
                 'information_professionnelle__responsable_section',
             )
-        
-        return InformationPersonnelle.objects.filter(
-            created_by=self.request.user
-        ).select_related(
-            'information_professionnelle',
-            'bancaire',
-            'sociale',
-            'salaire_personnel',
-            'familiale',
-        ).prefetch_related(
-            'evolutions_poste',
-            'familiale__enfants',
-        )
+        return InformationPersonnelle.objects.all().select_related(
+            'information_professionnelle', 'bancaire',
+            'sociale', 'salaire_personnel', 'familiale',
+        ).prefetch_related('evolutions_poste', 'familiale__enfants')
 
     def get_serializer_class(self):
         if self.action == 'list':
@@ -308,36 +333,59 @@ class InformationPersonnelleViewSet(viewsets.ModelViewSet):
         serializer.save(created_by=self.request.user)
 
     @action(detail=True, methods=['post'], url_path='creer-professionnelle')
+    # def creer_information_professionnelle(self, request, pk=None):
+    #     employe = self.get_object()
+        
+    #     if employe.created_by != request.user:
+    #         return Response(
+    #             {'error': "Vous n'êtes pas autorisé à créer l'information professionnelle pour cet employé."},
+    #             status=status.HTTP_403_FORBIDDEN
+    #         )
+        
+    #     if hasattr(employe, 'information_professionnelle'):
+    #         return Response(
+    #             {'error': "Une information professionnelle existe déjà pour cet employé."},
+    #             status=status.HTTP_400_BAD_REQUEST
+    #         )
+        
+    #     data = request.data.copy()
+    #     data['employe'] = employe.id
+        
+    #     serializer = InformationProfessionnelleCreateSerializer(
+    #         data=data,
+    #         context={'request': request}
+    #     )
+        
+    #     if serializer.is_valid():
+    #         info_pro = serializer.save()
+    #         return Response(
+    #             InformationProfessionnelleSerializer(info_pro).data,
+    #             status=status.HTTP_201_CREATED
+    #         )
+        
+    #     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     def creer_information_professionnelle(self, request, pk=None):
         employe = self.get_object()
-        
-        if employe.created_by != request.user:
-            return Response(
-                {'error': "Vous n'êtes pas autorisé à créer l'information professionnelle pour cet employé."},
-                status=status.HTTP_403_FORBIDDEN
-            )
-        
+
         if hasattr(employe, 'information_professionnelle'):
             return Response(
                 {'error': "Une information professionnelle existe déjà pour cet employé."},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
+
         data = request.data.copy()
         data['employe'] = employe.id
-        
+
         serializer = InformationProfessionnelleCreateSerializer(
-            data=data,
-            context={'request': request}
+            data=data, context={'request': request}
         )
-        
+
         if serializer.is_valid():
             info_pro = serializer.save()
             return Response(
                 InformationProfessionnelleSerializer(info_pro).data,
                 status=status.HTTP_201_CREATED
             )
-        
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -350,9 +398,11 @@ class DossierPersonnelViewSet(viewsets.ModelViewSet):
     authentication_classes = [SessionAuthentication, TokenAuthentication]
     permission_classes = [IsAuthenticated]
     
+    # def get_queryset(self):
+    #     """Chaque RH ne voit que les dossiers des employés qu'elle a créés"""
+    #     return DossierPersonnel.objects.filter(employe__created_by=self.request.user)
     def get_queryset(self):
-        """Chaque RH ne voit que les dossiers des employés qu'elle a créés"""
-        return DossierPersonnel.objects.filter(employe__created_by=self.request.user)
+        return DossierPersonnel.objects.all()
 
 
 class InformationBancaireViewSet(viewsets.ModelViewSet):
@@ -361,9 +411,11 @@ class InformationBancaireViewSet(viewsets.ModelViewSet):
     authentication_classes = [SessionAuthentication, TokenAuthentication]
     permission_classes = [IsAuthenticated]
     
+    # def get_queryset(self):
+    #     """Filtrer par employés du RH connecté"""
+    #     return InformationBancaire.objects.filter(employe__created_by=self.request.user)
     def get_queryset(self):
-        """Filtrer par employés du RH connecté"""
-        return InformationBancaire.objects.filter(employe__created_by=self.request.user)
+        return InformationBancaire.objects.all()
 
 
 class InformationSocialeViewSet(viewsets.ModelViewSet):
@@ -372,9 +424,11 @@ class InformationSocialeViewSet(viewsets.ModelViewSet):
     authentication_classes = [SessionAuthentication, TokenAuthentication]
     permission_classes = [IsAuthenticated]
     
+    # def get_queryset(self):
+    #     """Filtrer par employés du RH connecté"""
+    #     return InformationSociale.objects.filter(employe__created_by=self.request.user)
     def get_queryset(self):
-        """Filtrer par employés du RH connecté"""
-        return InformationSociale.objects.filter(employe__created_by=self.request.user)
+        return InformationSociale.objects.all()
 
 
 class InformationFamilialeViewSet(viewsets.ModelViewSet):
@@ -383,9 +437,11 @@ class InformationFamilialeViewSet(viewsets.ModelViewSet):
     authentication_classes = [SessionAuthentication, TokenAuthentication]
     permission_classes = [IsAuthenticated]
     
+    # def get_queryset(self):
+    #     """Filtrer par employés du RH connecté"""
+    #     return InformationFamiliale.objects.filter(employe__created_by=self.request.user)
     def get_queryset(self):
-        """Filtrer par employés du RH connecté"""
-        return InformationFamiliale.objects.filter(employe__created_by=self.request.user)
+        return InformationFamiliale.objects.all()
 
 
 class EnfantViewSet(viewsets.ModelViewSet):
@@ -394,9 +450,11 @@ class EnfantViewSet(viewsets.ModelViewSet):
     authentication_classes = [SessionAuthentication, TokenAuthentication]
     permission_classes = [IsAuthenticated]
     
+    # def get_queryset(self):
+    #     """Filtrer par enfants des employés du RH connecté"""
+    #     return Enfant.objects.filter(familiale__employe__created_by=self.request.user)
     def get_queryset(self):
-        """Filtrer par enfants des employés du RH connecté"""
-        return Enfant.objects.filter(familiale__employe__created_by=self.request.user)
+        return Enfant.objects.all()
 
 
 class InformationSalairePersonnelViewSet(viewsets.ModelViewSet):
@@ -405,9 +463,11 @@ class InformationSalairePersonnelViewSet(viewsets.ModelViewSet):
     authentication_classes = [SessionAuthentication, TokenAuthentication]
     permission_classes = [IsAuthenticated]
     
+    # def get_queryset(self):
+    #     """Filtrer par employés du RH connecté"""
+    #     return InformationSalairePersonnel.objects.filter(employe__created_by=self.request.user)
     def get_queryset(self):
-        """Filtrer par employés du RH connecté"""
-        return InformationSalairePersonnel.objects.filter(employe__created_by=self.request.user)
+        return InformationSalairePersonnel.objects.all()
     
     def perform_create(self, serializer):
         """Créer un salaire et enregistrer l'historique"""
@@ -511,11 +571,13 @@ class HistoriqueSalaireViewSet(viewsets.ReadOnlyModelViewSet):
     authentication_classes = [SessionAuthentication, TokenAuthentication]
     permission_classes = [IsAuthenticated]
     
+    # def get_queryset(self):
+    #     """Filtrer par employés du RH connecté"""
+    #     return HistoriqueSalaire.objects.filter(
+    #         employe__created_by=self.request.user
+    #     ).select_related('employe', 'modifie_par')
     def get_queryset(self):
-        """Filtrer par employés du RH connecté"""
-        return HistoriqueSalaire.objects.filter(
-            employe__created_by=self.request.user
-        ).select_related('employe', 'modifie_par')
+        return HistoriqueSalaire.objects.all().select_related('employe', 'modifie_par')
     
     @action(detail=False, methods=['get'])
     def par_employe(self, request):
@@ -553,6 +615,7 @@ def login_api(request):
             'token': token.key,
             'username': user.username,
             'email': user.email,
+            'is_admin': user.is_staff,   
         })
     else:
         return Response(
@@ -602,7 +665,8 @@ def logout_api(request):
 @permission_classes([IsAuthenticated])
 def mes_employes(request):
     """Retourne la liste des employés créés par le RH connecté"""
-    employes = InformationPersonnelle.objects.filter(created_by=request.user)
+    #employes = InformationPersonnelle.objects.filter(created_by=request.user)
+    employes = InformationPersonnelle.objects.all()
     data = []
     
     for e in employes:
@@ -625,7 +689,8 @@ def mes_employes(request):
 def mes_statistiques(request):
     """Retourne les statistiques des employés du RH connecté"""
     user = request.user
-    employes = InformationPersonnelle.objects.filter(created_by=user)
+    # employes = InformationPersonnelle.objects.filter(created_by=user)
+    employes = InformationPersonnelle.objects.all()
     
     total_employes = employes.count()
     hommes = employes.filter(sexe='Masculin').count()

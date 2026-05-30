@@ -58,11 +58,18 @@ class InformationPersonnelle(TimeStampModel):
     permis_categorie_e = models.DateField(null=True, blank=True, verbose_name="Permis Catégorie E", help_text="Date d'obtention du permis E")
     permis_categorie_f = models.DateField(null=True, blank=True, verbose_name="Permis Catégorie F", help_text="Date d'obtention du permis F")
     
-    # 🔹 NOUVEAU : Lien avec l'utilisateur RH qui a créé l'employé
+    # # 🔹 NOUVEAU : Lien avec l'utilisateur RH qui a créé l'employé
+    # created_by = models.ForeignKey(
+    #     settings.AUTH_USER_MODEL, 
+    #     on_delete=models.CASCADE,
+    #     related_name='employes_crees',
+    #     null=True,
+    #     blank=True
+    # )
+    # personnel/models.py
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, 
-        on_delete=models.CASCADE,
-        related_name='employes_crees',
+        on_delete=models.SET_NULL,  # ← était CASCADE
         null=True,
         blank=True
     )

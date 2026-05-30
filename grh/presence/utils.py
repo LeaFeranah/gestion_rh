@@ -576,6 +576,22 @@ def get_active_badgenumbers():
             Q(depart__isnull=True) | Q(depart='') | Q(depart='0')
         ).values_list('numero_matricule', flat=True)
     )
+# def get_active_badgenumbers():
+#     from personnel.models import InformationPersonnelle
+#     from django.db.models import Q
+    
+#     actifs = list(
+#         InformationPersonnelle.objects.filter(
+#             Q(depart__isnull=True) | Q(depart='') | Q(depart='0')
+#         ).values_list('numero_matricule', flat=True)
+#     )
+    
+#     # Si InformationPersonnelle est vide, utiliser directement UserInfo
+#     if not actifs:
+#         from presence.models import UserInfo
+#         return list(UserInfo.objects.values_list('badgenumber', flat=True))
+    
+#     return actifs
 
 
 def get_active_userinfo_queryset():
