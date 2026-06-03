@@ -1774,6 +1774,19 @@ class DetecterAnomaliesAPIView(APIView):
             key = (p['user_id'], p['checktime'].date())
             pointages_map.setdefault(key, []).append(p)
 
+
+        # ── NOUVEAU : filtrer pour ne garder que les employés ACTIFS ─────
+        active_badges = set(get_active_badgenumbers())
+        active_userids = set(
+            UserInfo.objects.filter(badgenumber__in=active_badges)
+            .values_list('userid', flat=True)
+        )
+        pointages_map = {
+            key: val for key, val in pointages_map.items()
+            if key[0] in active_userids          # key[0] = userid
+        }
+        # ── FIN NOUVEAU ──────────────────────────────────────────────────
+
         # ── 3. Seuls les employés qui ont pointé ──────────────────────────
         userids_actifs = {uid for (uid, _) in pointages_map.keys()}
         employes_map = {
@@ -1782,9 +1795,10 @@ class DetecterAnomaliesAPIView(APIView):
         }
 
         # ── 4. Nettoyer les anomalies obsolètes (employés sans pointage) ──
-        Anomalie.objects.filter(
-            date__in=dates_liste
-        ).exclude(userid__in=userids_actifs).delete()
+        # Anomalie.objects.filter(
+        #     date__in=dates_liste
+        # ).exclude(userid__in=userids_actifs).delete()
+        Anomalie.objects.exclude(userid__in=active_userids).delete()
 
         # ── 5. Boucle principale sans aucune requête DB dedans ─────────────
         to_create = []
@@ -3593,3 +3607,7 @@ class PeriodeFermetureDetailAPIView(APIView):
             return Response({'error': 'Non trouvé'}, status=404)
         obj.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+
+
