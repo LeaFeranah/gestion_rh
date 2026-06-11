@@ -1321,8 +1321,26 @@ class AnomalieListAPIView(APIView):
         if etat:
             anomalies = anomalies.filter(etat=etat)
         
-        anomalies = anomalies.select_related().order_by('-date', 'section', 'userid')
-        serializer = AnomalieSerializer(anomalies, many=True)
+        # anomalies = anomalies.select_related().order_by('-date', 'section', 'userid')
+        # serializer = AnomalieSerializer(anomalies, many=True)
+
+        anomalies = anomalies.order_by('-date', 'section', 'userid')
+
+        # Pré-charger en une requête
+        userids = list(anomalies.values_list('userid', flat=True))
+        userinfo_map = {u.userid: u for u in UserInfo.objects.filter(userid__in=userids)}
+        badges = [u.badgenumber for u in userinfo_map.values()]
+        from personnel.models import InformationPersonnelle
+        appellation_map = {
+            emp.numero_matricule: emp.appellation or emp.nom_complet
+            for emp in InformationPersonnelle.objects.filter(
+                numero_matricule__in=badges
+            ).only('numero_matricule', 'appellation', 'nom_complet')
+        }
+        serializer = AnomalieSerializer(
+            anomalies, many=True,
+            context={'userinfo_map': userinfo_map, 'appellation_map': appellation_map}
+        )
         
         # Statistiques
         stats = {
@@ -1753,11 +1771,26 @@ class DetecterAnomaliesAPIView(APIView):
             return Response({"error": "Générez d'abord les dates"}, status=400)
 
         # ── 1. Charger les données statiques UNE SEULE FOIS ────────────────
-        from .utils import build_user_section_map, decimal_to_time, analyser_pointages_jour
+        # from .utils import build_user_section_map, decimal_to_time, analyser_pointages_jour
 
-        user_section_map = build_user_section_map()  # {userid: section_nom}
+        # user_section_map = build_user_section_map()  # {userid: section_nom}
+        # horaires_dict    = {h.section: h for h in HoraireSection.objects.all()}
+        # horaire_default  = horaires_dict.get('ADMINISTRATION')
+        # ── 1. Charger les données statiques UNE SEULE FOIS ────────────────
+        from .utils import build_user_section_map, decimal_to_time, analyser_pointages_jour
+        from .models import HoraireException
+
+        user_section_map = build_user_section_map()
         horaires_dict    = {h.section: h for h in HoraireSection.objects.all()}
         horaire_default  = horaires_dict.get('ADMINISTRATION')
+
+        # Pré-charger TOUTES les exceptions d'horaire de la période en UNE requête
+        # au lieu de 1-2 requêtes par (userid, date) dans la boucle
+        exceptions_map = {}  # {(date, section): exception, (date, None): exception}
+        for ex in HoraireException.objects.filter(date__in=dates_liste):
+            exceptions_map[(ex.date, ex.section)] = ex
+            if ex.section is None:
+                exceptions_map[(ex.date, None)] = ex
 
         # ── 2. Charger TOUS les pointages de la période EN UNE requête ─────
         from django.db.models import Prefetch
@@ -1776,14 +1809,21 @@ class DetecterAnomaliesAPIView(APIView):
 
 
         # ── NOUVEAU : filtrer pour ne garder que les employés ACTIFS ─────
-        active_badges = set(get_active_badgenumbers())
-        active_userids = set(
-            UserInfo.objects.filter(badgenumber__in=active_badges)
-            .values_list('userid', flat=True)
-        )
+        # active_badges = set(get_active_badgenumbers())
+        # active_userids = set(
+        #     UserInfo.objects.filter(badgenumber__in=active_badges)
+        #     .values_list('userid', flat=True)
+        # )
+        # pointages_map = {
+        #     key: val for key, val in pointages_map.items()
+        #     if key[0] in active_userids          # key[0] = userid
+        # }
+        # Réutiliser user_section_map qui contient déjà uniquement les actifs
+        # (évite un double appel à get_active_badgenumbers)
+        active_userids = set(user_section_map.keys())
         pointages_map = {
             key: val for key, val in pointages_map.items()
-            if key[0] in active_userids          # key[0] = userid
+            if key[0] in active_userids
         }
         # ── FIN NOUVEAU ──────────────────────────────────────────────────
 
@@ -1828,10 +1868,29 @@ class DetecterAnomaliesAPIView(APIView):
             est_paiement = date_obj.est_jour_paiement
 
 
-            from .utils import get_horaire_pour_date
-            heure_reelle_entree, heure_reelle_sortie = get_horaire_pour_date(
-                horaire, date_jour, est_paiement, section=section
-            )
+            # from .utils import get_horaire_pour_date
+            # heure_reelle_entree, heure_reelle_sortie = get_horaire_pour_date(
+            #     horaire, date_jour, est_paiement, section=section
+            # )
+            # Résoudre l'exception sans requête DB (depuis le dict pré-chargé)
+            exception = exceptions_map.get((date_jour, section)) or \
+                        exceptions_map.get((date_jour, None))
+
+            if exception:
+                heure_reelle_entree = exception.heure_entree or decimal_to_time(horaire.heure_entree)
+                heure_reelle_sortie = exception.heure_sortie or decimal_to_time(horaire.heure_sortie)
+            else:
+                est_samedi   = date_jour.weekday() == 5
+                est_vendredi = date_jour.weekday() == 4
+                heure_reelle_entree = decimal_to_time(horaire.heure_entree)
+                if est_paiement and est_vendredi:
+                    heure_reelle_sortie = decimal_to_time(horaire.sortie_vendredi_paiement)
+                elif est_paiement and est_samedi:
+                    heure_reelle_sortie = decimal_to_time(horaire.sortie_samedi_paiement)
+                elif est_samedi:
+                    heure_reelle_sortie = decimal_to_time(horaire.sortie_samedi)
+                else:
+                    heure_reelle_sortie = decimal_to_time(horaire.heure_sortie)
 
             # Convertir les dicts en objets compatibles avec analyser_pointages_jour
             class FakePointage:
@@ -1851,9 +1910,16 @@ class DetecterAnomaliesAPIView(APIView):
                 pointages_list, heure_reelle_entree, heure_reelle_sortie, seuil_minutes=30
             )
 
+            # if type_anomalie == 'multiples_pointages':
+            #     etat = 'multiples_pointages'
+            #     h_rect_entree = h_rect_sortie = None
+            # elif type_anomalie == 'pas_entree' or h_entree is None:
             if type_anomalie == 'multiples_pointages':
                 etat = 'multiples_pointages'
                 h_rect_entree = h_rect_sortie = None
+            elif type_anomalie == 'retard_sortie':              # ← AJOUTÉ
+                etat = 'retard_sortie'
+                h_rect_entree, h_rect_sortie = h_entree, h_sortie
             elif type_anomalie == 'pas_entree' or h_entree is None:
                 etat = 'pas_entree'
                 h_rect_entree, h_rect_sortie = None, h_sortie
@@ -1950,10 +2016,53 @@ class AnomalieParSectionAPIView(APIView):
             hors_periode=False
         ).values_list('date', flat=True)
         
-        anomalies = Anomalie.objects.filter(
-            date__in=dates_mois
-        ).order_by('section', 'date', 'userid')
+        # anomalies = Anomalie.objects.filter(
+        #     date__in=dates_mois
+        # ).order_by('section', 'date', 'userid')
         
+        # # Grouper par section
+        # par_section = {}
+        # for anomalie in anomalies:
+        #     section = anomalie.section or 'SANS SECTION'
+        #     if section not in par_section:
+        #         par_section[section] = {
+        #             'section': section,
+        #             'total': 0,
+        #             'corrigees': 0,
+        #             'non_corrigees': 0,
+        #             'par_etat': {},
+        #             'par_date': {}
+        #         }
+            
+        #     date_str = str(anomalie.date)
+        #     if date_str not in par_section[section]['par_date']:
+        #         par_section[section]['par_date'][date_str] = []
+            
+        #     par_section[section]['par_date'][date_str].append(
+        #         AnomalieSerializer(anomalie).data
+        #     )
+        anomalies = list(
+    Anomalie.objects.filter(date__in=dates_mois)
+    .order_by('section', 'date', 'userid')
+)
+
+        # ── Pré-charger en 2 requêtes au lieu de N×2 ──
+        userids = list({a.userid for a in anomalies})
+        userinfo_map = {u.userid: u for u in UserInfo.objects.filter(userid__in=userids)}
+        badges = [u.badgenumber for u in userinfo_map.values()]
+        from personnel.models import InformationPersonnelle
+        appellation_map = {
+            emp.numero_matricule: emp.appellation or emp.nom_complet
+            for emp in InformationPersonnelle.objects.filter(
+                numero_matricule__in=badges
+            ).only('numero_matricule', 'appellation', 'nom_complet')
+        }
+
+        # Sérialiser TOUTES les anomalies en une seule passe
+        context = {'userinfo_map': userinfo_map, 'appellation_map': appellation_map}
+        serializer = AnomalieSerializer(anomalies, many=True, context=context)
+        anomalies_serialized = {a['id']: a for a in serializer.data}
+
         # Grouper par section
         par_section = {}
         for anomalie in anomalies:
@@ -1967,14 +2076,25 @@ class AnomalieParSectionAPIView(APIView):
                     'par_etat': {},
                     'par_date': {}
                 }
-            
+
             date_str = str(anomalie.date)
             if date_str not in par_section[section]['par_date']:
                 par_section[section]['par_date'][date_str] = []
-            
+
+            # Utiliser la donnée déjà sérialisée — pas de re-appel
             par_section[section]['par_date'][date_str].append(
-                AnomalieSerializer(anomalie).data
+                anomalies_serialized[anomalie.id]
             )
+            par_section[section]['total'] += 1
+
+            if anomalie.etat == 'ok':
+                par_section[section]['corrigees'] += 1
+            else:
+                par_section[section]['non_corrigees'] += 1
+
+            etat_display = anomalie.get_etat_display()
+            par_section[section]['par_etat'][etat_display] = \
+            par_section[section]['par_etat'].get(etat_display, 0) + 1
             par_section[section]['total'] += 1
             
             if anomalie.etat == 'ok':
@@ -3305,8 +3425,17 @@ class AbsencesMoisAPIView(APIView):
             ano = abs_h('ANO')
             mp  = abs_h('MP')
 
+        # # ── TCP – Temps de Présence CNaPS ─────────────────────────────────────
+        # if not event or event == 'CM':
+        #     tcp = 0
+        # elif event in ('PS', 'ANO', 'MP') and not pres:
+        #     tcp = 0
+        # else:
+        #     tcp = 1
         # ── TCP – Temps de Présence CNaPS ─────────────────────────────────────
         if not event or event == 'CM':
+            tcp = 0
+        elif event == 'X' and not pres:   # ← AJOUTÉ : X sans présence = Null dans Access
             tcp = 0
         elif event in ('PS', 'ANO', 'MP') and not pres:
             tcp = 0
@@ -3320,6 +3449,10 @@ class AbsencesMoisAPIView(APIView):
             'rc': round(rc, 2), 'ha': ha, 'tcp': tcp,
             'ht': round(ht, 2),   # HT inclus dans le détail jour (lecture seule)
         }
+
+
+  
+
 
     def get(self, request):
         try:

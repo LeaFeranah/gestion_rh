@@ -568,6 +568,7 @@ class Evenement(models.Model):
         ('A', 'Absent'),
         ('ANO', 'Absence Non Autorisée'),
         ('AMP', ''),
+        ('CE', "Congé d'éducation"),
         ('CM', 'Congé de matérnité'),
         ('CP', 'Congé Payé'),
         ('EF', 'Événement familial'),
@@ -666,6 +667,7 @@ class Anomalie(models.Model):
         ('pas_entree', 'Pas d\'entrée'),
         ('pas_sortie', 'Pas de sortie'),
         ('multiples_pointages', 'Pointages multiples'),
+         ('retard_sortie', 'Retard de sortie'),
         ('ok', 'OK'),
     ]
     
@@ -718,39 +720,30 @@ class Anomalie(models.Model):
     
  
 
+    
     # def _determiner_etat(self, ancien_etat=None):
-    #     """
-    #     Détermine l'état de l'anomalie selon les règles.
-    #     Ne touche pas à multiples_pointages si les heures rectifiées sont vides.
-    #     """
-    #     # CAS SPÉCIAL : pointages multiples avec choix manuel pas encore fait
-    #     # → on garde l'état multiples_pointages tant que les rectifiées ne sont pas remplies
     #     if ancien_etat == 'multiples_pointages':
     #         if not self.heure_rectifiee_entree or not self.heure_rectifiee_sortie:
     #             return 'multiples_pointages'
 
-    #     # CAS 1 : Pas d'entrée rectifiée
     #     if not self.heure_rectifiee_entree:
     #         return 'pas_entree'
 
-    #     # CAS 2 : Pas de sortie rectifiée
     #     if not self.heure_rectifiee_sortie:
     #         return 'pas_sortie'
 
-    #     # CAS 3 : Les deux sont présentes → vérifier égalité avec réelles
-    #     if (self.heure_rectifiee_entree == self.heure_reelle_entree and
-    #             self.heure_rectifiee_sortie == self.heure_reelle_sortie):
-    #         return 'ok'
+    #     # ← Si les deux heures rectifiées sont présentes → toujours OK
+    #     # peu importe si elles correspondent ou non aux heures par défaut
+    #     return 'ok'
 
-    #     # Sinon conserver l'ancien état
-    #     return ancien_etat if ancien_etat else 'pas_entree'
-    # AVANT
-    # APRÈS
-    # APRÈS
     def _determiner_etat(self, ancien_etat=None):
         if ancien_etat == 'multiples_pointages':
             if not self.heure_rectifiee_entree or not self.heure_rectifiee_sortie:
                 return 'multiples_pointages'
+
+        if ancien_etat == 'retard_sortie':          # ← AJOUTÉ
+            if not self.heure_rectifiee_entree or not self.heure_rectifiee_sortie:
+                return 'retard_sortie'
 
         if not self.heure_rectifiee_entree:
             return 'pas_entree'
@@ -758,8 +751,6 @@ class Anomalie(models.Model):
         if not self.heure_rectifiee_sortie:
             return 'pas_sortie'
 
-        # ← Si les deux heures rectifiées sont présentes → toujours OK
-        # peu importe si elles correspondent ou non aux heures par défaut
         return 'ok'
         
 

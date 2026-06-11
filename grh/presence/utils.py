@@ -152,77 +152,6 @@ def analyser_presence(heure_entree_reelle, heure_sortie_reelle, heure_entree_pre
         }
 
 
-# def get_section_employe(badgenumber):
-#     try:
-#         from personnel.models import InformationPersonnelle
-#         employe = InformationPersonnelle.objects.select_related(
-#             'information_professionnelle'
-#         ).get(numero_matricule=badgenumber)
-#         if hasattr(employe, 'information_professionnelle'):
-#             return employe.information_professionnelle.section
-#         return 'ADMINISTRATION'
-#     except Exception as e:
-#         logger.warning(f"Section non trouvée pour {badgenumber}: {e}")
-#         return 'ADMINISTRATION'
-
-
-# presence/utils.py — remplacer get_section_employe
-
-# def get_section_employe(badgenumber: str) -> str:
-#     """
-#     Recherche rapide via UserSection (db_user_section).
-#     Fallback sur InformationPersonnelle si la table n'est pas encore peuplée.
-#     """
-#     try:
-#         from presence.models import UserSection, UserInfo
-#         user = UserInfo.objects.get(badgenumber=badgenumber)
-#         us   = UserSection.objects.select_related('section').get(user=user)
-#         return us.section.nom_section if us.section else 'ADMINISTRATION'
-#     except Exception:
-#         pass
-#     # Fallback legacy
-#     try:
-#         from personnel.models import InformationPersonnelle
-#         emp = InformationPersonnelle.objects.select_related(
-#             'information_professionnelle'
-#         ).get(numero_matricule=badgenumber)
-#         if hasattr(emp, 'information_professionnelle'):
-#             ip  = emp.information_professionnelle
-#             raw = ip.responsable_section.strip() if ip.responsable_section else ""
-#             return raw.upper() if raw else (ip.section.strip().upper() if ip.section else 'ADMINISTRATION')
-#     except Exception as e:
-#         logger.warning(f"Section non trouvée pour {badgenumber}: {e}")
-#     return 'ADMINISTRATION'
-
-
-# def build_user_section_map() -> dict:
-#     """
-#     Retourne {userid: nom_section} en UNE seule requête SQL.
-#     """
-#     from presence.models import UserSection
-#     return {
-#         us.userid: us.section.nom_section
-#         for us in UserSection.objects.select_related('section').all()
-#         if us.section_id is not None
-#     }
-
-# def build_user_section_map() -> dict:
-#     from presence.models import UserSection, UserInfo
-
-#     active_badges = set(get_active_badgenumbers())
-#     active_userids = set(
-#         UserInfo.objects.filter(
-#             badgenumber__in=active_badges
-#         ).values_list('userid', flat=True)
-#     )
-
-#     return {
-#         us.userid: us.section.nom_section
-#         for us in UserSection.objects.select_related('section').filter(userid__in=active_userids)
-#         if us.section_id is not None
-#     }
-
-
 
 # ── Constantes RESPONSABLE ──────────────────────────────────────────────────
 RESPONSABLE_VARIANTS = {
@@ -273,24 +202,74 @@ def get_section_employe(badgenumber: str) -> str:
     return 'ADMINISTRATION'
 
 
-def build_user_section_map() -> dict:
+# def build_user_section_map() -> dict:
+#     """
+#     Retourne {userid: section_effective} pour les employés ACTIFS uniquement.
+#     Les RESPONSABLE utilisent responsable_section.
+#     """
+#     from presence.models import UserInfo
+#     from personnel.models import InformationPersonnelle, InformationProfessionnelle
+
+#     active_badges = set(get_active_badgenumbers())
+
+#     # userid → badge (pour les actifs seulement)
+#     userid_to_badge = {
+#         u.userid: u.badgenumber
+#         for u in UserInfo.objects.filter(badgenumber__in=active_badges)
+#     }
+#     active_userids = set(userid_to_badge.keys())
+
+#     # badge → section effective via InformationProfessionnelle
+#     badge_to_section = {}
+#     for ip in (
+#         InformationProfessionnelle.objects
+#         .select_related('employe')
+#         .filter(employe__numero_matricule__in=active_badges)
+#     ):
+#         badge = ip.employe.numero_matricule
+#         badge_to_section[badge] = _effective_section(ip.section, ip.responsable_section)
+
+#     # Construction du résultat final
+#     result = {}
+#     for userid, badge in userid_to_badge.items():
+#         if badge in badge_to_section and badge_to_section[badge]:
+#             result[userid] = badge_to_section[badge]
+
+#     # Fallback : UserSection pour ceux sans InformationProfessionnelle
+#     from presence.models import UserSection
+#     for us in (
+#         UserSection.objects
+#         .select_related('section')
+#         .filter(userid__in=active_userids)
+#     ):
+#         if us.userid not in result and us.section_id is not None:
+#             result[us.userid] = us.section.nom_section
+
+#     return result
+
+_user_section_cache = {'data': None, 'ts': 0}
+
+def build_user_section_map(max_age_seconds=300) -> dict:
     """
-    Retourne {userid: section_effective} pour les employés ACTIFS uniquement.
-    Les RESPONSABLE utilisent responsable_section.
+    Retourne {userid: section_effective} avec cache 5 minutes.
     """
+    import time
+    now = time.time()
+    if _user_section_cache['data'] is not None and \
+       (now - _user_section_cache['ts']) < max_age_seconds:
+        return _user_section_cache['data']
+
     from presence.models import UserInfo
     from personnel.models import InformationPersonnelle, InformationProfessionnelle
 
     active_badges = set(get_active_badgenumbers())
 
-    # userid → badge (pour les actifs seulement)
     userid_to_badge = {
         u.userid: u.badgenumber
         for u in UserInfo.objects.filter(badgenumber__in=active_badges)
     }
     active_userids = set(userid_to_badge.keys())
 
-    # badge → section effective via InformationProfessionnelle
     badge_to_section = {}
     for ip in (
         InformationProfessionnelle.objects
@@ -300,13 +279,11 @@ def build_user_section_map() -> dict:
         badge = ip.employe.numero_matricule
         badge_to_section[badge] = _effective_section(ip.section, ip.responsable_section)
 
-    # Construction du résultat final
     result = {}
     for userid, badge in userid_to_badge.items():
         if badge in badge_to_section and badge_to_section[badge]:
             result[userid] = badge_to_section[badge]
 
-    # Fallback : UserSection pour ceux sans InformationProfessionnelle
     from presence.models import UserSection
     for us in (
         UserSection.objects
@@ -316,9 +293,16 @@ def build_user_section_map() -> dict:
         if us.userid not in result and us.section_id is not None:
             result[us.userid] = us.section.nom_section
 
+    # Mettre en cache
+    _user_section_cache['data'] = result
+    _user_section_cache['ts'] = now
     return result
 
 
+def invalidate_user_section_cache():
+    """Appeler si un employé change de section."""
+    _user_section_cache['data'] = None
+    _user_section_cache['ts'] = 0
 
 def format_duree(minutes):
     if minutes is None or minutes == 0:
@@ -345,57 +329,22 @@ def calculer_heures_supplementaires(heures_travaillees, heures_contractuelles):
 def est_jour_ferie(date_pointage):
     return False
 
+# ↓ AJOUTER ICI (avant analyser_pointages_jour)
+def _choisir_heure_sortie(heure_brute, heure_prevue, seuil_retard_minutes=15):
+    if not heure_prevue or not heure_brute:
+        return heure_brute, False
+    from datetime import datetime
+    ref = datetime.today().date()
+    dt_brute  = datetime.combine(ref, heure_brute)
+    dt_prevue = datetime.combine(ref, heure_prevue)
+    diff_minutes = (dt_brute - dt_prevue).total_seconds() / 60
+    if diff_minutes >= seuil_retard_minutes:
+        return heure_brute, True
+    elif diff_minutes >= 0:
+        return heure_prevue, False
+    else:
+        return heure_brute, False
 
-# def analyser_pointages_jour(pointages_bruts, heure_entree_prevue, heure_sortie_prevue,
-#                              seuil_minutes=30):
-#     if not pointages_bruts:
-#         return None, None, None, []
-
-#     tries = sorted(pointages_bruts, key=lambda p: p.checktime)
-
-#     liste_bruts = [
-#         {'time': p.checktime.time().strftime('%H:%M'), 'checktype': p.checktype.upper()}
-#         for p in tries
-#     ]
-
-#     entrees = [p for p in tries if p.checktype.upper() == 'O']
-#     sorties  = [p for p in tries if p.checktype.upper() == 'I']
-
-#     # ── Cas 1 : un seul pointage ──────────────────────────────────────────────
-#     if len(tries) == 1:
-#         if sorties and not entrees:
-#             # Seulement I → pas d'entrée
-#             return None, sorties[0].checktime.time(), 'pas_entree', liste_bruts
-#         else:
-#             # Seulement O → pas de sortie
-#             return entrees[0].checktime.time(), None, 'pas_sortie', liste_bruts
-
-#     premier = tries[0]
-#     dernier  = tries[-1]
-#     ecart_minutes = (dernier.checktime - premier.checktime).total_seconds() / 60.0
-
-#     # ── Cas 2 : écart insuffisant ─────────────────────────────────────────────
-#     if ecart_minutes < seuil_minutes:
-#         if sorties and not entrees:
-#             # Tous I trop proches → pas d'entrée
-#             return None, sorties[0].checktime.time(), 'pas_entree', liste_bruts
-#         # Tous O ou mixte trop proches → pas de sortie
-#         return premier.checktime.time(), None, 'pas_sortie', liste_bruts
-
-#     # ── Cas 3 : plus de 2 pointages avec écart suffisant ─────────────────────
-#     if len(tries) > 2:
-#         return premier.checktime.time(), dernier.checktime.time(), 'multiples_pointages', liste_bruts
-
-#     # ── Cas 4 : exactement 2 pointages, écart >= 30 min ──────────────────────
-#     # Peu importe le type (I+I, O+O, O+I, I+O)
-#     # L'employé ne sait pas pointer → premier=entrée, dernier=sortie
-#     heure_entree_brute = premier.checktime.time()
-#     heure_sortie_brute = dernier.checktime.time()
-
-#     heure_entree_corrigee = heure_entree_prevue if (heure_entree_prevue and heure_entree_brute <= heure_entree_prevue) else heure_entree_brute
-#     heure_sortie_corrigee = heure_sortie_prevue if (heure_sortie_prevue and heure_sortie_brute >= heure_sortie_prevue) else heure_sortie_brute
-
-#     return heure_entree_corrigee, heure_sortie_corrigee, None, liste_bruts
 
 
 
@@ -418,8 +367,11 @@ def est_jour_ferie(date_pointage):
 #     if len(tries) == 1:
 #         if sorties and not entrees:
 #             return None, sorties[0].checktime.time(), 'pas_entree', liste_bruts_complet
-#         else:
+#         elif entrees:
 #             return entrees[0].checktime.time(), None, 'pas_sortie', liste_bruts_complet
+#         else:
+#             # checktype inconnu (ni 'O' ni 'I') — traité comme une entrée
+#             return tries[0].checktime.time(), None, 'pas_sortie', liste_bruts_complet
 
 #     premier = tries[0]
 #     dernier  = tries[-1]
@@ -445,11 +397,18 @@ def est_jour_ferie(date_pointage):
 #             for p in filtres
 #         ]
 
+#         entrees_filtres = [p for p in filtres if p.checktype.upper() == 'O']
+#         sorties_filtres  = [p for p in filtres if p.checktype.upper() == 'I']
+
 #         # Après filtrage : 1 seul pointage restant
 #         if len(filtres) == 1:
 #             if filtres[0].checktype.upper() == 'I':
 #                 return None, filtres[0].checktime.time(), 'pas_entree', liste_bruts_filtres
-#             return filtres[0].checktime.time(), None, 'pas_sortie', liste_bruts_filtres
+#             elif filtres[0].checktype.upper() == 'O':
+#                 return filtres[0].checktime.time(), None, 'pas_sortie', liste_bruts_filtres
+#             else:
+#                 # checktype inconnu
+#                 return filtres[0].checktime.time(), None, 'pas_sortie', liste_bruts_filtres
 
 #         # Après filtrage : exactement 2 pointages → cas normal (entrée + sortie)
 #         if len(filtres) == 2:
@@ -460,7 +419,6 @@ def est_jour_ferie(date_pointage):
 #             return heure_entree_corrigee, heure_sortie_corrigee, None, liste_bruts_filtres
 
 #         # Après filtrage : encore 3+ pointages distincts → multiples_pointages
-#         # avec uniquement les pointages filtrés (espacés >= 15 min) affichés
 #         return filtres[0].checktime.time(), filtres[-1].checktime.time(), 'multiples_pointages', liste_bruts_filtres
 
 #     # ── Cas 4 : exactement 2 pointages, écart >= 30 min → cas normal ─────
@@ -492,7 +450,6 @@ def analyser_pointages_jour(pointages_bruts, heure_entree_prevue, heure_sortie_p
         elif entrees:
             return entrees[0].checktime.time(), None, 'pas_sortie', liste_bruts_complet
         else:
-            # checktype inconnu (ni 'O' ni 'I') — traité comme une entrée
             return tries[0].checktime.time(), None, 'pas_sortie', liste_bruts_complet
 
     premier = tries[0]
@@ -507,7 +464,6 @@ def analyser_pointages_jour(pointages_bruts, heure_entree_prevue, heure_sortie_p
 
     # ── Cas 3 : plus de 2 pointages avec écart total >= 30 min ───────────
     if len(tries) > 2:
-        # Garder uniquement les pointages espacés d'au moins 15 minutes du précédent
         filtres = [tries[0]]
         for p in tries[1:]:
             ecart = (p.checktime - filtres[-1].checktime).total_seconds() / 60.0
@@ -519,36 +475,44 @@ def analyser_pointages_jour(pointages_bruts, heure_entree_prevue, heure_sortie_p
             for p in filtres
         ]
 
-        entrees_filtres = [p for p in filtres if p.checktype.upper() == 'O']
-        sorties_filtres  = [p for p in filtres if p.checktype.upper() == 'I']
-
-        # Après filtrage : 1 seul pointage restant
         if len(filtres) == 1:
             if filtres[0].checktype.upper() == 'I':
                 return None, filtres[0].checktime.time(), 'pas_entree', liste_bruts_filtres
-            elif filtres[0].checktype.upper() == 'O':
-                return filtres[0].checktime.time(), None, 'pas_sortie', liste_bruts_filtres
             else:
-                # checktype inconnu
                 return filtres[0].checktime.time(), None, 'pas_sortie', liste_bruts_filtres
 
-        # Après filtrage : exactement 2 pointages → cas normal (entrée + sortie)
         if len(filtres) == 2:
             heure_entree_brute = filtres[0].checktime.time()
             heure_sortie_brute = filtres[-1].checktime.time()
-            heure_entree_corrigee = heure_entree_prevue if (heure_entree_prevue and heure_entree_brute <= heure_entree_prevue) else heure_entree_brute
-            heure_sortie_corrigee = heure_sortie_prevue if (heure_sortie_prevue and heure_sortie_brute >= heure_sortie_prevue) else heure_sortie_brute
+            heure_entree_corrigee = (
+                heure_entree_prevue
+                if (heure_entree_prevue and heure_entree_brute <= heure_entree_prevue)
+                else heure_entree_brute
+            )
+            heure_sortie_corrigee, retard_sortie = _choisir_heure_sortie(
+                heure_sortie_brute, heure_sortie_prevue
+            )
+            if retard_sortie:
+                return heure_entree_corrigee, heure_sortie_corrigee, 'retard_sortie', liste_bruts_filtres
             return heure_entree_corrigee, heure_sortie_corrigee, None, liste_bruts_filtres
 
-        # Après filtrage : encore 3+ pointages distincts → multiples_pointages
         return filtres[0].checktime.time(), filtres[-1].checktime.time(), 'multiples_pointages', liste_bruts_filtres
 
-    # ── Cas 4 : exactement 2 pointages, écart >= 30 min → cas normal ─────
+    # ── Cas 4 : exactement 2 pointages, écart >= 30 min ──────────────────
     heure_entree_brute = premier.checktime.time()
     heure_sortie_brute = dernier.checktime.time()
-    heure_entree_corrigee = heure_entree_prevue if (heure_entree_prevue and heure_entree_brute <= heure_entree_prevue) else heure_entree_brute
-    heure_sortie_corrigee = heure_sortie_prevue if (heure_sortie_prevue and heure_sortie_brute >= heure_sortie_prevue) else heure_sortie_brute
+    heure_entree_corrigee = (
+        heure_entree_prevue
+        if (heure_entree_prevue and heure_entree_brute <= heure_entree_prevue)
+        else heure_entree_brute
+    )
+    heure_sortie_corrigee, retard_sortie = _choisir_heure_sortie(
+        heure_sortie_brute, heure_sortie_prevue
+    )
+    if retard_sortie:
+        return heure_entree_corrigee, heure_sortie_corrigee, 'retard_sortie', liste_bruts_complet
     return heure_entree_corrigee, heure_sortie_corrigee, None, liste_bruts_complet
+
 
 
 def corriger_pointages_automatique(pointages_bruts, heure_entree_prevue, heure_sortie_prevue,

@@ -154,19 +154,68 @@ class AnomalieSerializer(serializers.ModelSerializer):
             'est_corrigee',
         ]
 
+
+
+    # def get_user_name(self, obj):
+    #     try:
+    #         from .models import UserInfo
+    #         from personnel.models import InformationPersonnelle
+    #         user = UserInfo.objects.get(userid=obj.userid)
+    #         try:
+    #             emp = InformationPersonnelle.objects.get(numero_matricule=user.badgenumber)
+    #             return emp.appellation or emp.nom_complet
+    #         except InformationPersonnelle.DoesNotExist:
+    #             pass
+    #         return user.name if user else f"User {obj.userid}"
+    #     except:
+    #         return f"User {obj.userid}"
+
+    # def get_badgenumber(self, obj):
+    #     try:
+    #         from .models import UserInfo
+    #         user = UserInfo.objects.get(userid=obj.userid)
+    #         return user.badgenumber if user else None
+    #     except:
+    #         return None
+
+    # REMPLACER les deux méthodes existantes PAR :
+
     def get_user_name(self, obj):
+        # 1. Essayer la map pré-chargée (contexte)
+        userinfo_map = self.context.get('userinfo_map', {})
+        appellation_map = self.context.get('appellation_map', {})
+        
+        user = userinfo_map.get(obj.userid)
+        badge = user.badgenumber if user else None
+        
+        # 2. Appellation pré-chargée si dispo
+        if badge and badge in appellation_map:
+            return appellation_map[badge]
+        
+        # 3. Fallback DB (cas sans contexte)
         try:
             from .models import UserInfo
-            user = UserInfo.objects.get(userid=obj.userid)
+            if not user:
+                user = UserInfo.objects.get(userid=obj.userid)
+            try:
+                from personnel.models import InformationPersonnelle
+                emp = InformationPersonnelle.objects.get(numero_matricule=user.badgenumber)
+                return emp.appellation or emp.nom_complet
+            except InformationPersonnelle.DoesNotExist:
+                pass
             return user.name if user else f"User {obj.userid}"
         except:
             return f"User {obj.userid}"
 
     def get_badgenumber(self, obj):
+        userinfo_map = self.context.get('userinfo_map', {})
+        user = userinfo_map.get(obj.userid)
+        if user:
+            return user.badgenumber
         try:
             from .models import UserInfo
             user = UserInfo.objects.get(userid=obj.userid)
-            return user.badgenumber if user else None
+            return user.badgenumber
         except:
             return None
 
