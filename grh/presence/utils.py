@@ -202,51 +202,6 @@ def get_section_employe(badgenumber: str) -> str:
     return 'ADMINISTRATION'
 
 
-# def build_user_section_map() -> dict:
-#     """
-#     Retourne {userid: section_effective} pour les employés ACTIFS uniquement.
-#     Les RESPONSABLE utilisent responsable_section.
-#     """
-#     from presence.models import UserInfo
-#     from personnel.models import InformationPersonnelle, InformationProfessionnelle
-
-#     active_badges = set(get_active_badgenumbers())
-
-#     # userid → badge (pour les actifs seulement)
-#     userid_to_badge = {
-#         u.userid: u.badgenumber
-#         for u in UserInfo.objects.filter(badgenumber__in=active_badges)
-#     }
-#     active_userids = set(userid_to_badge.keys())
-
-#     # badge → section effective via InformationProfessionnelle
-#     badge_to_section = {}
-#     for ip in (
-#         InformationProfessionnelle.objects
-#         .select_related('employe')
-#         .filter(employe__numero_matricule__in=active_badges)
-#     ):
-#         badge = ip.employe.numero_matricule
-#         badge_to_section[badge] = _effective_section(ip.section, ip.responsable_section)
-
-#     # Construction du résultat final
-#     result = {}
-#     for userid, badge in userid_to_badge.items():
-#         if badge in badge_to_section and badge_to_section[badge]:
-#             result[userid] = badge_to_section[badge]
-
-#     # Fallback : UserSection pour ceux sans InformationProfessionnelle
-#     from presence.models import UserSection
-#     for us in (
-#         UserSection.objects
-#         .select_related('section')
-#         .filter(userid__in=active_userids)
-#     ):
-#         if us.userid not in result and us.section_id is not None:
-#             result[us.userid] = us.section.nom_section
-
-#     return result
-
 _user_section_cache = {'data': None, 'ts': 0}
 
 def build_user_section_map(max_age_seconds=300) -> dict:
@@ -330,7 +285,21 @@ def est_jour_ferie(date_pointage):
     return False
 
 # ↓ AJOUTER ICI (avant analyser_pointages_jour)
-def _choisir_heure_sortie(heure_brute, heure_prevue, seuil_retard_minutes=15):
+# def _choisir_heure_sortie(heure_brute, heure_prevue, seuil_retard_minutes=15):
+#     if not heure_prevue or not heure_brute:
+#         return heure_brute, False
+#     from datetime import datetime
+#     ref = datetime.today().date()
+#     dt_brute  = datetime.combine(ref, heure_brute)
+#     dt_prevue = datetime.combine(ref, heure_prevue)
+#     diff_minutes = (dt_brute - dt_prevue).total_seconds() / 60
+#     if diff_minutes >= seuil_retard_minutes:
+#         return heure_prevue, True
+#     elif diff_minutes >= 0:
+#         return heure_prevue, False
+#     else:
+#         return heure_brute.replace(second=0, microsecond=0), False
+def _choisir_heure_sortie(heure_brute, heure_prevue, seuil_retard_minutes=15, tolerance_avance_minutes=5):
     if not heure_prevue or not heure_brute:
         return heure_brute, False
     from datetime import datetime
@@ -339,13 +308,12 @@ def _choisir_heure_sortie(heure_brute, heure_prevue, seuil_retard_minutes=15):
     dt_prevue = datetime.combine(ref, heure_prevue)
     diff_minutes = (dt_brute - dt_prevue).total_seconds() / 60
     if diff_minutes >= seuil_retard_minutes:
-        return heure_brute, True
-    elif diff_minutes >= 0:
+        return heure_prevue, True
+    elif diff_minutes >= -tolerance_avance_minutes:
+        # sortie dans la fenêtre [prevue-5min, prevue+15min[ → on arrondit à l'heure prévue
         return heure_prevue, False
     else:
         return heure_brute, False
-
-
 
 
 # def analyser_pointages_jour(pointages_bruts, heure_entree_prevue, heure_sortie_prevue,
@@ -370,7 +338,6 @@ def _choisir_heure_sortie(heure_brute, heure_prevue, seuil_retard_minutes=15):
 #         elif entrees:
 #             return entrees[0].checktime.time(), None, 'pas_sortie', liste_bruts_complet
 #         else:
-#             # checktype inconnu (ni 'O' ni 'I') — traité comme une entrée
 #             return tries[0].checktime.time(), None, 'pas_sortie', liste_bruts_complet
 
 #     premier = tries[0]
@@ -385,7 +352,6 @@ def _choisir_heure_sortie(heure_brute, heure_prevue, seuil_retard_minutes=15):
 
 #     # ── Cas 3 : plus de 2 pointages avec écart total >= 30 min ───────────
 #     if len(tries) > 2:
-#         # Garder uniquement les pointages espacés d'au moins 15 minutes du précédent
 #         filtres = [tries[0]]
 #         for p in tries[1:]:
 #             ecart = (p.checktime - filtres[-1].checktime).total_seconds() / 60.0
@@ -397,36 +363,192 @@ def _choisir_heure_sortie(heure_brute, heure_prevue, seuil_retard_minutes=15):
 #             for p in filtres
 #         ]
 
-#         entrees_filtres = [p for p in filtres if p.checktype.upper() == 'O']
-#         sorties_filtres  = [p for p in filtres if p.checktype.upper() == 'I']
-
-#         # Après filtrage : 1 seul pointage restant
 #         if len(filtres) == 1:
 #             if filtres[0].checktype.upper() == 'I':
 #                 return None, filtres[0].checktime.time(), 'pas_entree', liste_bruts_filtres
-#             elif filtres[0].checktype.upper() == 'O':
-#                 return filtres[0].checktime.time(), None, 'pas_sortie', liste_bruts_filtres
 #             else:
-#                 # checktype inconnu
 #                 return filtres[0].checktime.time(), None, 'pas_sortie', liste_bruts_filtres
 
-#         # Après filtrage : exactement 2 pointages → cas normal (entrée + sortie)
 #         if len(filtres) == 2:
 #             heure_entree_brute = filtres[0].checktime.time()
 #             heure_sortie_brute = filtres[-1].checktime.time()
-#             heure_entree_corrigee = heure_entree_prevue if (heure_entree_prevue and heure_entree_brute <= heure_entree_prevue) else heure_entree_brute
-#             heure_sortie_corrigee = heure_sortie_prevue if (heure_sortie_prevue and heure_sortie_brute >= heure_sortie_prevue) else heure_sortie_brute
+#             heure_entree_corrigee = (
+#                 heure_entree_prevue
+#                 if (heure_entree_prevue and heure_entree_brute <= heure_entree_prevue)
+#                 else heure_entree_brute
+#             )
+#             heure_sortie_corrigee, retard_sortie = _choisir_heure_sortie(
+#                 heure_sortie_brute, heure_sortie_prevue
+#             )
+#             if retard_sortie:
+#                 return heure_entree_corrigee, heure_sortie_corrigee, 'retard_sortie', liste_bruts_filtres
 #             return heure_entree_corrigee, heure_sortie_corrigee, None, liste_bruts_filtres
 
-#         # Après filtrage : encore 3+ pointages distincts → multiples_pointages
 #         return filtres[0].checktime.time(), filtres[-1].checktime.time(), 'multiples_pointages', liste_bruts_filtres
 
-#     # ── Cas 4 : exactement 2 pointages, écart >= 30 min → cas normal ─────
+#     # ── Cas 4 : exactement 2 pointages, écart >= 30 min ──────────────────
 #     heure_entree_brute = premier.checktime.time()
 #     heure_sortie_brute = dernier.checktime.time()
-#     heure_entree_corrigee = heure_entree_prevue if (heure_entree_prevue and heure_entree_brute <= heure_entree_prevue) else heure_entree_brute
-#     heure_sortie_corrigee = heure_sortie_prevue if (heure_sortie_prevue and heure_sortie_brute >= heure_sortie_prevue) else heure_sortie_brute
+#     heure_entree_corrigee = (
+#         heure_entree_prevue
+#         if (heure_entree_prevue and heure_entree_brute <= heure_entree_prevue)
+#         else heure_entree_brute
+#     )
+#     heure_sortie_corrigee, retard_sortie = _choisir_heure_sortie(
+#         heure_sortie_brute, heure_sortie_prevue
+#     )
+#     if retard_sortie:
+#         return heure_entree_corrigee, heure_sortie_corrigee, 'retard_sortie', liste_bruts_complet
 #     return heure_entree_corrigee, heure_sortie_corrigee, None, liste_bruts_complet
+
+# def analyser_pointages_jour(pointages_bruts, heure_entree_prevue, heure_sortie_prevue,
+#                              seuil_minutes=30):
+#     """
+#     Analyse les pointages d'un employé pour un jour donné
+#     Retourne: (heure_entree, heure_sortie, type_anomalie, liste_bruts)
+    
+#     type_anomalie peut être:
+#     - None: OK
+#     - 'pas_entree'
+#     - 'pas_sortie' 
+#     - 'multiples_pointages'
+#     - 'retard_sortie'
+#     - 'entree_trop_tot'  # ← NOUVEAU
+#     """
+#     if not pointages_bruts:
+#         return None, None, None, []
+
+#     tries = sorted(pointages_bruts, key=lambda p: p.checktime)
+
+#     liste_bruts_complet = [
+#         {'time': p.checktime.time().strftime('%H:%M'), 'checktype': p.checktype.upper()}
+#         for p in tries
+#     ]
+
+#     entrees = [p for p in tries if p.checktype.upper() == 'O']
+#     sorties = [p for p in tries if p.checktype.upper() == 'I']
+
+#     # ── Cas 1 : un seul pointage ──────────────────────────────────────────
+#     if len(tries) == 1:
+#         if sorties and not entrees:
+#             return None, sorties[0].checktime.time(), 'pas_entree', liste_bruts_complet
+#         elif entrees:
+#             return entrees[0].checktime.time(), None, 'pas_sortie', liste_bruts_complet
+#         else:
+#             return tries[0].checktime.time(), None, 'pas_sortie', liste_bruts_complet
+
+#     premier = tries[0]
+#     dernier = tries[-1]
+#     ecart_minutes = (dernier.checktime - premier.checktime).total_seconds() / 60.0
+
+#     # ── Cas 2 : écart total insuffisant (< 30 min) → doublon ─────────────
+#     if ecart_minutes < seuil_minutes:
+#         if sorties and not entrees:
+#             return None, sorties[0].checktime.time(), 'pas_entree', liste_bruts_complet
+#         return premier.checktime.time(), None, 'pas_sortie', liste_bruts_complet
+
+#     # ── Cas 3 : plus de 2 pointages avec écart total >= 30 min ───────────
+#     if len(tries) > 2:
+#         filtres = [tries[0]]
+#         for p in tries[1:]:
+#             ecart = (p.checktime - filtres[-1].checktime).total_seconds() / 60.0
+#             if ecart >= 15:
+#                 filtres.append(p)
+
+#         liste_bruts_filtres = [
+#             {'time': p.checktime.time().strftime('%H:%M'), 'checktype': p.checktype.upper()}
+#             for p in filtres
+#         ]
+
+#         if len(filtres) == 1:
+#             if filtres[0].checktype.upper() == 'I':
+#                 return None, filtres[0].checktime.time(), 'pas_entree', liste_bruts_filtres
+#             else:
+#                 return filtres[0].checktime.time(), None, 'pas_sortie', liste_bruts_filtres
+
+#         if len(filtres) == 2:
+#             heure_entree_brute = filtres[0].checktime.time()
+#             heure_sortie_brute = filtres[-1].checktime.time()
+            
+#             # ⚠️ NOUVELLE LOGIQUE POUR L'ENTRÉE
+#             heure_entree_corrigee = heure_entree_brute
+#             if heure_entree_prevue and heure_entree_brute:
+#                 # Calculer l'écart en minutes
+#                 ref = datetime.today().date()
+#                 dt_brute = datetime.combine(ref, heure_entree_brute)
+#                 dt_prevue = datetime.combine(ref, heure_entree_prevue)
+#                 ecart_entree_minutes = (dt_prevue - dt_brute).total_seconds() / 60.0
+                
+#                 # Si l'employé arrive plus d'1h avant → anomalie
+#                 # if ecart_entree_minutes > 60:
+#                 #     # On garde l'heure brute et on marque l'anomalie
+#                 #     heure_entree_corrigee = heure_entree_brute
+#                 #     type_anomalie_entree = 'entree_trop_tot'
+#                 # else:
+#                 #     # Règle normale : si avant l'heure prévue, on prend l'heure prévue
+#                 #     if heure_entree_brute <= heure_entree_prevue:
+#                 #         heure_entree_corrigee = heure_entree_prevue
+#                 #         type_anomalie_entree = None
+#                 #     else:
+#                 #         heure_entree_corrigee = heure_entree_brute
+#                 #         type_anomalie_entree = None
+#                 if heure_entree_brute <= heure_entree_prevue:
+#                     heure_entree_corrigee = heure_entree_prevue
+#                 type_anomalie_entree = None
+#             else:
+#                 type_anomalie_entree = None
+            
+#             # Règle pour la sortie (inchangée)
+#             heure_sortie_corrigee, retard_sortie = _choisir_heure_sortie(
+#                 heure_sortie_brute, heure_sortie_prevue
+#             )
+            
+#             # Déterminer le type d'anomalie final (priorité à entrée_trop_tot)
+#             if type_anomalie_entree == 'entree_trop_tot':
+#                 return heure_entree_corrigee, heure_sortie_corrigee, 'entree_trop_tot', liste_bruts_filtres
+#             elif retard_sortie:
+#                 return heure_entree_corrigee, heure_sortie_corrigee, 'retard_sortie', liste_bruts_filtres
+#             else:
+#                 return heure_entree_corrigee, heure_sortie_corrigee, None, liste_bruts_filtres
+
+#         return filtres[0].checktime.time(), filtres[-1].checktime.time(), 'multiples_pointages', liste_bruts_filtres
+
+#     # ── Cas 4 : exactement 2 pointages, écart >= 30 min ──────────────────
+#     heure_entree_brute = premier.checktime.time()
+#     heure_sortie_brute = dernier.checktime.time()
+    
+#     # ⚠️ NOUVELLE LOGIQUE POUR L'ENTRÉE (cas 2 pointages)
+#     heure_entree_corrigee = heure_entree_brute
+#     type_anomalie_entree = None
+#     if heure_entree_prevue and heure_entree_brute:
+#         ref = datetime.today().date()
+#         dt_brute = datetime.combine(ref, heure_entree_brute)
+#         dt_prevue = datetime.combine(ref, heure_entree_prevue)
+#         ecart_entree_minutes = (dt_prevue - dt_brute).total_seconds() / 60.0
+        
+#         # if ecart_entree_minutes > 60:
+#         #     heure_entree_corrigee = heure_entree_brute
+#         #     type_anomalie_entree = 'entree_trop_tot'
+#         # else:
+#         #     if heure_entree_brute <= heure_entree_prevue:
+#         #         heure_entree_corrigee = heure_entree_prevue
+#         #     else:
+#         #         heure_entree_corrigee = heure_entree_brute
+#         if heure_entree_brute <= heure_entree_prevue:
+#             heure_entree_corrigee = heure_entree_prevue
+#         type_anomalie_entree = None
+    
+#     # Règle pour la sortie (inchangée)
+#     heure_sortie_corrigee, retard_sortie = _choisir_heure_sortie(
+#         heure_sortie_brute, heure_sortie_prevue
+#     )
+    
+#     if type_anomalie_entree == 'entree_trop_tot':
+#         return heure_entree_corrigee, heure_sortie_corrigee, 'entree_trop_tot', liste_bruts_complet
+#     elif retard_sortie:
+#         return heure_entree_corrigee, heure_sortie_corrigee, 'retard_sortie', liste_bruts_complet
+#     else:
+#         return heure_entree_corrigee, heure_sortie_corrigee, None, liste_bruts_complet
 
 def analyser_pointages_jour(pointages_bruts, heure_entree_prevue, heure_sortie_prevue,
                              seuil_minutes=30):
@@ -441,7 +563,7 @@ def analyser_pointages_jour(pointages_bruts, heure_entree_prevue, heure_sortie_p
     ]
 
     entrees = [p for p in tries if p.checktype.upper() == 'O']
-    sorties  = [p for p in tries if p.checktype.upper() == 'I']
+    sorties = [p for p in tries if p.checktype.upper() == 'I']
 
     # ── Cas 1 : un seul pointage ──────────────────────────────────────────
     if len(tries) == 1:
@@ -453,7 +575,7 @@ def analyser_pointages_jour(pointages_bruts, heure_entree_prevue, heure_sortie_p
             return tries[0].checktime.time(), None, 'pas_sortie', liste_bruts_complet
 
     premier = tries[0]
-    dernier  = tries[-1]
+    dernier = tries[-1]
     ecart_minutes = (dernier.checktime - premier.checktime).total_seconds() / 60.0
 
     # ── Cas 2 : écart total insuffisant (< 30 min) → doublon ─────────────
@@ -461,6 +583,26 @@ def analyser_pointages_jour(pointages_bruts, heure_entree_prevue, heure_sortie_p
         if sorties and not entrees:
             return None, sorties[0].checktime.time(), 'pas_entree', liste_bruts_complet
         return premier.checktime.time(), None, 'pas_sortie', liste_bruts_complet
+
+    # def _corriger_entree(heure_brute, heure_prevue):
+    #     """Prend l'heure prévue si brute est dans les 15 min autour (avant ou après)."""
+    #     if not heure_prevue or not heure_brute:
+    #         return heure_brute
+    #     ref = datetime.today().date()
+    #     diff = (datetime.combine(ref, heure_brute) - datetime.combine(ref, heure_prevue)).total_seconds() / 60.0
+    #     # brute avant l'heure prévue OU jusqu'à 15 min après → heure prévue
+    #     if diff <= 15:
+    #         return heure_prevue
+    #     return heure_brute
+    def _corriger_entree(heure_brute, heure_prevue):
+        """Prend l'heure prévue si brute est dans les 15 min autour (avant ou après)."""
+        if not heure_prevue or not heure_brute:
+            return heure_brute
+        ref = datetime.today().date()
+        diff = (datetime.combine(ref, heure_brute) - datetime.combine(ref, heure_prevue)).total_seconds() / 60.0
+        if diff <= 15:
+            return heure_prevue
+        return heure_brute.replace(second=0, microsecond=0)
 
     # ── Cas 3 : plus de 2 pointages avec écart total >= 30 min ───────────
     if len(tries) > 2:
@@ -484,35 +626,37 @@ def analyser_pointages_jour(pointages_bruts, heure_entree_prevue, heure_sortie_p
         if len(filtres) == 2:
             heure_entree_brute = filtres[0].checktime.time()
             heure_sortie_brute = filtres[-1].checktime.time()
-            heure_entree_corrigee = (
-                heure_entree_prevue
-                if (heure_entree_prevue and heure_entree_brute <= heure_entree_prevue)
-                else heure_entree_brute
-            )
+
+            heure_entree_corrigee = _corriger_entree(heure_entree_brute, heure_entree_prevue)
             heure_sortie_corrigee, retard_sortie = _choisir_heure_sortie(
                 heure_sortie_brute, heure_sortie_prevue
             )
+
             if retard_sortie:
                 return heure_entree_corrigee, heure_sortie_corrigee, 'retard_sortie', liste_bruts_filtres
             return heure_entree_corrigee, heure_sortie_corrigee, None, liste_bruts_filtres
 
-        return filtres[0].checktime.time(), filtres[-1].checktime.time(), 'multiples_pointages', liste_bruts_filtres
+        #return filtres[0].checktime.time(), filtres[-1].checktime.time(), 'multiples_pointages', liste_bruts_filtres
+        heure_entree_brute = filtres[0].checktime.time()
+        heure_sortie_brute = filtres[-1].checktime.time()
+
+        heure_entree_corrigee = _corriger_entree(heure_entree_brute, heure_entree_prevue)
+        heure_sortie_corrigee, _ = _choisir_heure_sortie(heure_sortie_brute, heure_sortie_prevue)
+
+        return heure_entree_corrigee, heure_sortie_corrigee, 'multiples_pointages', liste_bruts_filtres
 
     # ── Cas 4 : exactement 2 pointages, écart >= 30 min ──────────────────
     heure_entree_brute = premier.checktime.time()
     heure_sortie_brute = dernier.checktime.time()
-    heure_entree_corrigee = (
-        heure_entree_prevue
-        if (heure_entree_prevue and heure_entree_brute <= heure_entree_prevue)
-        else heure_entree_brute
-    )
+
+    heure_entree_corrigee = _corriger_entree(heure_entree_brute, heure_entree_prevue)
     heure_sortie_corrigee, retard_sortie = _choisir_heure_sortie(
         heure_sortie_brute, heure_sortie_prevue
     )
+
     if retard_sortie:
         return heure_entree_corrigee, heure_sortie_corrigee, 'retard_sortie', liste_bruts_complet
     return heure_entree_corrigee, heure_sortie_corrigee, None, liste_bruts_complet
-
 
 
 def corriger_pointages_automatique(pointages_bruts, heure_entree_prevue, heure_sortie_prevue,

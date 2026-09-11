@@ -1,3 +1,1047 @@
+# from django.db import models
+# from datetime import date, timedelta, datetime
+# from calendar import monthrange
+
+# class Date(models.Model):
+#     date = models.DateField(unique=True, primary_key=True)
+#     code_date = models.CharField(max_length=2)  
+#     hors_periode = models.BooleanField(default=False)  
+#     mois_reference = models.DateField()
+#     est_jour_paiement = models.BooleanField(default=False)
+    
+#     class Meta:
+#         db_table = 'date'
+#         ordering = ['date']
+    
+#     def __str__(self):
+#         if self.est_jour_paiement:
+#             return f"{self.date} - {self.code_date}P (Jour de paiement)"
+#         if self.hors_periode:
+#             return f"{self.date} - {self.code_date}F (Hors période)"
+#         return f"{self.date} - {self.code_date}"
+    
+#     @property
+#     def code_affichage(self):
+#         """Code à afficher : '11P', '11F' ou '11'"""
+#         if self.est_jour_paiement:
+#             return f"{self.code_date}P"
+#         if self.hors_periode:
+#             return f"{self.code_date}F"
+#         return self.code_date
+    
+#     @staticmethod
+#     def get_lundi_precedent(d):
+#         """Retourne le lundi précédent ou égal à la date donnée"""
+#         jours_depuis_lundi = d.weekday()  # 0 = lundi, 6 = dimanche
+#         return d - timedelta(days=jours_depuis_lundi)
+    
+#     @staticmethod
+#     def calculer_code_date(d, lundi_debut):
+#         """
+#         Calcule le code_date pour une date donnée
+#         d: date à analyser
+#         lundi_debut: premier lundi de la période
+#         """
+#         jours_depuis_debut = (d - lundi_debut).days
+#         numero_semaine = (jours_depuis_debut // 7) + 1
+#         jour_semaine = (d.weekday() + 1)  # 1 = lundi, 7 = dimanche
+        
+#         # # Limiter à 5 semaines max
+#         # if numero_semaine > 5:
+#         #     numero_semaine = 5
+        
+#         return f"{numero_semaine}{jour_semaine}"
+    
+#     @staticmethod
+#     def calculer_jours_paiement(annee, mois):
+#         """
+#         Calcule les jours de paiement (vendredi et samedi) selon les règles :
+#         - Si fin du mois précédent = mercredi ou jeudi : vendredi et samedi suivants
+#         - Si fin du mois précédent = vendredi : ce vendredi et samedi suivant
+#         - Si fin du mois précédent = samedi, dimanche, lundi ou mardi : vendredi et samedi précédents
+        
+#         Retourne: liste de dates marquées P
+#         """
+#         # Trouver le dernier jour du mois PRÉCÉDENT
+#         if mois == 1:
+#             mois_precedent = 12
+#             annee_precedente = annee - 1
+#         else:
+#             mois_precedent = mois - 1
+#             annee_precedente = annee
+        
+#         dernier_jour_mois_precedent = monthrange(annee_precedente, mois_precedent)[1]
+#         fin_mois_precedent = date(annee_precedente, mois_precedent, dernier_jour_mois_precedent)
+        
+#         jour_semaine_fin = fin_mois_precedent.weekday()  # 0=lundi, 6=dimanche
+        
+#         jours_paiement = []
+        
+#         if jour_semaine_fin == 2:  # Mercredi
+#             # Vendredi et samedi SUIVANTS
+#             vendredi = fin_mois_precedent + timedelta(days=2)
+#             samedi = fin_mois_precedent + timedelta(days=3)
+#             jours_paiement = [vendredi, samedi]
+            
+#         elif jour_semaine_fin == 3:  # Jeudi
+#             # Vendredi et samedi SUIVANTS
+#             vendredi = fin_mois_precedent + timedelta(days=1)
+#             samedi = fin_mois_precedent + timedelta(days=2)
+#             jours_paiement = [vendredi, samedi]
+            
+#         elif jour_semaine_fin == 4:  # Vendredi
+#             # Ce vendredi et samedi suivant
+#             vendredi = fin_mois_precedent
+#             samedi = fin_mois_precedent + timedelta(days=1)
+#             jours_paiement = [vendredi, samedi]
+            
+#         elif jour_semaine_fin in [5, 6, 0, 1]:  # Samedi, Dimanche, Lundi, Mardi
+#             # Vendredi et samedi PRÉCÉDENTS
+#             jours_avant_vendredi = {
+#                 5: 1,  # Samedi -> vendredi à -1 jour
+#                 6: 2,  # Dimanche -> vendredi à -2 jours
+#                 0: 3,  # Lundi -> vendredi à -3 jours
+#                 1: 4,  # Mardi -> vendredi à -4 jours
+#             }
+#             jours_recul = jours_avant_vendredi[jour_semaine_fin]
+#             vendredi = fin_mois_precedent - timedelta(days=jours_recul)
+#             samedi = vendredi + timedelta(days=1)
+#             jours_paiement = [vendredi, samedi]
+        
+#         return jours_paiement
+    
+#     # @classmethod
+#     # def generer_dates_mois(cls, annee, mois):
+#     #     """
+#     #     Génère toutes les dates pour un mois de référence donné
+#     #     Ex: mois=8 (août) → période du 21 juillet au 20 août
+#     #     """
+#     #     mois_ref = date(annee, mois, 1)
+        
+#     #     # Période du 21 du mois précédent au 20 du mois courant
+#     #     if mois == 1:
+#     #         debut_periode = date(annee - 1, 12, 21)
+#     #     else:
+#     #         debut_periode = date(annee, mois - 1, 21)
+        
+#     #     fin_periode = date(annee, mois, 20)
+        
+#     #     # Commencer au lundi précédent ou égal au 21
+#     #     lundi_debut = cls.get_lundi_precedent(debut_periode)
+        
+#     #     # CALCULER LES JOURS DE PAIEMENT
+#     #     jours_paiement = cls.calculer_jours_paiement(annee, mois)
+        
+#     #     # Générer toutes les dates (6 semaines complètes)
+#     #     date_courante = lundi_debut
+#     #     dates_crees = []
+        
+#     #     fin_generation = lundi_debut + timedelta(days=6*7-1)  # 6 semaines
+        
+#     #     while date_courante <= fin_generation:
+#     #         # Toujours calculer le code_date
+#     #         code = cls.calculer_code_date(date_courante, lundi_debut)
+            
+#     #         # Déterminer si hors période (F)
+#     #         hors_periode = (date_courante < debut_periode or date_courante > fin_periode)
+            
+#     #         # DÉTERMINER SI JOUR DE PAIEMENT (P)
+#     #         est_jour_paiement = date_courante in jours_paiement
+            
+#     #         obj, created = cls.objects.update_or_create(
+#     #             date=date_courante,
+#     #             defaults={
+#     #                 'code_date': code,
+#     #                 'hors_periode': hors_periode,
+#     #                 'mois_reference': mois_ref,
+#     #                 'est_jour_paiement': est_jour_paiement,
+#     #             }
+#     #         )
+#     #         dates_crees.append(obj)
+#     #         date_courante += timedelta(days=1)
+        
+#     #     return dates_crees
+    
+
+#     @classmethod
+#     def generer_dates_mois(cls, annee, mois):
+#         """
+#         Génère toutes les dates pour un mois de référence donné.
+#         Tient compte des fermetures anticipées (PeriodeFermeture).
+#         """
+#         # Import tardif pour éviter la référence circulaire (PeriodeFermeture est défini après Date)
+#         from .models import PeriodeFermeture
+
+#         mois_ref = date(annee, mois, 1)
+
+#         # ── Mois précédent ───────────────────────────────────────────────────────
+#         if mois == 1:
+#             annee_prec, mois_prec = annee - 1, 12
+#         else:
+#             annee_prec, mois_prec = annee, mois - 1
+
+#         # Date d'ouverture = fermeture du mois précédent + 1 jour (ou 21 par défaut)
+#         try:
+#             fermeture_prec = PeriodeFermeture.objects.get(annee=annee_prec, mois=mois_prec)
+#             debut_periode  = fermeture_prec.date_fermeture + timedelta(days=1)
+#         except PeriodeFermeture.DoesNotExist:
+#             debut_periode = date(annee_prec, mois_prec, 21)
+
+#         # Date de fermeture du mois courant (20 par défaut)
+#         try:
+#             fermeture_curr = PeriodeFermeture.objects.get(annee=annee, mois=mois)
+#             fin_periode    = fermeture_curr.date_fermeture
+#         except PeriodeFermeture.DoesNotExist:
+#             fin_periode = date(annee, mois, 20)
+
+#         # Lundi précédent ou égal au début de période
+#         lundi_debut = cls.get_lundi_precedent(debut_periode)
+
+#         # Jours de paiement (inchangé — basé sur le calendrier civil)
+#         jours_paiement = cls.calculer_jours_paiement(annee, mois)
+
+#         # Générer 6 semaines complètes
+#         date_courante  = lundi_debut
+#         dates_crees    = []
+#         fin_generation = lundi_debut + timedelta(days=6 * 7 - 1)
+
+#         while date_courante <= fin_generation:
+#             code = cls.calculer_code_date(date_courante, lundi_debut)
+#             hors_periode     = (date_courante < debut_periode or date_courante > fin_periode)
+#             est_jour_paiement = date_courante in jours_paiement
+
+#             obj, _ = cls.objects.update_or_create(
+#                 date=date_courante,
+#                 defaults={
+#                     'code_date':        code,
+#                     'hors_periode':     hors_periode,
+#                     'mois_reference':   mois_ref,
+#                     'est_jour_paiement': est_jour_paiement,
+#                 }
+#             )
+#             dates_crees.append(obj)
+#             date_courante += timedelta(days=1)
+
+#         return dates_crees
+
+
+    
+#     @classmethod
+#     def get_dates_par_mois(cls, annee, mois, inclure_hors_periode=False):
+#         """
+#         Retourne toutes les dates pour un mois de référence
+#         """
+#         mois_ref = date(annee, mois, 1)
+        
+#         if inclure_hors_periode:
+#             return cls.objects.filter(mois_reference=mois_ref).order_by('date')
+#         else:
+#             return cls.objects.filter(
+#                 mois_reference=mois_ref,
+#                 hors_periode=False
+#             ).order_by('date')
+
+
+# # ===== USERINFO =====
+# # class UserInfo(models.Model):
+# #     userid = models.IntegerField(db_column='userid', primary_key=True)
+# #     badgenumber = models.CharField(db_column='badgenumber', max_length=50)
+# #     ssn = models.CharField(db_column='ssn', max_length=50, null=True, blank=True)
+# #     name = models.CharField(db_column='name', max_length=150)
+# #     defaultdeptid = models.IntegerField(db_column='defaultdeptid', null=True, blank=True)
+
+# #     class Meta:
+# #         db_table = 'userinfo'
+# #         managed = False
+# #         #managed = True
+
+# #     def __str__(self):
+# #         return self.name
+
+# class UserInfo(models.Model):
+#     userid = models.IntegerField(db_column='userid', primary_key=True)
+#     badgenumber = models.CharField(db_column='badgenumber', max_length=50)
+#     ssn = models.CharField(db_column='ssn', max_length=50, null=True, blank=True)
+#     name = models.CharField(db_column='name', max_length=150)
+#     defaultdeptid = models.IntegerField(db_column='defaultdeptid', null=True, blank=True)  
+
+#     class Meta:
+#         db_table = 'userinfo'
+#         managed = False
+
+
+# # ===== CHECKINOUT =====
+# class CheckInOut(models.Model):
+#     numauto = models.AutoField(db_column='NumAuto', primary_key=True)
+#     user = models.ForeignKey(
+#         UserInfo,
+#         db_column='userid',
+#         on_delete=models.DO_NOTHING
+#     )
+#     checktime = models.DateTimeField(db_column='checktime')
+#     checktype = models.CharField(db_column='checktype', max_length=1)
+
+#     class Meta:
+#         db_table = 'checkinout'
+#         managed = False
+#         #managed = True
+
+
+# class HoraireSection(models.Model):
+#     """
+#     Horaires de référence par section
+#     Les heures sont stockées en format décimal (ex: 7.50 = 7h30, 17.83 = 17h50)
+#     """
+#     section = models.CharField(max_length=100, unique=True, primary_key=True)
+#     heure_entree = models.DecimalField(
+#         max_digits=4, 
+#         decimal_places=2,
+#         help_text="Heure d'entrée en format décimal (ex: 7.50 = 7h30)"
+#     )
+#     heure_sortie = models.DecimalField(
+#         max_digits=4, 
+#         decimal_places=2,
+#         help_text="Heure de sortie en format décimal (ex: 17.83 = 17h50)"
+#     )
+#     sortie_samedi = models.DecimalField(
+#         max_digits=4, 
+#         decimal_places=2,
+#         help_text="Heure de sortie le samedi en format décimal"
+#     )
+#     # NOUVEAUX CHAMPS POUR LES JOURS DE PAIEMENT
+#     sortie_vendredi_paiement = models.DecimalField(
+#         max_digits=4, 
+#         decimal_places=2,
+#         default=17.33,
+#         help_text="Heure de sortie le vendredi de paiement en format décimal"
+#     )
+#     sortie_samedi_paiement = models.DecimalField(
+#         max_digits=4, 
+#         decimal_places=2,
+#         default=13.00,
+#         help_text="Heure de sortie le samedi de paiement en format décimal"
+#     )
+    
+#     class Meta:
+#         db_table = 'horaire_section'
+#         verbose_name = "Horaire de section"
+#         verbose_name_plural = "Horaires de section"
+#         ordering = ['section']
+    
+#     def __str__(self):
+#         return f"{self.section} ({self.heure_entree_normale} - {self.heure_sortie_normale})"
+    
+#     @staticmethod
+#     def decimal_to_time(heure_decimal):
+#         """
+#         Convertit une heure décimale en format HH:MM
+#         Ex: 7.50 -> "07:30", 17.83 -> "17:50"
+#         """
+#         if heure_decimal is None:
+#             return "00:00"
+        
+#         try:
+#             heure_decimal = float(heure_decimal)
+#             heures = int(heure_decimal)
+#             minutes_decimal = (heure_decimal - heures) * 100
+#             minutes = int(round(minutes_decimal * 0.6))  # Convertir centièmes en minutes
+#             return f"{heures:02d}:{minutes:02d}"
+#         except (ValueError, TypeError):
+#             return "00:00"
+    
+#     @property
+#     def heure_entree_normale(self):
+#         """Retourne l'heure d'entrée au format HH:MM"""
+#         return self.decimal_to_time(self.heure_entree)
+    
+#     @property
+#     def heure_sortie_normale(self):
+#         """Retourne l'heure de sortie au format HH:MM"""
+#         return self.decimal_to_time(self.heure_sortie)
+    
+#     @property
+#     def sortie_samedi_normale(self):
+#         """Retourne l'heure de sortie samedi au format HH:MM"""
+#         return self.decimal_to_time(self.sortie_samedi)
+    
+#     @property
+#     def sortie_vendredi_paiement_normale(self):
+#         """Retourne l'heure de sortie vendredi paiement au format HH:MM"""
+#         return self.decimal_to_time(self.sortie_vendredi_paiement)
+    
+#     @property
+#     def sortie_samedi_paiement_normale(self):
+#         """Retourne l'heure de sortie samedi paiement au format HH:MM"""
+#         return self.decimal_to_time(self.sortie_samedi_paiement)
+    
+    
+
+#     @classmethod
+#     def initialiser_horaires(cls):
+#         """
+#         Initialise les horaires de toutes les sections.
+#         - Garde les horaires spécifiques déjà définis
+#         - Ajoute automatiquement les sections manquantes avec les horaires par défaut
+#         """
+#         horaires_data = [
+#             ('ADMINISTRATION', 7.50, 17.83, 15.50, 17.33, 13.00),
+#             ('BRODERIE MACHINE', 7.50, 18.00, 15.50, 17.50, 13.00),
+#             ('BRODERIE MAIN AK B', 7.33, 17.33, 15.33, 16.33, 13.00),
+#             ('BRODERIE MAIN AK17', 7.00, 17.00, 15.00, 16.50, 12.00),
+#             ('BRODERIE MAIN DEV', 7.50, 18.00, 15.50, 17.50, 13.00),
+#             ('BUREAU DE METHODE', 7.41, 17.91, 12.00, 17.41, 12.00),
+#             ('CONTROLE QUALITE AS', 7.50, 17.50, 15.50, 17.00, 13.00),
+#             ('CHAINE 1', 7.41, 17.91, 15.41, 17.41, 12.91),
+#             ('CHAINE 2', 7.41, 17.91, 15.41, 17.41, 12.91),
+#             ('CHAINE 3', 7.41, 17.91, 15.41, 17.41, 12.91),
+#             ('CHAINE 4', 7.41, 17.91, 15.41, 17.41, 12.91),
+#             ('CHAINE 5', 7.41, 17.91, 15.41, 17.41, 12.91),
+#             ('CHAINE 6', 7.41, 17.91, 15.41, 17.41, 12.91),
+#             ('CHAINE 7', 7.41, 17.91, 15.41, 17.41, 12.91),
+#             ('CHAINE 8', 7.41, 17.91, 15.41, 17.41, 12.91),
+#             ('CHAINE 9', 7.41, 17.91, 15.41, 17.41, 12.91),
+#             ('CHAINE 10', 7.41, 17.91, 15.41, 17.41, 12.91),
+#             ('CHAINE 11', 7.41, 17.91, 15.41, 17.41, 12.91),
+#             ('CHAINE 12', 7.41, 17.91, 15.41, 17.41, 12.91),
+#             ('CHAINE CUIR', 7.41, 17.91, 15.41, 17.33, 12.83),
+#             ('COLLECTION', 7.50, 17.50, 15.50, 17.50, 13.00),
+#             ('COUPE', 7.50, 17.50, 15.50, 17.50, 13.00),
+#             ('COUPE COLLECTION', 7.50, 17.50, 15.50, 17.50, 13.00),
+#             ('CREATION', 7.00, 17.00, 15.00, 17.00, 12.00),
+#             ('FINITION D', 7.33, 17.33, 15.33, 17.33, 12.83),
+#             ('FINITION M', 7.33, 17.33, 15.33, 17.33, 12.83),
+#             ('FINITION P', 7.33, 17.33, 15.33, 17.33, 12.83),
+#             ('FINITION Q', 7.33, 17.33, 15.33, 17.33, 12.83),
+#             ('FINITION R', 7.41, 17.41, 15.41, 17.41, 12.91),
+#             ('LECTRA', 7.00, 17.00, 12.00, 17.00, 12.00),
+#             ('LEMARIE HVA', 7.50, 17.50, 15.50, 17.50, 13.00),
+#             ('MAINTENANCE', 7.50, 17.50, 15.50, 17.50, 13.00),
+#             ('MAISON', 7.50, 17.50, 15.50, 17.50, 13.00),
+#             ('MERCHANDISING', 7.00, 17.00, 12.00, 17.00, 12.00),
+#             ('PACKING/EXPEDITION', 7.50, 18.00, 15.50, 17.50, 13.00),
+#             ('PLISSE', 7.50, 18.00, 15.50, 17.50, 13.00),
+#             ('POLE QUALITE 1', 7.33, 17.83, 15.33, 17.33, 12.83),
+#             ('POLE QUALITE 2', 7.33, 17.83, 15.33, 17.33, 12.83),
+#             ('RAPHIA 1', 7.33, 17.33, 15.33, 16.83, 12.83),
+#             ('RAPHIA 2', 7.25, 17.25, 15.25, 16.75, 12.75),
+#             ('RAPHIA 3', 7.16, 17.16, 15.16, 16.66, 12.66),
+#             ('RAPHIA 4', 7.25, 17.25, 15.25, 16.75, 12.75),
+#             ('RAPHIA 5', 7.16, 17.16, 15.16, 16.66, 12.66),
+#             ('RAPHIA 6', 7.33, 17.33, 15.33, 16.83, 12.83),
+#             ('RESPONSABLE 0', 7.50, 18.00, 15.50, 17.50, 13.00),
+#             ('RESPONSABLE 1', 7.50, 17.83, 15.50, 17.33, 13.00),
+#             ('RESPONSABLE 2', 7.41, 17.91, 15.41, 17.41, 12.91),
+#             ('RESPONSABLE 3', 7.50, 17.50, 15.50, 17.00, 13.00),
+#             ('RESPONSABLE RAPHIA', 7.33, 17.33, 15.33, 16.83, 12.83),
+#             ('SECURITE', 6.50, 18.00, 18.00, 18.00, 18.00),
+#         ]
+
+#         # Heures par défaut
+#         default_values = {
+#             'heure_entree': 7.50,
+#             'heure_sortie': 17.83,
+#             'sortie_samedi': 15.50,
+#             'sortie_vendredi_paiement': 17.33,
+#             'sortie_samedi_paiement': 13.00,
+#         }
+
+#         # Toutes les sections connues
+#         all_sections = [
+#             'AKANJO',
+#             'ADMINISTRATION',
+#             'BRODERIE MACHINE',
+#             'BRODERIE MAIN DEV',
+#             'BUREAU DE METHODE',
+#             'CONTROLE QUALITE AS',
+#             'CHAINE 1',
+#             'CHAINE 2',
+#             'CHAINE 3',
+#             'CHAINE 4',
+#             'CHAINE 5',
+#             'CHAINE 6',
+#             'CHAINE 7',
+#             'CHAINE 8',
+#             'CHAINE 9',
+#             'CHAINE 10',
+#             'CHAINE 11',
+#             'CHAINE 12',
+#             'CHAINE 14',
+#             'CHAINE CUIR',
+#             'COLLECTION',
+#             'COUPE',
+#             'COUPE COLLECTION',
+#             'CREATION',
+#             'FINITION D',
+#             'FINITION M',
+#             'FINITION P',
+#             'FINITION Q',
+#             'FINITION R',
+#             'LECTRA',
+#             'LEMARIE HVA',
+#             'MAINTENANCE',
+#             'MAISON',
+#             'MERCHANDISING',
+#             'PACKING',
+#             'PLISSE',
+#             'POLE QUALITE 1',
+#             'POLE QUALITE 2',
+#             'RAPHIA 1',
+#             'RAPHIA 2',
+#             'RAPHIA 3',
+#             'RAPHIA 4',
+#             'RAPHIA 5',
+#             'RAPHIA 6',
+#             'SECURITE',
+#             'STAGIAIRE',
+#             'JOURNALIERE',
+#             'BRODERIE MAIN AK17',
+#             'BRODERIE MAIN AK B',
+#             'RAPHIA AUTRE',
+#         ]
+
+#         # 1. Créer / mettre à jour les horaires spécifiques
+#         specific_sections = set()
+#         for section, entree, sortie, samedi, vendredi_paiement, samedi_paiement in horaires_data:
+#             cls.objects.update_or_create(
+#                 section=section,
+#                 defaults={
+#                     'heure_entree': entree,
+#                     'heure_sortie': sortie,
+#                     'sortie_samedi': samedi,
+#                     'sortie_vendredi_paiement': vendredi_paiement,
+#                     'sortie_samedi_paiement': samedi_paiement
+#                 }
+#             )
+#             specific_sections.add(section)
+
+#         # 2. Ajouter les sections manquantes avec les heures par défaut
+#         for section in all_sections:
+#             if section not in specific_sections:
+#                 cls.objects.update_or_create(
+#                     section=section,
+#                     defaults=default_values
+#                 )
+
+#         return cls.objects.count()
+
+
+
+# class HoraireException(models.Model):
+#     """
+#     Surcharge d'horaire pour une date spécifique.
+#     Si section est None → s'applique à toutes les sections.
+#     """
+#     date    = models.DateField()
+#     section = models.CharField(
+#         max_length=100, null=True, blank=True,
+#         help_text="Laisser vide = toutes les sections"
+#     )
+#     heure_entree = models.TimeField(
+#         null=True, blank=True,
+#         help_text="Surcharge heure d'entrée (optionnel)"
+#     )
+#     heure_sortie = models.TimeField(
+#         null=True, blank=True,
+#         help_text="Surcharge heure de sortie"
+#     )
+#     motif = models.CharField(max_length=200, blank=True)
+#     cree_le = models.DateTimeField(auto_now_add=True)
+
+#     class Meta:
+#         db_table = 'horaire_exception'
+#         unique_together = ('date', 'section')
+#         ordering = ['-date']
+
+#     def __str__(self):
+#         section_str = self.section or "toutes sections"
+#         return f"{self.date} – {section_str} – {self.motif}"
+    
+
+    
+
+# class Evenement(models.Model):
+#     """
+#     Événements de présence (absences, congés, etc.)
+#     """
+#     TYPES_EVENEMENT = [
+#         ('X', 'Travail normal'),
+#         ('A', 'Absent'),
+#         ('ANO', 'Absence Non Autorisée'),
+#         ('AMP', ''),
+#         ('CE', "Congé d'éducation"),
+#         ('CM', 'Congé de matérnité'),
+#         ('CP', 'Congé Payé'),
+#         ('EF', 'Événement familial'),
+#         ('F', 'Fonction (délégués)'),
+#         ('HA', 'Allaitement'),
+#         ('HP', 'Hospitalisation'),
+#         ('MP','Mise à pied'),
+#         ('OS', 'Ostie'),
+#         ('PS', 'Permission Spéciale'),
+#         ('RC', 'Repos de convalescence'),
+#         ('RM', 'Repos Médical'),
+#         ('AUT', 'Autre'),
+#     ]
+    
+#     userid = models.IntegerField(db_column='userid')
+#     date = models.DateField()
+#     type_evenement = models.CharField(
+#         max_length=10,
+#         choices=TYPES_EVENEMENT,
+#         default='X'
+#     )
+#     commentaire = models.TextField(blank=True, null=True)
+#     cree_le = models.DateTimeField(auto_now_add=True)
+#     modifie_le = models.DateTimeField(auto_now=True)
+    
+#     class Meta:
+#         db_table = 'evenement'
+#         unique_together = ['userid', 'date']
+#         ordering = ['date', 'userid']
+#         verbose_name = "Événement"
+#         verbose_name_plural = "Événements"
+    
+#     def __str__(self):
+#         try:
+#             user = UserInfo.objects.get(userid=self.userid)
+#             return f"{user.name} - {self.date} - {self.get_type_evenement_display()}"
+#         except UserInfo.DoesNotExist:
+#             return f"User {self.userid} - {self.date} - {self.get_type_evenement_display()}"
+    
+#     @property
+#     def user(self):
+#         """Propriété pour accéder à l'objet UserInfo"""
+#         try:
+#             return UserInfo.objects.get(userid=self.userid)
+#         except UserInfo.DoesNotExist:
+#             return None
+    
+#     @classmethod
+#     def get_evenement(cls, userid, date):
+#         """Récupère l'événement pour un utilisateur et une date"""
+#         try:
+#             return cls.objects.get(userid=userid, date=date)
+#         except cls.DoesNotExist:
+#             return None
+    
+#     @classmethod
+#     def set_evenement(cls, userid, date, type_evenement, commentaire=''):
+#         """Crée ou met à jour un événement"""
+#         obj, created = cls.objects.update_or_create(
+#             userid=userid,
+#             date=date,
+#             defaults={
+#                 'type_evenement': type_evenement,
+#                 'commentaire': commentaire
+#             }
+#         )
+#         return obj
+    
+#     @classmethod
+#     def supprimer_evenement(cls, userid, date):
+#         """Supprime un événement"""
+#         try:
+#             obj = cls.objects.get(userid=userid, date=date)
+#             obj.delete()
+#             return True
+#         except cls.DoesNotExist:
+#             return False
+
+
+# import logging
+
+# logger = logging.getLogger(__name__)
+
+# class Anomalie(models.Model):
+#     """
+#     Modèle pour gérer les anomalies de pointage
+    
+#     Règles de gestion:
+#     - code_date_brut: heures brutes non modifiables (de CheckInOut)
+#     - code_date_reel: heures par section (depuis HoraireSection), modifiable
+#     - code_date_rectifie: heures corrigées manuellement, modifiable
+#     - etat devient "ok" quand code_date_reel = code_date_rectifie
+#     """
+    
+#     ETATS_ANOMALIE = [
+#         ('pas_entree', 'Pas d\'entrée'),
+#         ('pas_sortie', 'Pas de sortie'),
+#         ('multiples_pointages', 'Pointages multiples'),
+#          ('retard_sortie', 'Retard de sortie'),
+#          #('entree_trop_tot', 'Entrée trop tôt'),
+#         ('ok', 'OK'),
+#     ]
+    
+#     userid = models.IntegerField()
+#     section = models.CharField(max_length=100, null=True, blank=True)
+#     date = models.DateField()
+#     code_date = models.CharField(max_length=10, null=True, blank=True)
+    
+#     # Code date BRUT (non modifiable - heures de pointage)
+#     heure_brute_entree = models.TimeField(null=True, blank=True)
+#     heure_brute_sortie = models.TimeField(null=True, blank=True)
+    
+#     # Code date REEL (heures par section - modifiable)
+#     heure_reelle_entree = models.TimeField(null=True, blank=True)
+#     heure_reelle_sortie = models.TimeField(null=True, blank=True)
+    
+#     # Code date RECTIFIE (heures corrigées - modifiable)
+#     heure_rectifiee_entree = models.TimeField(null=True, blank=True)
+#     heure_rectifiee_sortie = models.TimeField(null=True, blank=True)
+    
+#     etat = models.CharField(
+#         max_length=50,
+#         choices=ETATS_ANOMALIE,
+#         default='pas_entree'
+#     )
+    
+#     commentaire = models.TextField(blank=True, null=True)
+#     pointages_bruts_json = models.JSONField(   # ← AJOUTER
+#     null=True, blank=True,
+#     help_text="Tous les pointages du jour [{time, checktype}, ...]"
+#     )
+#     cree_le = models.DateTimeField(auto_now_add=True)
+#     modifie_le = models.DateTimeField(auto_now=True)
+#     synchronise_le = models.DateTimeField(null=True, blank=True)
+    
+#     class Meta:
+#         db_table = 'presence_anomalie'
+#         unique_together = ('userid', 'date')
+#         ordering = ['-date', 'section', 'userid']
+#         verbose_name = 'Anomalie'
+#         verbose_name_plural = 'Anomalies'
+    
+#     def __str__(self):
+#         return f"Anomalie {self.userid} - {self.date} ({self.etat})"
+    
+#     @property
+#     def est_corrigee(self):
+#         """Retourne True si l'anomalie est corrigée (état = ok)"""
+#         return self.etat == 'ok'
+    
+ 
+
+    
+#     # def _determiner_etat(self, ancien_etat=None):
+#     #     if ancien_etat == 'multiples_pointages':
+#     #         if not self.heure_rectifiee_entree or not self.heure_rectifiee_sortie:
+#     #             return 'multiples_pointages'
+
+#     #     if not self.heure_rectifiee_entree:
+#     #         return 'pas_entree'
+
+#     #     if not self.heure_rectifiee_sortie:
+#     #         return 'pas_sortie'
+
+#     #     # ← Si les deux heures rectifiées sont présentes → toujours OK
+#     #     # peu importe si elles correspondent ou non aux heures par défaut
+#     #     return 'ok'
+
+#     # def _determiner_etat(self, ancien_etat=None):
+#     #     if ancien_etat == 'multiples_pointages':
+#     #         if not self.heure_rectifiee_entree or not self.heure_rectifiee_sortie:
+#     #             return 'multiples_pointages'
+
+#     #     if ancien_etat == 'retard_sortie':          # ← AJOUTÉ
+#     #         if not self.heure_rectifiee_entree or not self.heure_rectifiee_sortie:
+#     #             return 'retard_sortie'
+
+#     #     if not self.heure_rectifiee_entree:
+#     #         return 'pas_entree'
+
+#     #     if not self.heure_rectifiee_sortie:
+#     #         return 'pas_sortie'
+
+#     #     return 'ok'
+#     def _determiner_etat(self, ancien_etat=None):
+#         if ancien_etat == 'multiples_pointages':
+#             if not self.heure_rectifiee_entree or not self.heure_rectifiee_sortie:
+#                 return 'multiples_pointages'
+
+#         if ancien_etat == 'retard_sortie':
+#             if not self.heure_rectifiee_entree or not self.heure_rectifiee_sortie:
+#                 return 'retard_sortie'
+        
+#         # AJOUTER CE BLOC
+#         # if ancien_etat == 'entree_trop_tot':
+#         #     if not self.heure_rectifiee_entree or not self.heure_rectifiee_sortie:
+#         #         return 'entree_trop_tot'
+
+#         if not self.heure_rectifiee_entree:
+#             return 'pas_entree'
+
+#         if not self.heure_rectifiee_sortie:
+#             return 'pas_sortie'
+
+#         return 'ok'
+        
+
+
+#         # Les deux heures sont présentes → OK peu importe les valeurs
+#         return 'ok'
+
+#     def save(self, *args, **kwargs):
+#         ancien_etat = self.etat
+
+#         # Formater les heures sans secondes
+#         for field in ['heure_brute_entree', 'heure_brute_sortie',
+#                     'heure_reelle_entree', 'heure_reelle_sortie',
+#                     'heure_rectifiee_entree', 'heure_rectifiee_sortie']:
+#             val = getattr(self, field)
+#             if val:
+#                 setattr(self, field, self._format_time_without_seconds(val))
+
+#         # ─── Auto-complétion depuis les brutes (UNIQUEMENT si le champ est vide) ───
+#         # On ne force JAMAIS à None : si l'utilisateur a saisi une valeur, on la garde.
+
+#         if self.etat == 'multiples_pointages':
+#             # Rien à copier automatiquement — l'UI propose un choix manuel
+#             pass
+
+#         elif self.etat == 'pas_entree':
+#             # Sortie brute → rectifiée si vide
+#             if self.heure_brute_sortie and not self.heure_rectifiee_sortie:
+#                 self.heure_rectifiee_sortie = self.heure_brute_sortie
+#             # ⚠️ On NE remet PAS heure_rectifiee_entree = None
+#             # Si l'utilisateur l'a remplie (correction manuelle), on la conserve.
+
+#         elif self.etat == 'pas_sortie':
+#             # Entrée brute → rectifiée si vide
+#             if self.heure_brute_entree and not self.heure_rectifiee_entree:
+#                 self.heure_rectifiee_entree = self.heure_brute_entree
+#             # ⚠️ On NE remet PAS heure_rectifiee_sortie = None
+
+#         else:
+#             # Cas normal : copier les deux si vides
+#             if self.heure_brute_entree and not self.heure_rectifiee_entree:
+#                 self.heure_rectifiee_entree = self.heure_brute_entree
+#             if self.heure_brute_sortie and not self.heure_rectifiee_sortie:
+#                 self.heure_rectifiee_sortie = self.heure_brute_sortie
+
+#         self.etat = self._determiner_etat(ancien_etat)
+
+#         if self.etat == 'ok':
+#             from datetime import datetime
+#             self.synchronise_le = datetime.now()
+
+#         super().save(*args, **kwargs)
+
+#     def _format_time_without_seconds(self, time_obj):
+#         """
+#         Formate un objet time pour n'avoir que les heures et minutes (secondes à 00)
+#         """
+#         from datetime import time
+#         return time(time_obj.hour, time_obj.minute, 0)
+
+#     @classmethod
+#     def detecter_anomalies_jour(cls, date_jour):
+#         from .models import CheckInOut, UserInfo, HoraireSection, Date
+#         from .utils import decimal_to_time, analyser_pointages_jour, build_user_section_map
+
+#         if not CheckInOut.objects.filter(checktime__date=date_jour).exists():
+#             return 0
+
+#         try:
+#             date_obj = Date.objects.get(date=date_jour)
+#         except Date.DoesNotExist:
+#             logger.warning(f"Date {date_jour} non trouvée")
+#             return 0
+
+#         # ── Précharger section map + horaires EN DEHORS de la boucle ──
+#         user_section_map = build_user_section_map()  # {userid: section_nom}
+#         horaires_dict    = {h.section: h for h in HoraireSection.objects.all()}
+#         horaire_default  = horaires_dict.get('ADMINISTRATION')
+
+#         employes        = UserInfo.objects.all()
+#         count_anomalies = 0
+
+#         for employe in employes:
+#             pointages = CheckInOut.objects.filter(
+#                 user=employe,
+#                 checktime__date=date_jour
+#             ).order_by('checktime')
+
+#             if not pointages.exists():
+#                 cls.objects.filter(userid=employe.userid, date=date_jour).delete()
+#                 continue
+
+#             # ── Section depuis la map (O(1), sans requête DB) ──
+#             section = user_section_map.get(employe.userid, 'ADMINISTRATION')
+#             horaire = horaires_dict.get(section, horaire_default)
+#             if horaire is None:
+#                 continue
+
+#             est_samedi   = date_jour.weekday() == 5
+#             est_vendredi = date_jour.weekday() == 4
+#             est_paiement = date_obj.est_jour_paiement
+
+#             heure_reelle_entree = decimal_to_time(horaire.heure_entree)
+#             if est_paiement and est_vendredi:
+#                 heure_reelle_sortie = decimal_to_time(horaire.sortie_vendredi_paiement)
+#             elif est_paiement and est_samedi:
+#                 heure_reelle_sortie = decimal_to_time(horaire.sortie_samedi_paiement)
+#             elif est_samedi:
+#                 heure_reelle_sortie = decimal_to_time(horaire.sortie_samedi)
+#             else:
+#                 heure_reelle_sortie = decimal_to_time(horaire.heure_sortie)
+
+#             pointages_list = list(pointages)
+#             tries = sorted(pointages_list, key=lambda p: p.checktime)
+
+#             # entrees_brutes = [p for p in tries if p.checktype.upper() == 'O']
+#             # sorties_brutes = [p for p in tries if p.checktype.upper() == 'I']
+#             # heure_brute_entree = entrees_brutes[0].checktime.time() if entrees_brutes else None
+#             # heure_brute_sortie = sorties_brutes[-1].checktime.time() if sorties_brutes else None
+#             heure_brute_entree = tries[0].checktime.time() if tries else None
+#             heure_brute_sortie = tries[-1].checktime.time() if len(tries) > 1 else None
+
+#             heure_entree_calc, heure_sortie_calc, type_anomalie, liste_bruts = analyser_pointages_jour(
+#                 pointages_list, heure_reelle_entree, heure_reelle_sortie, seuil_minutes=30,
+#             )
+
+#             if type_anomalie == 'multiples_pointages':
+#                 etat                   = 'multiples_pointages'
+#                 heure_rectifiee_entree = None
+#                 heure_rectifiee_sortie = None
+
+#             elif type_anomalie == 'pas_entree' or heure_entree_calc is None:
+#                 etat                   = 'pas_entree'
+#                 heure_rectifiee_entree = None
+#                 heure_rectifiee_sortie = heure_sortie_calc
+
+#             elif type_anomalie == 'pas_sortie' or heure_sortie_calc is None:
+#                 etat                   = 'pas_sortie'
+#                 heure_rectifiee_entree = heure_entree_calc
+#                 heure_rectifiee_sortie = None
+
+#             else:
+#                 etat                   = 'ok'
+#                 heure_rectifiee_entree = heure_entree_calc
+#                 heure_rectifiee_sortie = heure_sortie_calc
+
+#             defaults = {
+#                 'section':                section,
+#                 'code_date':              date_obj.code_date,
+#                 'heure_brute_entree':     heure_brute_entree,
+#                 'heure_brute_sortie':     heure_brute_sortie,
+#                 'heure_reelle_entree':    heure_reelle_entree,
+#                 'heure_reelle_sortie':    heure_reelle_sortie,
+#                 'heure_rectifiee_entree': heure_rectifiee_entree,
+#                 'heure_rectifiee_sortie': heure_rectifiee_sortie,
+#                 'pointages_bruts_json':   liste_bruts,
+#                 'etat':                   etat,
+#                 'commentaire':            '',
+#             }
+
+#             anomalie, created = cls.objects.update_or_create(
+#                 userid=employe.userid,
+#                 date=date_jour,
+#                 defaults=defaults,
+#             )
+#             if created:
+#                 count_anomalies += 1
+
+#             if etat == 'ok':
+#                 anomalie.delete()
+#                 if created:
+#                     count_anomalies -= 1
+
+#         return count_anomalies
+
+# #Section 
+# class Section(models.Model):
+#     nom_section = models.CharField(max_length=150, unique=True, verbose_name="Nom de la section")
+
+#     class Meta:
+#         db_table = 'db_section'
+#         ordering = ['nom_section']
+#         verbose_name = "Section"
+#         verbose_name_plural = "Sections"
+
+#     def __str__(self):
+#         return self.nom_section
+
+
+# class UserSection(models.Model):
+#     userid = models.IntegerField(
+#         primary_key=True,
+#         db_column='userid',
+#         verbose_name="ID utilisateur"
+#     )
+#     section = models.ForeignKey(
+#         Section,
+#         on_delete=models.SET_NULL,
+#         null=True,
+#         blank=True,
+#         related_name='employes',
+#     )
+
+#     class Meta:
+#         db_table = 'db_user_section'
+#         verbose_name = "Section utilisateur"
+#         verbose_name_plural = "Sections utilisateurs"
+
+#     def __str__(self):
+#         return f"User {self.userid} → {self.section}"
+
+#     @property
+#     def user(self):
+#         try:
+#             return UserInfo.objects.get(userid=self.userid)
+#         except UserInfo.DoesNotExist:
+#             return None
+
+
+
+# class PeriodeFermeture(models.Model):
+#     """
+#     Fermeture anticipée d'un compte mensuel.
+#     Par défaut : ouverture le 21, fermeture le 20.
+#     Si défini : fermeture = date_fermeture, ouverture du mois suivant = date_fermeture + 1 jour.
+#     """
+#     annee = models.IntegerField(verbose_name="Année")
+#     mois  = models.IntegerField(verbose_name="Mois (1-12)")
+#     date_fermeture = models.DateField(verbose_name="Date de fermeture")
+#     motif = models.CharField(max_length=200, blank=True, verbose_name="Motif")
+#     cree_le    = models.DateTimeField(auto_now_add=True)
+#     modifie_le = models.DateTimeField(auto_now=True)
+
+#     class Meta:
+#         db_table      = 'presence_periode_fermeture'
+#         unique_together = ('annee', 'mois')
+#         ordering      = ['-annee', '-mois']
+#         verbose_name  = "Fermeture de période"
+#         verbose_name_plural = "Fermetures de période"
+
+#     def __str__(self):
+#         mois_fr = ['Jan','Fév','Mar','Avr','Mai','Jun',
+#                    'Jul','Aoû','Sep','Oct','Nov','Déc']
+#         return f"Fermeture {mois_fr[self.mois-1]} {self.annee} → {self.date_fermeture}"
+
+
+
+# #Attendance Management 
+# class AttParam(models.Model):
+#     attparamid = models.AutoField(db_column='attparamid', primary_key=True)
+#     paraname = models.CharField(db_column='paraname', max_length=50, null=True, blank=True)
+#     paravalue = models.IntegerField(db_column='paravalue', null=True, blank=True)
+
+#     class Meta:
+#         db_table = 'attparam'
+#         managed = False
+
+# class Departments(models.Model):
+#     deptid = models.AutoField(db_column='deptid', primary_key=True)      # ✅ minuscules
+#     deptname = models.CharField(db_column='deptname', max_length=100, null=True, blank=True)  # ✅
+#     supdeptid = models.IntegerField(db_column='supdeptid', null=True, blank=True, default=0)
+
+#     class Meta:
+#         db_table = 'departments'
+#         managed = False
+
+
+
+
 from django.db import models
 from datetime import date, timedelta, datetime
 from calendar import monthrange
@@ -320,6 +1364,12 @@ class HoraireSection(models.Model):
         decimal_places=2,
         default=13.00,
         help_text="Heure de sortie le samedi de paiement en format décimal"
+    )
+    responsable = models.CharField(
+        max_length=150,
+        null=True,
+        blank=True,
+        help_text="Nom du responsable de la section"
     )
     
     class Meta:
@@ -668,6 +1718,7 @@ class Anomalie(models.Model):
         ('pas_sortie', 'Pas de sortie'),
         ('multiples_pointages', 'Pointages multiples'),
          ('retard_sortie', 'Retard de sortie'),
+         #('entree_trop_tot', 'Entrée trop tôt'),
         ('ok', 'OK'),
     ]
     
@@ -736,14 +1787,35 @@ class Anomalie(models.Model):
     #     # peu importe si elles correspondent ou non aux heures par défaut
     #     return 'ok'
 
+    # def _determiner_etat(self, ancien_etat=None):
+    #     if ancien_etat == 'multiples_pointages':
+    #         if not self.heure_rectifiee_entree or not self.heure_rectifiee_sortie:
+    #             return 'multiples_pointages'
+
+    #     if ancien_etat == 'retard_sortie':          # ← AJOUTÉ
+    #         if not self.heure_rectifiee_entree or not self.heure_rectifiee_sortie:
+    #             return 'retard_sortie'
+
+    #     if not self.heure_rectifiee_entree:
+    #         return 'pas_entree'
+
+    #     if not self.heure_rectifiee_sortie:
+    #         return 'pas_sortie'
+
+    #     return 'ok'
     def _determiner_etat(self, ancien_etat=None):
         if ancien_etat == 'multiples_pointages':
             if not self.heure_rectifiee_entree or not self.heure_rectifiee_sortie:
                 return 'multiples_pointages'
 
-        if ancien_etat == 'retard_sortie':          # ← AJOUTÉ
+        if ancien_etat == 'retard_sortie':
             if not self.heure_rectifiee_entree or not self.heure_rectifiee_sortie:
                 return 'retard_sortie'
+        
+        # AJOUTER CE BLOC
+        # if ancien_etat == 'entree_trop_tot':
+        #     if not self.heure_rectifiee_entree or not self.heure_rectifiee_sortie:
+        #         return 'entree_trop_tot'
 
         if not self.heure_rectifiee_entree:
             return 'pas_entree'
@@ -866,10 +1938,12 @@ class Anomalie(models.Model):
             pointages_list = list(pointages)
             tries = sorted(pointages_list, key=lambda p: p.checktime)
 
-            entrees_brutes = [p for p in tries if p.checktype.upper() == 'O']
-            sorties_brutes = [p for p in tries if p.checktype.upper() == 'I']
-            heure_brute_entree = entrees_brutes[0].checktime.time() if entrees_brutes else None
-            heure_brute_sortie = sorties_brutes[-1].checktime.time() if sorties_brutes else None
+            # entrees_brutes = [p for p in tries if p.checktype.upper() == 'O']
+            # sorties_brutes = [p for p in tries if p.checktype.upper() == 'I']
+            # heure_brute_entree = entrees_brutes[0].checktime.time() if entrees_brutes else None
+            # heure_brute_sortie = sorties_brutes[-1].checktime.time() if sorties_brutes else None
+            heure_brute_entree = tries[0].checktime.time() if tries else None
+            heure_brute_sortie = tries[-1].checktime.time() if len(tries) > 1 else None
 
             heure_entree_calc, heure_sortie_calc, type_anomalie, liste_bruts = analyser_pointages_jour(
                 pointages_list, heure_reelle_entree, heure_reelle_sortie, seuil_minutes=30,
