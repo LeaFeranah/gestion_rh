@@ -1721,9 +1721,17 @@ class SupprimerPresencesJourAPIView(APIView):
             return Response({"error": "Format YYYY-MM-DD attendu"}, status=400)
 
         # ── Tous les pointages du jour ───────────────────────────────────────
+        # Intervalle plutôt que checktime__date=... : ce dernier applique
+        # DATE(checktime) en SQL, ce qui empêche l'utilisation d'un index sur
+        # checktime et force un balayage complet de la table checkinout
+        # (table brute de la badgeuse, potentiellement des millions de lignes).
+        from datetime import datetime as dt, timedelta
+        from django.utils import timezone as djtz
+        debut_jour = djtz.make_aware(dt.combine(date_jour, dt.min.time()))
+        fin_jour   = debut_jour + timedelta(days=1)
         pointages_jour = (
             CheckInOut.objects
-            .filter(checktime__date=date_jour)
+            .filter(checktime__gte=debut_jour, checktime__lt=fin_jour)
             .values('user_id', 'checktime', 'checktype')
             .order_by('user_id', 'checktime')
         )
@@ -1782,11 +1790,45 @@ class SupprimerPresencesJourAPIView(APIView):
         horaires_dict   = {h.section: h for h in HoraireSection.objects.all()}
         horaire_default = horaires_dict.get('ADMINISTRATION')
 
-        from .utils import get_horaire_pour_date
-        from datetime import datetime as dt
+        from django.db import transaction
 
-        # ── Boucle : créer anomalie avec heures brutes / rectifiées vides ────
-        count = 0
+        # ── Exceptions d'horaire pour CE jour : 1 seule requête (au lieu de
+        #    2 requêtes HoraireException par employé via get_horaire_pour_date) ──
+        exceptions_jour       = list(HoraireException.objects.filter(date=date_jour))
+        exception_par_section = {e.section: e for e in exceptions_jour if e.section}
+        exception_globale     = next((e for e in exceptions_jour if not e.section), None)
+        est_samedi   = date_jour.weekday() == 5
+        est_vendredi = date_jour.weekday() == 4
+
+        def resoudre_horaire(sec, horaire):
+            exception = exception_par_section.get(sec) or exception_globale
+            if exception:
+                entree = exception.heure_entree or decimal_to_time(horaire.heure_entree)
+                sortie = exception.heure_sortie or decimal_to_time(horaire.heure_sortie)
+                return entree, sortie
+            entree = decimal_to_time(horaire.heure_entree)
+            if est_paiement and est_vendredi:
+                sortie = decimal_to_time(horaire.sortie_vendredi_paiement)
+            elif est_paiement and est_samedi:
+                sortie = decimal_to_time(horaire.sortie_samedi_paiement)
+            elif est_samedi:
+                sortie = decimal_to_time(horaire.sortie_samedi)
+            else:
+                sortie = decimal_to_time(horaire.heure_sortie)
+            return entree, sortie
+
+        # ── Anomalies déjà existantes pour ce jour / ces employés : 1 requête ─
+        anomalies_existantes = {
+            a.userid: a for a in Anomalie.objects.filter(
+                userid__in=userids_cibles, date=date_jour
+            )
+        }
+
+        now = dt.now()
+        a_creer         = []
+        a_mettre_a_jour = []
+
+        # ── Boucle : plus aucune requête SQL ici, tout est en mémoire ────────
         for userid in userids_cibles:
             pts = pointages_par_user.get(userid, [])
             if not pts:
@@ -1809,45 +1851,67 @@ class SupprimerPresencesJourAPIView(APIView):
 
             heure_reelle_entree = heure_reelle_sortie = None
             if horaire:
-                heure_reelle_entree, heure_reelle_sortie = get_horaire_pour_date(
-                    horaire, date_jour, est_paiement, section=sec
+                heure_reelle_entree, heure_reelle_sortie = resoudre_horaire(sec, horaire)
+
+            existante = anomalies_existantes.get(userid)
+            if existante:
+                existante.section                = sec
+                existante.code_date               = code_date
+                existante.heure_brute_entree      = heure_brute_entree
+                existante.heure_brute_sortie      = heure_brute_sortie
+                existante.heure_reelle_entree     = heure_reelle_entree
+                existante.heure_reelle_sortie     = heure_reelle_sortie
+                existante.heure_rectifiee_entree  = None
+                existante.heure_rectifiee_sortie  = None
+                existante.commentaire             = motif or 'Supprimé'
+                existante.etat                    = 'ok'
+                existante.synchronise_le          = now
+                a_mettre_a_jour.append(existante)
+            else:
+                a_creer.append(Anomalie(
+                    userid=userid,
+                    date=date_jour,
+                    section=sec,
+                    code_date=code_date,
+                    heure_brute_entree=heure_brute_entree,
+                    heure_brute_sortie=heure_brute_sortie,
+                    heure_reelle_entree=heure_reelle_entree,
+                    heure_reelle_sortie=heure_reelle_sortie,
+                    heure_rectifiee_entree=None,
+                    heure_rectifiee_sortie=None,
+                    commentaire=motif or 'Supprimé',
+                    etat='ok',
+                    synchronise_le=now,
+                ))
+
+        # ── Écritures groupées : 2 à 3 requêtes au total, quelle que soit
+        #    la taille de la section (au lieu de ~4 requêtes PAR employé) ─────
+        with transaction.atomic():
+            if a_creer:
+                Anomalie.objects.bulk_create(a_creer, batch_size=500)
+            if a_mettre_a_jour:
+                Anomalie.objects.bulk_update(
+                    a_mettre_a_jour,
+                    [
+                        'section', 'code_date',
+                        'heure_brute_entree', 'heure_brute_sortie',
+                        'heure_reelle_entree', 'heure_reelle_sortie',
+                        'heure_rectifiee_entree', 'heure_rectifiee_sortie',
+                        'commentaire', 'etat', 'synchronise_le',
+                    ],
+                    batch_size=500,
                 )
 
-            # Créer/mettre à jour l'anomalie
-            Anomalie.objects.update_or_create(
-                userid=userid,
-                date=date_jour,
-                defaults={
-                    'section':                sec,
-                    'code_date':              code_date,
-                    'heure_brute_entree':     heure_brute_entree,
-                    'heure_brute_sortie':     heure_brute_sortie,
-                    'heure_reelle_entree':    heure_reelle_entree,
-                    'heure_reelle_sortie':    heure_reelle_sortie,
-                    'heure_rectifiee_entree': None,
-                    'heure_rectifiee_sortie': None,
-                    'commentaire':            motif or 'Supprimé',
-                }
+            # ── Réinitialiser les événements à 'X' ──────────────────────────
+            Evenement.objects.filter(
+                userid__in=userids_cibles,
+                date=date_jour
+            ).update(
+                type_evenement='X',
+                commentaire=''
             )
 
-            # Forcer etat='ok' + rectifiées=None via update() direct (bypass save())
-            Anomalie.objects.filter(userid=userid, date=date_jour).update(
-                heure_rectifiee_entree=None,
-                heure_rectifiee_sortie=None,
-                etat='ok',
-                synchronise_le=dt.now(),
-            )
-            count += 1
-
-        # ── Réinitialiser les événements à 'X' ──────────────────────────────
-        Evenement.objects.filter(
-            userid__in=userids_cibles,
-            date=date_jour
-        ).update(
-            type_evenement='X',
-            commentaire=''
-        )
-
+        count = len(a_creer) + len(a_mettre_a_jour)
         section_label = section if section else "toutes les sections"
 
         logger.info(
@@ -5573,9 +5637,17 @@ class SupprimerPresencesJourAPIView(APIView):
             return Response({"error": "Format YYYY-MM-DD attendu"}, status=400)
 
         # ── Tous les pointages du jour ───────────────────────────────────────
+        # Intervalle plutôt que checktime__date=... : ce dernier applique
+        # DATE(checktime) en SQL, ce qui empêche l'utilisation d'un index sur
+        # checktime et force un balayage complet de la table checkinout
+        # (table brute de la badgeuse, potentiellement des millions de lignes).
+        from datetime import datetime as dt, timedelta
+        from django.utils import timezone as djtz
+        debut_jour = djtz.make_aware(dt.combine(date_jour, dt.min.time()))
+        fin_jour   = debut_jour + timedelta(days=1)
         pointages_jour = (
             CheckInOut.objects
-            .filter(checktime__date=date_jour)
+            .filter(checktime__gte=debut_jour, checktime__lt=fin_jour)
             .values('user_id', 'checktime', 'checktype')
             .order_by('user_id', 'checktime')
         )
@@ -5634,11 +5706,45 @@ class SupprimerPresencesJourAPIView(APIView):
         horaires_dict   = {h.section: h for h in HoraireSection.objects.all()}
         horaire_default = horaires_dict.get('ADMINISTRATION')
 
-        from .utils import get_horaire_pour_date
-        from datetime import datetime as dt
+        from django.db import transaction
 
-        # ── Boucle : créer anomalie avec heures brutes / rectifiées vides ────
-        count = 0
+        # ── Exceptions d'horaire pour CE jour : 1 seule requête (au lieu de
+        #    2 requêtes HoraireException par employé via get_horaire_pour_date) ──
+        exceptions_jour       = list(HoraireException.objects.filter(date=date_jour))
+        exception_par_section = {e.section: e for e in exceptions_jour if e.section}
+        exception_globale     = next((e for e in exceptions_jour if not e.section), None)
+        est_samedi   = date_jour.weekday() == 5
+        est_vendredi = date_jour.weekday() == 4
+
+        def resoudre_horaire(sec, horaire):
+            exception = exception_par_section.get(sec) or exception_globale
+            if exception:
+                entree = exception.heure_entree or decimal_to_time(horaire.heure_entree)
+                sortie = exception.heure_sortie or decimal_to_time(horaire.heure_sortie)
+                return entree, sortie
+            entree = decimal_to_time(horaire.heure_entree)
+            if est_paiement and est_vendredi:
+                sortie = decimal_to_time(horaire.sortie_vendredi_paiement)
+            elif est_paiement and est_samedi:
+                sortie = decimal_to_time(horaire.sortie_samedi_paiement)
+            elif est_samedi:
+                sortie = decimal_to_time(horaire.sortie_samedi)
+            else:
+                sortie = decimal_to_time(horaire.heure_sortie)
+            return entree, sortie
+
+        # ── Anomalies déjà existantes pour ce jour / ces employés : 1 requête ─
+        anomalies_existantes = {
+            a.userid: a for a in Anomalie.objects.filter(
+                userid__in=userids_cibles, date=date_jour
+            )
+        }
+
+        now = dt.now()
+        a_creer         = []
+        a_mettre_a_jour = []
+
+        # ── Boucle : plus aucune requête SQL ici, tout est en mémoire ────────
         for userid in userids_cibles:
             pts = pointages_par_user.get(userid, [])
             if not pts:
@@ -5661,45 +5767,67 @@ class SupprimerPresencesJourAPIView(APIView):
 
             heure_reelle_entree = heure_reelle_sortie = None
             if horaire:
-                heure_reelle_entree, heure_reelle_sortie = get_horaire_pour_date(
-                    horaire, date_jour, est_paiement, section=sec
+                heure_reelle_entree, heure_reelle_sortie = resoudre_horaire(sec, horaire)
+
+            existante = anomalies_existantes.get(userid)
+            if existante:
+                existante.section                = sec
+                existante.code_date               = code_date
+                existante.heure_brute_entree      = heure_brute_entree
+                existante.heure_brute_sortie      = heure_brute_sortie
+                existante.heure_reelle_entree     = heure_reelle_entree
+                existante.heure_reelle_sortie     = heure_reelle_sortie
+                existante.heure_rectifiee_entree  = None
+                existante.heure_rectifiee_sortie  = None
+                existante.commentaire             = motif or 'Supprimé'
+                existante.etat                    = 'ok'
+                existante.synchronise_le          = now
+                a_mettre_a_jour.append(existante)
+            else:
+                a_creer.append(Anomalie(
+                    userid=userid,
+                    date=date_jour,
+                    section=sec,
+                    code_date=code_date,
+                    heure_brute_entree=heure_brute_entree,
+                    heure_brute_sortie=heure_brute_sortie,
+                    heure_reelle_entree=heure_reelle_entree,
+                    heure_reelle_sortie=heure_reelle_sortie,
+                    heure_rectifiee_entree=None,
+                    heure_rectifiee_sortie=None,
+                    commentaire=motif or 'Supprimé',
+                    etat='ok',
+                    synchronise_le=now,
+                ))
+
+        # ── Écritures groupées : 2 à 3 requêtes au total, quelle que soit
+        #    la taille de la section (au lieu de ~4 requêtes PAR employé) ─────
+        with transaction.atomic():
+            if a_creer:
+                Anomalie.objects.bulk_create(a_creer, batch_size=500)
+            if a_mettre_a_jour:
+                Anomalie.objects.bulk_update(
+                    a_mettre_a_jour,
+                    [
+                        'section', 'code_date',
+                        'heure_brute_entree', 'heure_brute_sortie',
+                        'heure_reelle_entree', 'heure_reelle_sortie',
+                        'heure_rectifiee_entree', 'heure_rectifiee_sortie',
+                        'commentaire', 'etat', 'synchronise_le',
+                    ],
+                    batch_size=500,
                 )
 
-            # Créer/mettre à jour l'anomalie
-            Anomalie.objects.update_or_create(
-                userid=userid,
-                date=date_jour,
-                defaults={
-                    'section':                sec,
-                    'code_date':              code_date,
-                    'heure_brute_entree':     heure_brute_entree,
-                    'heure_brute_sortie':     heure_brute_sortie,
-                    'heure_reelle_entree':    heure_reelle_entree,
-                    'heure_reelle_sortie':    heure_reelle_sortie,
-                    'heure_rectifiee_entree': None,
-                    'heure_rectifiee_sortie': None,
-                    'commentaire':            motif or 'Supprimé',
-                }
+            # ── Réinitialiser les événements à 'X' ──────────────────────────
+            Evenement.objects.filter(
+                userid__in=userids_cibles,
+                date=date_jour
+            ).update(
+                type_evenement='X',
+                commentaire=''
             )
 
-            # Forcer etat='ok' + rectifiées=None via update() direct (bypass save())
-            Anomalie.objects.filter(userid=userid, date=date_jour).update(
-                heure_rectifiee_entree=None,
-                heure_rectifiee_sortie=None,
-                etat='ok',
-                synchronise_le=dt.now(),
-            )
-            count += 1
-
-        # ── Réinitialiser les événements à 'X' ──────────────────────────────
-        Evenement.objects.filter(
-            userid__in=userids_cibles,
-            date=date_jour
-        ).update(
-            type_evenement='X',
-            commentaire=''
-        )
-
+        count = len(a_creer) + len(a_mettre_a_jour)
         section_label = section if section else "toutes les sections"
 
         logger.info(
