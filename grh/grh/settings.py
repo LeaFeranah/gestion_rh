@@ -207,3 +207,13 @@ CORS_ALLOWED_ORIGINS = [
 
 #ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
 ALLOWED_HOSTS = ['127.0.0.1','192.168.3.178', 'localhost']
+
+
+
+
+# Source des pointages ZKTeco (SQL Server)
+ZKTECO_SQLSERVER = (
+    "Driver={ODBC Driver 17 for SQL Server};"
+    "Server=localhost\\SQLEXPRESS;Database=AttMgmt;"
+    "Trusted_Connection=yes;TrustServerCertificate=yes"
+)

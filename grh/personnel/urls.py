@@ -27,4 +27,7 @@ urlpatterns = [
     path('mes-employes/', mes_employes, name='mes_employes'),
     path('mes-statistiques/', mes_statistiques, name='mes_statistiques'),
     path('profil/', profil_utilisateur, name='profil'),
+
+    path('utilisateurs-admin/', UtilisateurListCreateAPIView.as_view(), name='utilisateurs-admin-list'),
+    path('utilisateurs-admin/<int:pk>/', UtilisateurDetailAPIView.as_view(), name='utilisateurs-admin-detail'),
 ]

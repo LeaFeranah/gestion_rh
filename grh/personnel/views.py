@@ -218,62 +218,6 @@ class EvolutionPosteViewSet(viewsets.ModelViewSet):
             )
 
 
-# class InformationPersonnelleViewSet(viewsets.ModelViewSet):
-#     queryset = InformationPersonnelle.objects.all()
-#     authentication_classes = [SessionAuthentication, TokenAuthentication]
-#     permission_classes = [IsAuthenticated]
-    
-#     def get_queryset(self):
-#         """Chaque RH ne voit que les employés qu'elle a créés"""
-#         return InformationPersonnelle.objects.filter(created_by=self.request.user)
-    
-#     def get_serializer_class(self):
-#         """Choisir serializer selon l'action"""
-#         if self.action in ['update', 'partial_update']:
-#             return InformationPersonnellePUTSerializer
-#         return InformationPersonnelleSerializer
-    
-#     def perform_create(self, serializer):
-#         """Automatiquement assigner l'utilisateur connecté comme créateur"""
-#         serializer.save(created_by=self.request.user)
-    
-#     @action(detail=True, methods=['post'], url_path='creer-professionnelle')
-#     def creer_information_professionnelle(self, request, pk=None):
-#         """Créer l'information professionnelle pour un employé"""
-#         employe = self.get_object()
-        
-#         # Vérifier que l'employé appartient au RH connecté
-#         if employe.created_by != request.user:
-#             return Response(
-#                 {'error': "Vous n'êtes pas autorisé à créer l'information professionnelle pour cet employé."},
-#                 status=status.HTTP_403_FORBIDDEN
-#             )
-        
-#         # Vérifier si une information professionnelle existe déjà
-#         if hasattr(employe, 'information_professionnelle'):
-#             return Response(
-#                 {'error': "Une information professionnelle existe déjà pour cet employé."},
-#                 status=status.HTTP_400_BAD_REQUEST
-#             )
-        
-#         # Ajouter l'employe aux données
-#         data = request.data.copy()
-#         data['employe'] = employe.id
-        
-#         # Créer l'information professionnelle
-#         serializer = InformationProfessionnelleCreateSerializer(
-#             data=data, 
-#             context={'request': request}
-#         )
-        
-#         if serializer.is_valid():
-#             info_pro = serializer.save()
-#             return Response(
-#                 InformationProfessionnelleSerializer(info_pro).data,
-#                 status=status.HTTP_201_CREATED
-#             )
-        
-#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class InformationPersonnelleViewSet(viewsets.ModelViewSet):
@@ -604,18 +548,36 @@ def login_api(request):
     username = request.data.get('username')
     password = request.data.get('password')
     
+    
     user = authenticate(username=username, password=password)
     
+    # if user is not None:
+    #     from rest_framework.authtoken.models import Token
+    #     token, created = Token.objects.get_or_create(user=user)
+        
+    #     return Response({
+    #         'message': 'Connexion réussie',
+    #         'token': token.key,
+    #         'username': user.username,
+    #         'email': user.email,
+    #         'is_admin': user.is_staff,   
+    #     })
     if user is not None:
         from rest_framework.authtoken.models import Token
         token, created = Token.objects.get_or_create(user=user)
-        
+
+        profil = getattr(user, 'profil', None)
+        role = profil.role if profil else ('SUPERADMIN' if user.is_superuser else 'ADMIN')
+        sections = list(profil.sections.values_list('nom_section', flat=True)) if profil else []
+
         return Response({
             'message': 'Connexion réussie',
             'token': token.key,
             'username': user.username,
             'email': user.email,
-            'is_admin': user.is_staff,   
+            'is_admin': user.is_staff,
+            'role': role,
+            'sections': sections,
         })
     else:
         return Response(
@@ -719,3 +681,147 @@ def profil_utilisateur(request):
         'last_name': user.last_name,
         'is_staff': user.is_staff,
     })
+
+from django.contrib.auth.models import User
+from .models import ProfilUtilisateur
+from .serializers import UtilisateurSerializer
+from .permissions import IsSuperAdmin
+from rest_framework.views import APIView
+
+
+
+def _sync_horaire_responsable(section_ids):
+    """
+    Recalcule le champ texte HoraireSection.responsable pour les sections
+    données, à partir des comptes RESPONSABLE réellement liés à chaque section.
+    """
+    from presence.models import Section, HoraireSection
+    for section_id in section_ids:
+        try:
+            section_obj = Section.objects.get(pk=section_id)
+        except Section.DoesNotExist:
+            continue
+        usernames = list(
+            section_obj.responsables.filter(role='RESPONSABLE')
+            .values_list('user__username', flat=True)
+        )
+        HoraireSection.objects.filter(section=section_obj.nom_section).update(
+            responsable=", ".join(usernames)
+        )
+
+
+class UtilisateurListCreateAPIView(APIView):
+    """
+    GET  /api/personnel/utilisateurs-admin/   → liste tous les comptes + rôle + section
+    POST /api/personnel/utilisateurs-admin/   → crée un compte + son profil
+    """
+    permission_classes = [IsSuperAdmin]
+    authentication_classes = [TokenAuthentication, SessionAuthentication]
+
+    def get(self, request):
+        users = User.objects.all().select_related('profil').prefetch_related('profil__sections').order_by('username')
+        return Response(UtilisateurSerializer(users, many=True).data)
+
+    def post(self, request):
+        username = request.data.get('username')
+        password = request.data.get('password')
+        role = request.data.get('role', 'ADMIN')
+        section_ids = request.data.get('sections', [])
+
+        if not username or not password:
+            return Response(
+                {'error': "'username' et 'password' sont obligatoires"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        if role not in dict(ProfilUtilisateur.ROLE_CHOICES):
+            return Response({'error': f"role invalide: {role}"}, status=400)
+        if role == 'RESPONSABLE' and not section_ids:
+            return Response(
+                {'error': "au moins une section est obligatoire quand role = RESPONSABLE"},
+                status=400
+            )
+        if User.objects.filter(username=username).exists():
+            return Response({'error': "Ce nom d'utilisateur existe déjà"}, status=400)
+
+        user = User.objects.create_user(username=username, password=password)
+        profil = ProfilUtilisateur.objects.create(user=user, role=role)
+        if role == 'RESPONSABLE':
+            profil.sections.set(section_ids)
+            _sync_horaire_responsable(section_ids)
+        return Response(UtilisateurSerializer(user).data, status=status.HTTP_201_CREATED)
+
+    
+class UtilisateurDetailAPIView(APIView):
+    """
+    PATCH  /api/personnel/utilisateurs-admin/{id}/   → modifie rôle/section/mot de passe
+    DELETE /api/personnel/utilisateurs-admin/{id}/   → désactive le compte
+    """
+    permission_classes = [IsSuperAdmin]
+    authentication_classes = [TokenAuthentication, SessionAuthentication]
+
+    def get_object(self, pk):
+        try:
+            return User.objects.get(pk=pk)
+        except User.DoesNotExist:
+            return None
+
+    def patch(self, request, pk):
+        user = self.get_object(pk)
+        if not user:
+            return Response({'error': 'Utilisateur non trouvé'}, status=404)
+
+        username = request.data.get('username')
+        role = request.data.get('role')
+        section_ids = request.data.get('sections')
+        password = request.data.get('password')
+        is_active = request.data.get('is_active')
+
+        if username and username != user.username:
+            if User.objects.exclude(pk=user.pk).filter(username=username).exists():
+                return Response({'error': "Ce nom d'utilisateur existe déjà"}, status=400)
+            user.username = username
+            user.save()
+
+        if password:
+            user.set_password(password)
+            user.save()
+
+        if is_active is not None:
+            user.is_active = bool(is_active)
+            user.save()
+
+        if role is not None:
+            if role not in dict(ProfilUtilisateur.ROLE_CHOICES):
+                return Response({'error': f"role invalide: {role}"}, status=400)
+            if role == 'RESPONSABLE' and not section_ids:
+                return Response(
+                    {'error': "au moins une section est obligatoire quand role = RESPONSABLE"},
+                    status=400
+                )
+            profil, _ = ProfilUtilisateur.objects.get_or_create(user=user)
+            anciennes_sections = list(profil.sections.values_list('id', flat=True))
+            profil.role = role
+            if role == 'RESPONSABLE':
+                profil.sections.set(section_ids or [])
+            else:
+                profil.sections.clear()
+            profil.save()
+            _sync_horaire_responsable(set(anciennes_sections) | set(section_ids or []))
+        elif section_ids is not None:
+            profil, _ = ProfilUtilisateur.objects.get_or_create(user=user)
+            anciennes_sections = list(profil.sections.values_list('id', flat=True))
+            profil.sections.set(section_ids)
+            _sync_horaire_responsable(set(anciennes_sections) | set(section_ids))
+
+        return Response(UtilisateurSerializer(user).data)
+
+    def delete(self, request, pk):
+        user = self.get_object(pk)
+        if not user:
+            return Response({'error': 'Utilisateur non trouvé'}, status=404)
+        username = user.username
+        profil = getattr(user, 'profil', None)
+        anciennes_sections = list(profil.sections.values_list('id', flat=True)) if profil else []
+        user.delete()
+        _sync_horaire_responsable(anciennes_sections)
+        return Response({'message': f"Compte « {username} » supprimé définitivement"})

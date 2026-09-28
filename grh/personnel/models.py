@@ -454,3 +454,27 @@ class HistoriqueSalaire(TimeStampModel):
     
     def __str__(self):
         return f"{self.get_action_display()} - {self.employe.nom_complet} - {self.created_at.strftime('%d/%m/%Y %H:%M')}"
+
+
+
+class ProfilUtilisateur(TimeStampModel):
+    ROLE_CHOICES = [
+        ('SUPERADMIN', 'Super administrateur'),
+        ('ADMIN', 'Administrateur simple'),
+        ('RESPONSABLE', 'Responsable de section'),
+    ]
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='profil'
+    )
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='ADMIN')
+    sections = models.ManyToManyField(
+        'presence.Section',
+        blank=True,
+        related_name='responsables',
+        help_text="Sections visibles par ce responsable (utilisé uniquement si role = RESPONSABLE)"
+    )
+
+    def __str__(self):
+        return f"{self.user.username} ({self.role})"

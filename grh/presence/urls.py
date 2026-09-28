@@ -74,5 +74,7 @@ urlpatterns = [
     path('periodes-fermeture/<int:pk>/',PeriodeFermetureDetailAPIView.as_view(),name='periodes-fermeture-detail'),
 
     #Vérification présence
-    path('verification-presences/', VerificationPresencesAPIView.as_view(), name='verification-presences')
+    path('verification-presences/', VerificationPresencesAPIView.as_view(), name='verification-presences'),
+
+    path('toutes-sections/', ToutesSectionsAPIView.as_view(), name='toutes-sections-list'),
 ]

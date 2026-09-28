@@ -252,3 +252,47 @@ class InformationPersonnelleLightSerializer(serializers.ModelSerializer):
             'appellation', 'photo', 'depart',
             'fonction', 'section', 'responsable_section',
         ]
+
+
+
+
+
+
+from django.contrib.auth.models import User
+from .models import ProfilUtilisateur
+
+
+class ProfilUtilisateurSerializer(serializers.ModelSerializer):
+    section_nom = serializers.CharField(source='section.nom_section', read_only=True, default=None)
+
+    class Meta:
+        model = ProfilUtilisateur
+        fields = ['role', 'section', 'section_nom']
+
+
+class UtilisateurSerializer(serializers.ModelSerializer):
+    role = serializers.SerializerMethodField()
+    sections = serializers.SerializerMethodField()
+    sections_noms = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'email', 'is_active', 'role', 'sections', 'sections_noms']
+
+    def get_role(self, obj):
+        profil = getattr(obj, 'profil', None)
+        if profil:
+            return profil.role
+        return 'SUPERADMIN' if obj.is_superuser else 'ADMIN'
+
+    def get_sections(self, obj):
+        profil = getattr(obj, 'profil', None)
+        if not profil:
+            return []
+        return [s.id for s in profil.sections.all()]
+
+    def get_sections_noms(self, obj):
+        profil = getattr(obj, 'profil', None)
+        if not profil:
+            return []
+        return [s.nom_section for s in profil.sections.all()]

@@ -1,0 +1,1340 @@
+ 
+===== 24/09/2026 11:50:02,72 ===== 
+Traceback (most recent call last):
+  File "D:\Grand_projet_rh\back_rh\grh\manage.py", line 22, in <module>
+    main()
+    ~~~~^^
+  File "D:\Grand_projet_rh\back_rh\grh\manage.py", line 18, in main
+    execute_from_command_line(sys.argv)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "C:\Users\admin\Desktop\Grand_projet_rh\back_rh\env\Lib\site-packages\django\core\management\__init__.py", line 442, in execute_from_command_line
+    utility.execute()
+    ~~~~~~~~~~~~~~~^^
+  File "C:\Users\admin\Desktop\Grand_projet_rh\back_rh\env\Lib\site-packages\django\core\management\__init__.py", line 436, in execute
+    self.fetch_command(subcommand).run_from_argv(self.argv)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "C:\Users\admin\Desktop\Grand_projet_rh\back_rh\env\Lib\site-packages\django\core\management\base.py", line 416, in run_from_argv
+    self.execute(*args, **cmd_options)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\admin\Desktop\Grand_projet_rh\back_rh\env\Lib\site-packages\django\core\management\base.py", line 460, in execute
+    output = self.handle(*args, **options)
+  File "D:\Grand_projet_rh\back_rh\grh\presence\management\commands\sync_zkteco.py", line 60, in handle
+    self.stdout.write("\u2550" * 60)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "C:\Users\admin\Desktop\Grand_projet_rh\back_rh\env\Lib\site-packages\django\core\management\base.py", line 181, in write
+    self._out.write(style_func(msg))
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Python314\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode characters in position 0-59: character maps to <undefined>
+ 
+===== 24/09/2026 11:59:01,92 ===== 
+Traceback (most recent call last):
+  File "D:\Grand_projet_rh\back_rh\grh\manage.py", line 22, in <module>
+    main()
+    ~~~~^^
+  File "D:\Grand_projet_rh\back_rh\grh\manage.py", line 18, in main
+    execute_from_command_line(sys.argv)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "C:\Users\admin\Desktop\Grand_projet_rh\back_rh\env\Lib\site-packages\django\core\management\__init__.py", line 442, in execute_from_command_line
+    utility.execute()
+    ~~~~~~~~~~~~~~~^^
+  File "C:\Users\admin\Desktop\Grand_projet_rh\back_rh\env\Lib\site-packages\django\core\management\__init__.py", line 436, in execute
+    self.fetch_command(subcommand).run_from_argv(self.argv)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "C:\Users\admin\Desktop\Grand_projet_rh\back_rh\env\Lib\site-packages\django\core\management\base.py", line 416, in run_from_argv
+    self.execute(*args, **cmd_options)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\admin\Desktop\Grand_projet_rh\back_rh\env\Lib\site-packages\django\core\management\base.py", line 460, in execute
+    output = self.handle(*args, **options)
+  File "D:\Grand_projet_rh\back_rh\grh\presence\management\commands\sync_zkteco.py", line 60, in handle
+    self.stdout.write("\u2550" * 60)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "C:\Users\admin\Desktop\Grand_projet_rh\back_rh\env\Lib\site-packages\django\core\management\base.py", line 181, in write
+    self._out.write(style_func(msg))
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Python314\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode characters in position 0-59: character maps to <undefined>
+ 
+===== 24/09/2026 12:09:01,80 ===== 
+Traceback (most recent call last):
+  File "D:\Grand_projet_rh\back_rh\grh\manage.py", line 22, in <module>
+    main()
+    ~~~~^^
+  File "D:\Grand_projet_rh\back_rh\grh\manage.py", line 18, in main
+    execute_from_command_line(sys.argv)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "C:\Users\admin\Desktop\Grand_projet_rh\back_rh\env\Lib\site-packages\django\core\management\__init__.py", line 442, in execute_from_command_line
+    utility.execute()
+    ~~~~~~~~~~~~~~~^^
+  File "C:\Users\admin\Desktop\Grand_projet_rh\back_rh\env\Lib\site-packages\django\core\management\__init__.py", line 436, in execute
+    self.fetch_command(subcommand).run_from_argv(self.argv)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "C:\Users\admin\Desktop\Grand_projet_rh\back_rh\env\Lib\site-packages\django\core\management\base.py", line 416, in run_from_argv
+    self.execute(*args, **cmd_options)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\admin\Desktop\Grand_projet_rh\back_rh\env\Lib\site-packages\django\core\management\base.py", line 460, in execute
+    output = self.handle(*args, **options)
+  File "D:\Grand_projet_rh\back_rh\grh\presence\management\commands\sync_zkteco.py", line 60, in handle
+    self.stdout.write("\u2550" * 60)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "C:\Users\admin\Desktop\Grand_projet_rh\back_rh\env\Lib\site-packages\django\core\management\base.py", line 181, in write
+    self._out.write(style_func(msg))
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Python314\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode characters in position 0-59: character maps to <undefined>
+ 
+===== 24/09/2026 12:19:01,82 ===== 
+Traceback (most recent call last):
+  File "D:\Grand_projet_rh\back_rh\grh\manage.py", line 22, in <module>
+    main()
+    ~~~~^^
+  File "D:\Grand_projet_rh\back_rh\grh\manage.py", line 18, in main
+    execute_from_command_line(sys.argv)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "C:\Users\admin\Desktop\Grand_projet_rh\back_rh\env\Lib\site-packages\django\core\management\__init__.py", line 442, in execute_from_command_line
+    utility.execute()
+    ~~~~~~~~~~~~~~~^^
+  File "C:\Users\admin\Desktop\Grand_projet_rh\back_rh\env\Lib\site-packages\django\core\management\__init__.py", line 436, in execute
+    self.fetch_command(subcommand).run_from_argv(self.argv)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "C:\Users\admin\Desktop\Grand_projet_rh\back_rh\env\Lib\site-packages\django\core\management\base.py", line 416, in run_from_argv
+    self.execute(*args, **cmd_options)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\admin\Desktop\Grand_projet_rh\back_rh\env\Lib\site-packages\django\core\management\base.py", line 460, in execute
+    output = self.handle(*args, **options)
+  File "D:\Grand_projet_rh\back_rh\grh\presence\management\commands\sync_zkteco.py", line 60, in handle
+    self.stdout.write("\u2550" * 60)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "C:\Users\admin\Desktop\Grand_projet_rh\back_rh\env\Lib\site-packages\django\core\management\base.py", line 181, in write
+    self._out.write(style_func(msg))
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Python314\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode characters in position 0-59: character maps to <undefined>
+ 
+===== 24/09/2026 12:29:01,90 ===== 
+Traceback (most recent call last):
+  File "D:\Grand_projet_rh\back_rh\grh\manage.py", line 22, in <module>
+    main()
+    ~~~~^^
+  File "D:\Grand_projet_rh\back_rh\grh\manage.py", line 18, in main
+    execute_from_command_line(sys.argv)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "C:\Users\admin\Desktop\Grand_projet_rh\back_rh\env\Lib\site-packages\django\core\management\__init__.py", line 442, in execute_from_command_line
+    utility.execute()
+    ~~~~~~~~~~~~~~~^^
+  File "C:\Users\admin\Desktop\Grand_projet_rh\back_rh\env\Lib\site-packages\django\core\management\__init__.py", line 436, in execute
+    self.fetch_command(subcommand).run_from_argv(self.argv)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "C:\Users\admin\Desktop\Grand_projet_rh\back_rh\env\Lib\site-packages\django\core\management\base.py", line 416, in run_from_argv
+    self.execute(*args, **cmd_options)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\admin\Desktop\Grand_projet_rh\back_rh\env\Lib\site-packages\django\core\management\base.py", line 460, in execute
+    output = self.handle(*args, **options)
+  File "D:\Grand_projet_rh\back_rh\grh\presence\management\commands\sync_zkteco.py", line 60, in handle
+    self.stdout.write("\u2550" * 60)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "C:\Users\admin\Desktop\Grand_projet_rh\back_rh\env\Lib\site-packages\django\core\management\base.py", line 181, in write
+    self._out.write(style_func(msg))
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Python314\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode characters in position 0-59: character maps to <undefined>
+ 
+===== 24/09/2026 12:33:52,26 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 27 pointages lus
+  Rattachés à un employé PostgreSQL : 27
+  ✅ OK : 3 nouveaux pointages ajoutés
+ 
+===== 24/09/2026 12:39:01,88 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 27 pointages lus
+  Rattachés à un employé PostgreSQL : 27
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 24/09/2026 12:49:02,04 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 27 pointages lus
+  Rattachés à un employé PostgreSQL : 27
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 24/09/2026 12:59:02,03 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 28 pointages lus
+  Rattachés à un employé PostgreSQL : 28
+  ✅ OK : 1 nouveaux pointages ajoutés
+ 
+===== 24/09/2026 13:09:02,02 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 28 pointages lus
+  Rattachés à un employé PostgreSQL : 28
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 24/09/2026 13:19:02,05 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 29 pointages lus
+  Rattachés à un employé PostgreSQL : 29
+  ✅ OK : 1 nouveaux pointages ajoutés
+ 
+===== 24/09/2026 13:29:02,06 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 29 pointages lus
+  Rattachés à un employé PostgreSQL : 29
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 24/09/2026 13:39:02,04 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 29 pointages lus
+  Rattachés à un employé PostgreSQL : 29
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 24/09/2026 13:49:02,05 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 29 pointages lus
+  Rattachés à un employé PostgreSQL : 29
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 24/09/2026 13:59:02,06 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 29 pointages lus
+  Rattachés à un employé PostgreSQL : 29
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 24/09/2026 14:09:02,07 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 29 pointages lus
+  Rattachés à un employé PostgreSQL : 29
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 24/09/2026 14:19:02,07 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 29 pointages lus
+  Rattachés à un employé PostgreSQL : 29
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 24/09/2026 14:29:02,07 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 29 pointages lus
+  Rattachés à un employé PostgreSQL : 29
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 24/09/2026 14:39:01,09 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 29 pointages lus
+  Rattachés à un employé PostgreSQL : 29
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 24/09/2026 14:49:01,11 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 30 pointages lus
+  Rattachés à un employé PostgreSQL : 30
+  ✅ OK : 1 nouveaux pointages ajoutés
+ 
+===== 24/09/2026 14:59:01,11 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 30 pointages lus
+  Rattachés à un employé PostgreSQL : 30
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 24/09/2026 15:09:01,12 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 1 nouveaux pointages ajoutés
+ 
+===== 24/09/2026 15:19:01,17 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 24/09/2026 15:29:01,20 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 24/09/2026 15:39:01,17 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 24/09/2026 15:49:01,16 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 24/09/2026 15:59:01,14 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 24/09/2026 16:09:01,14 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 24/09/2026 16:19:01,18 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 24/09/2026 16:29:01,22 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 24/09/2026 16:39:01,22 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 24/09/2026 16:49:01,20 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 24/09/2026 16:59:01,21 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 24/09/2026 17:09:01,23 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 24/09/2026 17:19:01,22 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 24/09/2026 17:29:01,26 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 24/09/2026 17:39:01,24 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 24/09/2026 17:49:01,23 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 24/09/2026 17:59:01,22 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 24/09/2026 18:09:01,31 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 24/09/2026 18:19:01,25 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 24/09/2026 18:29:01,26 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 24/09/2026 18:39:01,29 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 24/09/2026 18:49:01,26 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 24/09/2026 18:59:01,27 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 24/09/2026 19:09:01,27 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 24/09/2026 19:19:01,28 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 24/09/2026 19:29:01,31 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 24/09/2026 19:39:01,31 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 24/09/2026 19:49:01,31 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 24/09/2026 19:59:01,32 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 24/09/2026 20:09:01,32 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 24/09/2026 20:19:01,33 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 24/09/2026 20:29:01,36 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 24/09/2026 20:39:01,37 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 24/09/2026 20:49:01,38 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 24/09/2026 20:59:01,39 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 24/09/2026 21:09:01,38 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 24/09/2026 21:19:01,39 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 24/09/2026 21:29:01,39 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 24/09/2026 21:39:01,43 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 24/09/2026 21:49:01,49 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 24/09/2026 21:59:01,45 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 24/09/2026 22:09:01,45 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 24/09/2026 22:19:01,47 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 24/09/2026 22:29:01,47 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 24/09/2026 22:39:01,49 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 24/09/2026 22:49:01,46 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 24/09/2026 22:59:01,48 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 24/09/2026 23:09:01,48 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 24/09/2026 23:19:01,50 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 24/09/2026 23:29:01,51 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 24/09/2026 23:39:01,53 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 24/09/2026 23:49:01,54 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 24/09/2026 23:59:01,56 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 25/09/2026  0:09:01,57 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 25/09/2026  0:19:01,59 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 25/09/2026  0:29:01,60 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 25/09/2026  0:39:01,60 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 25/09/2026  0:49:01,60 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 25/09/2026  0:59:01,61 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 25/09/2026  1:09:01,61 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 25/09/2026  1:19:01,62 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 25/09/2026  1:29:01,64 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 25/09/2026  1:39:01,66 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 25/09/2026  1:49:01,66 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 25/09/2026  1:59:01,66 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 25/09/2026  2:09:01,65 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 25/09/2026  2:19:01,68 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 25/09/2026  2:29:01,70 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 25/09/2026  2:39:01,69 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 25/09/2026  2:49:01,71 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 25/09/2026  2:59:01,74 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 25/09/2026  3:09:01,72 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 25/09/2026  3:19:01,72 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 25/09/2026  3:29:01,72 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 25/09/2026  3:39:01,73 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 25/09/2026  3:49:01,75 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 25/09/2026  3:59:01,75 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 25/09/2026  4:09:01,78 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 25/09/2026  4:19:01,78 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 25/09/2026  4:29:01,78 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 25/09/2026  4:39:01,82 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 25/09/2026  4:49:01,81 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 25/09/2026  4:59:01,84 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 25/09/2026  5:09:01,81 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 25/09/2026  5:19:01,82 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 25/09/2026  5:29:01,84 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 25/09/2026  5:39:01,84 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 25/09/2026  5:49:01,84 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 25/09/2026  5:59:01,87 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 25/09/2026  6:09:01,87 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 25/09/2026  6:19:01,88 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 25/09/2026  6:29:01,90 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 25/09/2026  6:39:01,92 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 25/09/2026  6:49:01,94 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 25/09/2026  6:59:02,03 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 28/09/2026  7:29:01,66 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 31 pointages lus
+  Rattachés à un employé PostgreSQL : 31
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 28/09/2026  7:39:01,61 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 51 pointages lus
+  Rattachés à un employé PostgreSQL : 51
+  ✅ OK : 1 nouveaux pointages ajoutés
+ 
+===== 28/09/2026  7:49:01,61 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 53 pointages lus
+  Rattachés à un employé PostgreSQL : 53
+  ✅ OK : 2 nouveaux pointages ajoutés
+ 
+===== 28/09/2026  7:59:01,62 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 53 pointages lus
+  Rattachés à un employé PostgreSQL : 53
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 28/09/2026  8:09:01,63 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 53 pointages lus
+  Rattachés à un employé PostgreSQL : 53
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 28/09/2026  8:19:01,76 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 53 pointages lus
+  Rattachés à un employé PostgreSQL : 53
+  ✅ OK : 0 nouveaux pointages ajoutés
+ 
+===== 28/09/2026  8:29:01,73 ===== 
+════════════════════════════════════════════════════════════
+  POINTAGES ZKTECO → POSTGRESQL  (60 derniers jours)
+════════════════════════════════════════════════════════════
+  PostgreSQL : 5731 badges d'employés
+  ⚠ 32 badge(s) partagé(s) par plusieurs userid : pointage attribué au userid le plus récemment pointé
+  SQL Server : 53 pointages lus
+  Rattachés à un employé PostgreSQL : 53
+  ✅ OK : 0 nouveaux pointages ajoutés
