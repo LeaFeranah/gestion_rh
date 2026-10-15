@@ -1719,6 +1719,7 @@ class Anomalie(models.Model):
         ('multiples_pointages', 'Pointages multiples'),
          ('retard_sortie', 'Retard de sortie'),
          #('entree_trop_tot', 'Entrée trop tôt'),
+        ('ecart_horaire', 'Écart horaire'),
         ('ok', 'OK'),
     ]
     
@@ -1803,35 +1804,48 @@ class Anomalie(models.Model):
     #         return 'pas_sortie'
 
     #     return 'ok'
-    def _determiner_etat(self, ancien_etat=None):
-        if ancien_etat == 'multiples_pointages':
-            if not self.heure_rectifiee_entree or not self.heure_rectifiee_sortie:
-                return 'multiples_pointages'
+    @staticmethod
+    def _meme_heure(h1, h2):
+        """Compare deux heures à la minute près (None == None)."""
+        if h1 is None or h2 is None:
+            return h1 is None and h2 is None
+        return (h1.hour, h1.minute) == (h2.hour, h2.minute)
 
-        if ancien_etat == 'retard_sortie':
-            if not self.heure_rectifiee_entree or not self.heure_rectifiee_sortie:
-                return 'retard_sortie'
-        
-        # AJOUTER CE BLOC
-        # if ancien_etat == 'entree_trop_tot':
-        #     if not self.heure_rectifiee_entree or not self.heure_rectifiee_sortie:
-        #         return 'entree_trop_tot'
+    def calculer_etat(self, ancien_etat=None):
+        """
+        Règle : l'anomalie est "OK" UNIQUEMENT si
+            heure par défaut (réelle) == heure rectifiée, en entrée ET en sortie.
+        Sinon elle reste une anomalie (on garde son type d'origine).
+        """
+        rect_e, rect_s = self.heure_rectifiee_entree, self.heure_rectifiee_sortie
 
-        if not self.heure_rectifiee_entree:
+        # Marqueur "présence supprimée" (heures rectifiées vidées volontairement)
+        if rect_e is None and rect_s is None and ancien_etat == 'ok':
+            return 'ok'
+
+        if (self._meme_heure(rect_e, self.heure_reelle_entree)
+                and self._meme_heure(rect_s, self.heure_reelle_sortie)):
+            return 'ok'
+
+        # Pas égal → reste une anomalie : on conserve son type d'origine
+        if ancien_etat and ancien_etat != 'ok':
+            return ancien_etat
+        if rect_e is None:
             return 'pas_entree'
-
-        if not self.heure_rectifiee_sortie:
+        if rect_s is None:
             return 'pas_sortie'
+        return 'ecart_horaire'
 
-        return 'ok'
-        
-
-
-        # Les deux heures sont présentes → OK peu importe les valeurs
-        return 'ok'
+    def _determiner_etat(self, ancien_etat=None):
+        # Conservé pour compatibilité : délègue à calculer_etat()
+        return self.calculer_etat(ancien_etat)
 
     def save(self, *args, **kwargs):
         ancien_etat = self.etat
+        # Nouvelle ligne créée sans état explicite (ex: saisie depuis la page Présence) :
+        # l'état par défaut 'pas_entree' ne doit pas être pris pour un vrai type d'anomalie.
+        if self._state.adding and ancien_etat == 'pas_entree':
+            ancien_etat = None
 
         # Formater les heures sans secondes
         for field in ['heure_brute_entree', 'heure_brute_sortie',
@@ -1861,14 +1875,17 @@ class Anomalie(models.Model):
                 self.heure_rectifiee_entree = self.heure_brute_entree
             # ⚠️ On NE remet PAS heure_rectifiee_sortie = None
 
-        else:
+        elif not (ancien_etat == 'ok'
+                  and self.heure_rectifiee_entree is None
+                  and self.heure_rectifiee_sortie is None):
             # Cas normal : copier les deux si vides
+            # (sauf marqueur "présence supprimée" : on laisse les heures vides)
             if self.heure_brute_entree and not self.heure_rectifiee_entree:
                 self.heure_rectifiee_entree = self.heure_brute_entree
             if self.heure_brute_sortie and not self.heure_rectifiee_sortie:
                 self.heure_rectifiee_sortie = self.heure_brute_sortie
 
-        self.etat = self._determiner_etat(ancien_etat)
+        self.etat = self.calculer_etat(ancien_etat)
 
         if self.etat == 'ok':
             from datetime import datetime
@@ -2088,3 +2105,53 @@ class Departments(models.Model):
     class Meta:
         db_table = 'departments'
         managed = False
+
+
+
+
+
+
+
+
+# ===== CONGÉS VALIDÉS (copie de la table Access dbo_congevalides) =====
+class CongeValide(models.Model):
+    """
+    Congés validés importés depuis la base Access (table dbo_congevalides).
+
+    Les colonnes « source » (matricule, dates, heures, durée, motif, ...) sont
+    écrasées à chaque synchronisation : Access reste la référence.
+    Les colonnes « valide / valide_par / valide_le » sont propres à PostgreSQL
+    (case à cocher de l'interface) et ne sont JAMAIS modifiées par la synchro.
+    """
+    cle_access = models.CharField(max_length=64, unique=True, db_index=True)
+
+    matricule = models.CharField(max_length=50, db_index=True)
+    date_depart = models.DateField(null=True, blank=True, db_index=True)
+    heure_depart = models.TimeField(null=True, blank=True)
+    date_retour = models.DateField(null=True, blank=True)
+    heure_retour = models.TimeField(null=True, blank=True)
+    duree = models.CharField(max_length=50, null=True, blank=True)
+    motif = models.TextField(null=True, blank=True)
+    justificatif = models.TextField(null=True, blank=True)
+    date_validation = models.DateField(null=True, blank=True)
+    type_absence = models.CharField(max_length=100, null=True, blank=True)
+
+    # Propre à PostgreSQL (case « Validé » de l'interface)
+    valide = models.BooleanField(default=False)
+    valide_par = models.CharField(max_length=150, null=True, blank=True)
+    valide_le = models.DateTimeField(null=True, blank=True)
+    nouveau = models.BooleanField(default=True, db_index=True)
+    # True = notification déjà vue (cloche ouverte) -> ne compte plus dans le badge rouge
+    notif_vue = models.BooleanField(default=False, db_index=True)
+
+    synchronise_le = models.DateTimeField(auto_now=True)
+    cree_le = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'conge_valide'
+        ordering = ['-date_depart', 'matricule']
+        verbose_name = "Congé validé"
+        verbose_name_plural = "Congés validés"
+
+    def __str__(self):
+        return f"{self.matricule} : {self.date_depart} → {self.date_retour}"

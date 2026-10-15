@@ -77,4 +77,12 @@ urlpatterns = [
     path('verification-presences/', VerificationPresencesAPIView.as_view(), name='verification-presences'),
 
     path('toutes-sections/', ToutesSectionsAPIView.as_view(), name='toutes-sections-list'),
+
+
+     # Congés validés (importés depuis Access dbo_congevalides)
+    path('conges-valides/', CongeValideListAPIView.as_view(), name='conges-valides-list'),
+    path('conges-valides/synchroniser/', CongeValideSynchroniserAPIView.as_view(), name='conges-valides-synchroniser'),
+    path('conges-valides/notifications/', CongeValideNotificationsAPIView.as_view(), name='conges-valides-notifications'),
+    path('conges-valides/notifications/vues/', CongeValideNotificationsVuesAPIView.as_view(), name='conges-valides-notifications-vues'),
+    path('conges-valides/<int:pk>/valider/', CongeValideValiderAPIView.as_view(), name='conges-valides-valider'),
 ]

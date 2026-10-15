@@ -712,8 +712,21 @@ def get_active_userinfo_queryset():
 
 
 
+def precharger_exceptions_horaire(dates):
+    """
+    Charge en UNE requête toutes les HoraireException des dates données.
+    Retourne {(date, section): exception, (date, None): exception globale}
+    à passer à get_horaire_pour_date(..., exceptions_cache=...).
+    """
+    from .models import HoraireException
+    cache = {}
+    for ex in HoraireException.objects.filter(date__in=list(dates)).order_by('-date', 'id'):
+        cache.setdefault((ex.date, ex.section or None), ex)
+    return cache
+
+
 def get_horaire_pour_date(horaire_section, date_jour, est_jour_paiement,
-                           section=None):
+                           section=None, exceptions_cache=None):
     """
     Retourne (heure_entree: time, heure_sortie: time) en tenant compte :
     1. D'une HoraireException pour ce jour (globale ou par section)
@@ -726,17 +739,24 @@ def get_horaire_pour_date(horaire_section, date_jour, est_jour_paiement,
     est_samedi   = date_jour.weekday() == 5
     est_vendredi = date_jour.weekday() == 4
 
-    # ── 1. Chercher une exception spécifique à la section ──────────────────
     exception = None
-    if section:
-        exception = HoraireException.objects.filter(
-            date=date_jour, section=section
-        ).first()
-    # ── 2. Sinon exception globale (section=None) ───────────────────────────
-    if not exception:
-        exception = HoraireException.objects.filter(
-            date=date_jour, section__isnull=True
-        ).first()
+    if exceptions_cache is not None:
+        # Version rapide : exceptions pré-chargées (aucune requête SQL)
+        if section:
+            exception = exceptions_cache.get((date_jour, section))
+        if not exception:
+            exception = exceptions_cache.get((date_jour, None))
+    else:
+        # ── 1. Chercher une exception spécifique à la section ──────────────
+        if section:
+            exception = HoraireException.objects.filter(
+                date=date_jour, section=section
+            ).first()
+        # ── 2. Sinon exception globale (section=None) ───────────────────────
+        if not exception:
+            exception = HoraireException.objects.filter(
+                date=date_jour, section__isnull=True
+            ).first()
 
     # ── 3. Appliquer l'exception si trouvée ────────────────────────────────
     if exception:

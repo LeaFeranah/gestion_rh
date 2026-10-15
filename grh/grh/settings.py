@@ -217,3 +217,13 @@ ZKTECO_SQLSERVER = (
     "Server=localhost\\SQLEXPRESS;Database=AttMgmt;"
     "Trusted_Connection=yes;TrustServerCertificate=yes"
 )
+
+
+
+
+# Source des congés validés (base Access)
+# Vérifiez le chemin du fichier qui contient la table dbo_congevalides.
+ACCESS_CONGES = {
+    "file": r"D:\Grand_projet_rh\conge_valide1.accdb",
+    "table": "dbo_congevalides",
+}

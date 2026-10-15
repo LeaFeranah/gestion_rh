@@ -404,6 +404,10 @@ class AnomalieSerializer(serializers.ModelSerializer):
     code_date_reel      = serializers.SerializerMethodField()
     code_date_rectifie  = serializers.SerializerMethodField()
 
+    # Évènement de présence (X, RM, CP, OS…) du même employé / même jour
+    evenement             = serializers.SerializerMethodField()
+    evenement_commentaire = serializers.SerializerMethodField()
+
     class Meta:
         model = Anomalie
         fields = [
@@ -428,6 +432,8 @@ class AnomalieSerializer(serializers.ModelSerializer):
             # Heures rectifiées (modifiables)
             'heure_rectifiee_entree',
             'heure_rectifiee_sortie',
+            'evenement',
+            'evenement_commentaire',
             'etat',
             'etat_display',
             'est_corrigee',
@@ -440,6 +446,7 @@ class AnomalieSerializer(serializers.ModelSerializer):
             'heure_brute_entree', 'heure_brute_sortie',
             'pointages_bruts_json',      # non modifiable depuis l'API
             'est_corrigee',
+            'etat',                      # toujours recalculé par Anomalie.save()
         ]
 
 
@@ -506,6 +513,21 @@ class AnomalieSerializer(serializers.ModelSerializer):
             return user.badgenumber
         except:
             return None
+
+    def _get_evenement_obj(self, obj):
+        """Évènement (table Evenement) du jour : map pré-chargée ou requête."""
+        evenements_map = self.context.get('evenements_map')
+        if evenements_map is not None:
+            return evenements_map.get((obj.userid, obj.date))
+        return Evenement.objects.filter(userid=obj.userid, date=obj.date).first()
+
+    def get_evenement(self, obj):
+        ev = self._get_evenement_obj(obj)
+        return ev.type_evenement if ev else 'X'
+
+    def get_evenement_commentaire(self, obj):
+        ev = self._get_evenement_obj(obj)
+        return (ev.commentaire or '') if ev else ''
 
     def get_code_date_brut(self, obj):
         if obj.heure_brute_entree or obj.heure_brute_sortie:

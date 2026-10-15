@@ -625,12 +625,14 @@ class HoraireSectionDetailAPIView(APIView):
                 ):
                     anomalie.heure_reelle_entree = nouvelle_entree
                     anomalie.heure_reelle_sortie = nouvelle_sortie
+                    # L'heure par défaut a changé → l'état OK / non OK aussi
+                    anomalie.etat = anomalie.calculer_etat(anomalie.etat)
                     to_update.append(anomalie)
 
             if to_update:
                 Anomalie.objects.bulk_update(
                     to_update,
-                    ['heure_reelle_entree', 'heure_reelle_sortie'],
+                    ['heure_reelle_entree', 'heure_reelle_sortie', 'etat'],
                     batch_size=500,
                 )
                 logger.info(
@@ -881,6 +883,8 @@ class PresenceMoisDetailCalculeeAPIView(APIView):
 
         dates_mois = list(dates_mois)
         dates_liste = [d.date for d in dates_mois]
+        from .utils import precharger_exceptions_horaire
+        exceptions_cache = precharger_exceptions_horaire(dates_liste)  # 1 requête
         periode_data = {
             "mois": mois_fr[mois - 1],
             "annee": annee,
@@ -1078,7 +1082,8 @@ class PresenceMoisDetailCalculeeAPIView(APIView):
                     horaire,
                     date_obj.date,
                     est_jour_paiement,
-                    section=section   # 'section' est défini plus haut dans la boucle employé
+                    section=section,   # 'section' est défini plus haut dans la boucle employé
+                    exceptions_cache=exceptions_cache,
                 )
 
                 if anomalie_corrigee:
@@ -1471,9 +1476,17 @@ class AnomalieListAPIView(APIView):
                 numero_matricule__in=badges
             ).only('numero_matricule', 'appellation', 'nom_complet')
         }
+        evenements_map = {
+            (e.userid, e.date): e
+            for e in Evenement.objects.filter(
+                userid__in=userids,
+                date__in=anomalies.values_list('date', flat=True),
+            )
+        }
         serializer = AnomalieSerializer(
             anomalies, many=True,
-            context={'userinfo_map': userinfo_map, 'appellation_map': appellation_map}
+            context={'userinfo_map': userinfo_map, 'appellation_map': appellation_map,
+                     'evenements_map': evenements_map}
         )
 
         stats = {
@@ -1672,11 +1685,12 @@ class HoraireExceptionListAPIView(APIView):
                 )
                 anomalie.heure_reelle_entree = nouvelle_entree
                 anomalie.heure_reelle_sortie = nouvelle_sortie
+                anomalie.etat = anomalie.calculer_etat(anomalie.etat)
                 to_update.append(anomalie)
 
             if to_update:
                 Anomalie.objects.bulk_update(
-                    to_update, ['heure_reelle_entree', 'heure_reelle_sortie']
+                    to_update, ['heure_reelle_entree', 'heure_reelle_sortie', 'etat']
                 )
                 logger.info(
                     f"HoraireException {exception.date}: "
@@ -2261,7 +2275,14 @@ class AnomalieParSectionAPIView(APIView):
         }
 
         # Sérialiser TOUTES les anomalies en une seule passe
-        context = {'userinfo_map': userinfo_map, 'appellation_map': appellation_map}
+        evenements_map = {
+            (e.userid, e.date): e
+            for e in Evenement.objects.filter(
+                userid__in=userids, date__in=list(dates_mois)
+            )
+        }
+        context = {'userinfo_map': userinfo_map, 'appellation_map': appellation_map,
+                   'evenements_map': evenements_map}
         serializer = AnomalieSerializer(anomalies, many=True, context=context)
         anomalies_serialized = {a['id']: a for a in serializer.data}
 
@@ -3020,6 +3041,8 @@ class HeuresTravailAPIView(APIView):
 
         dates_mois  = list(dates_mois_qs)
         dates_liste = [d.date for d in dates_mois]
+        from .utils import precharger_exceptions_horaire
+        exceptions_cache = precharger_exceptions_horaire(dates_liste)  # 1 requête
 
         # Regroupement par semaine
         semaines_dates: dict = {}
@@ -3161,6 +3184,7 @@ class HeuresTravailAPIView(APIView):
                         horaire, date_jour,
                         date_obj.est_jour_paiement,
                         section=section_emp,
+                        exceptions_cache=exceptions_cache,
                     )
                     pts = [FP(p) for p in pointages_map[key]]
                     he, hs, type_a, _ = analyser_pointages_jour(
@@ -3357,6 +3381,8 @@ class IndemniteRepasAPIView(APIView):
 
         dates_mois = list(dates_mois_qs)
         dates_liste = [d.date for d in dates_mois]
+        from .utils import precharger_exceptions_horaire
+        exceptions_cache = precharger_exceptions_horaire(dates_liste)  # 1 requête
 
         # Regroupement par semaine
         semaines_dates = {}
@@ -3437,7 +3463,8 @@ class IndemniteRepasAPIView(APIView):
                     sortie = anomalie.heure_rectifiee_sortie
                 elif key in pointages_map and horaire:
                     h_e, h_s = get_horaire_pour_date(
-                        horaire, date_jour, date_obj.est_jour_paiement, section=section_emp
+                        horaire, date_jour, date_obj.est_jour_paiement, section=section_emp,
+                        exceptions_cache=exceptions_cache,
                     )
                     pts = [FP(p) for p in pointages_map[key]]
                     he, hs, type_a, _ = analyser_pointages_jour(pts, h_e, h_s, seuil_minutes=30)
@@ -3678,6 +3705,8 @@ class AbsencesMoisAPIView(APIView):
 
         dates_mois  = list(dates_mois_qs)
         dates_liste = [d.date for d in dates_mois]
+        from .utils import precharger_exceptions_horaire
+        exceptions_cache = precharger_exceptions_horaire(dates_liste)  # 1 requête
 
         # Numéros de semaine présents dans la période
         semaine_nums = sorted({
@@ -3776,6 +3805,7 @@ class AbsencesMoisAPIView(APIView):
                         horaire, date_jour,
                         date_obj.est_jour_paiement,
                         section=section_emp,
+                        exceptions_cache=exceptions_cache,
                     )
                     pts = [FP(p) for p in pointages_map[key]]
                     he, hs, type_a, _ = analyser_pointages_jour(
@@ -4159,3 +4189,279 @@ class ToutesSectionsAPIView(APIView):
         sections = Section.objects.all().order_by('nom_section')
         data = [{'id': s.id, 'nom_section': s.nom_section} for s in sections]
         return Response({'count': len(data), 'sections': data})
+
+
+
+
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# CONGÉS VALIDÉS (importés depuis Access dbo_congevalides)
+# ═══════════════════════════════════════════════════════════════════════════
+
+def _periode_de_la_date(d, dates_ref):
+    """(annee, mois) de la période de paie (21 -> 20) qui contient la date d."""
+    if d is None:
+        return None, None
+    ref = dates_ref.get(d)
+    if ref:
+        return ref.year, ref.month
+    if d.day >= 21:
+        return (d.year + 1, 1) if d.month == 12 else (d.year, d.month + 1)
+    return d.year, d.month
+
+
+def _infos_employes_par_matricule(matricules):
+    """{matricule: {nom, fonction, section, userid}} en quelques requêtes."""
+    from personnel.models import InformationPersonnelle
+    from .models import UserSection
+    from .utils import _effective_section
+
+    matricules = {m for m in matricules if m}
+    infos = {m: {'nom': '', 'fonction': '', 'section': '', 'userid': None} for m in matricules}
+
+    for emp in (InformationPersonnelle.objects
+                .filter(numero_matricule__in=matricules)
+                .select_related('information_professionnelle')):
+        i = infos[emp.numero_matricule]
+        i['nom'] = emp.appellation or emp.nom_complet or ''
+        ip = getattr(emp, 'information_professionnelle', None)
+        if ip:
+            i['fonction'] = ip.fonction or ''
+            i['section'] = _effective_section(ip.section, ip.responsable_section) if ip.section else ''
+
+    badge_to_userid = dict(
+        UserInfo.objects.filter(badgenumber__in=matricules)
+        .order_by('userid').values_list('badgenumber', 'userid')
+    )
+    sans_section = {}
+    for m, uid in badge_to_userid.items():
+        infos[m]['userid'] = uid
+        if not infos[m]['section']:
+            sans_section[uid] = m
+    if sans_section:
+        for us in UserSection.objects.select_related('section').filter(userid__in=sans_section):
+            if us.section:
+                infos[sans_section[us.userid]]['section'] = us.section.nom_section
+    for u in UserInfo.objects.filter(badgenumber__in=[m for m, i in infos.items() if not i['nom']]):
+        infos[u.badgenumber]['nom'] = u.name or ''
+    return infos
+
+
+class CongeValideListAPIView(APIView):
+    """
+    GET /api/presence/conges-valides/?annee=2026&mois=10&q=&section=&statut=valide|non_valide&page=1
+    """
+    permission_classes = [AllowAny]
+    authentication_classes = [TokenAuthentication, SessionAuthentication]
+
+    def get(self, request):
+        from .models import CongeValide
+
+        qp = request.query_params
+        annee, mois = qp.get('annee'), qp.get('mois')
+        q = qp.get('q', '').strip()
+        section_filter = qp.get('section', '').strip().upper()
+        statut = qp.get('statut', '').strip()
+        page_param = str(qp.get('page', '1')).strip().lower()   # "last" = dernière page
+        try:
+            page = 1 if page_param == 'last' else max(1, int(page_param))
+            page_size = min(500, max(1, int(qp.get('page_size', 50))))
+        except ValueError:
+            return Response({"error": "page et page_size doivent être des nombres"}, status=400)
+
+        qs = CongeValide.objects.all()
+        periode = None
+        if annee and mois:
+            try:
+                annee, mois = int(annee), int(mois)
+            except ValueError:
+                return Response({"error": "annee et mois doivent être des nombres"}, status=400)
+            debut, fin = get_periode_dates(annee, mois)
+            qs = qs.filter(date_depart__lte=fin).filter(
+                Q(date_retour__gte=debut) | Q(date_retour__isnull=True, date_depart__gte=debut)
+            )
+            periode = {"annee": annee, "mois": mois,
+                       "du": debut.isoformat(), "au": fin.isoformat()}
+
+        if q:
+            from personnel.models import InformationPersonnelle
+            mats_nom = InformationPersonnelle.objects.filter(
+                Q(nom_complet__icontains=q) | Q(appellation__icontains=q)
+            ).values_list('numero_matricule', flat=True)
+            qs = qs.filter(Q(matricule__icontains=q) | Q(matricule__in=list(mats_nom)))
+
+        rows = list(qs.order_by('id'))   # ordre d'arrivée : 1er congé en haut, dernier en bas
+        infos = _infos_employes_par_matricule({r.matricule for r in rows})
+
+        if section_filter:
+            rows = [r for r in rows
+                    if (infos.get(r.matricule, {}).get('section') or '').upper() == section_filter]
+
+        stats = {
+            "total": len(rows),
+            "valides": sum(1 for r in rows if r.valide),
+            "non_valides": sum(1 for r in rows if not r.valide),
+        }
+        if statut == 'valide':
+            rows = [r for r in rows if r.valide]
+        elif statut == 'non_valide':
+            rows = [r for r in rows if not r.valide]
+        elif statut == 'nouveau':
+            rows = [r for r in rows if r.nouveau]
+
+        total = len(rows)
+        total_pages = (total + page_size - 1) // page_size
+        if page_param == 'last' or page > total_pages:
+            page = max(1, total_pages)
+        page_rows = rows[(page - 1) * page_size: page * page_size]
+
+        dates_ref = dict(
+            Date.objects.filter(date__in={r.date_depart for r in page_rows if r.date_depart})
+            .values_list('date', 'mois_reference')
+        )
+
+        def hm(t):
+            return t.strftime('%H:%M') if t else None
+
+        data = []
+        for r in page_rows:
+            i = infos.get(r.matricule, {})
+            p_annee, p_mois = _periode_de_la_date(r.date_depart, dates_ref)
+            data.append({
+                "id": r.id,
+                "matricule": r.matricule,
+                "nom": i.get('nom', ''),
+                "fonction": i.get('fonction', ''),
+                "section": i.get('section', ''),
+                "userid": i.get('userid'),
+                "date_validation": r.date_validation,
+                "date_depart": r.date_depart,
+                "heure_depart": hm(r.heure_depart),
+                "date_retour": r.date_retour,
+                "heure_retour": hm(r.heure_retour),
+                "duree": r.duree,
+                "motif": r.motif,
+                "justificatif": r.justificatif,
+                "type_absence": r.type_absence,
+                "valide": r.valide,
+                "valide_par": r.valide_par,
+                "valide_le": r.valide_le,
+                "nouveau": r.nouveau,
+                "periode_annee": p_annee,
+                "periode_mois": p_mois,
+            })
+
+        derniere = CongeValide.objects.aggregate(d=Max('synchronise_le'))['d']
+        return Response({
+            "periode": periode,
+            "statistiques": stats,
+            "derniere_synchro": derniere,
+            "pagination": {
+                "page": page, "page_size": page_size,
+                "total": total, "total_pages": total_pages,
+                "has_next": page < total_pages, "has_previous": page > 1,
+            },
+            "conges": data,
+        })
+
+class CongeValideValiderAPIView(APIView):
+    """PATCH /api/presence/conges-valides/<id>/valider/   {"valide": true|false}"""
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [TokenAuthentication, SessionAuthentication]
+
+    def patch(self, request, pk):
+        from django.utils import timezone
+        from .models import CongeValide
+
+        try:
+            conge = CongeValide.objects.get(pk=pk)
+        except CongeValide.DoesNotExist:
+            return Response({"error": "Congé introuvable"}, status=404)
+
+        valide = request.data.get('valide')
+        if isinstance(valide, str):
+            valide = valide.lower() in ('1', 'true', 'oui', 'yes')
+        valide = bool(valide)
+
+        conge.valide = valide
+        conge.valide_par = request.user.get_username() if valide else None
+        conge.valide_le = timezone.now() if valide else None
+        if valide:
+            conge.nouveau = False          # validé => plus dans la notification
+            conge.notif_vue = True
+        conge.save(update_fields=['valide', 'valide_par', 'valide_le', 'nouveau', 'notif_vue'])
+        return Response({
+            "id": conge.id, "valide": conge.valide,
+            "valide_par": conge.valide_par, "valide_le": conge.valide_le,
+            "nouveau": conge.nouveau,
+        })
+
+
+class CongeValideNotificationsAPIView(APIView):
+    """
+    GET /api/presence/conges-valides/notifications/
+    Nouveaux congés arrivés d'Access et pas encore validés (cloche de la barre du haut).
+    """
+    permission_classes = [AllowAny]
+    authentication_classes = [TokenAuthentication, SessionAuthentication]
+
+    def get(self, request):
+        from .models import CongeValide
+
+        # Badge rouge = notifications PAS ENCORE VUES (remis à 0 quand on ouvre la cloche)
+        non_vues = CongeValide.objects.filter(notif_vue=False, valide=False).count()
+        # Liste = nouveaux congés toujours à valider (vus ou non)
+        derniers = list(
+            CongeValide.objects.filter(nouveau=True, valide=False).order_by('-id')[:8]
+        )
+        infos = _infos_employes_par_matricule({c.matricule for c in derniers})
+        return Response({
+            "count": non_vues,
+            "a_valider": CongeValide.objects.filter(nouveau=True, valide=False).count(),
+            "derniers": [{
+                "id": c.id,
+                "vu": c.notif_vue,
+                "matricule": c.matricule,
+                "nom": infos.get(c.matricule, {}).get('nom', ''),
+                "date_depart": c.date_depart,
+                "date_retour": c.date_retour,
+                "type_absence": c.type_absence,
+                "motif": c.motif,
+                "cree_le": c.cree_le,
+            } for c in derniers],
+        })
+
+
+
+
+class CongeValideNotificationsVuesAPIView(APIView):
+    """
+    POST /api/presence/conges-valides/notifications/vues/
+    Marque toutes les notifications comme vues -> le badge rouge revient à 0.
+    (Les congés restent « à valider » : seule la notification est lue.)
+    """
+    permission_classes = [AllowAny]
+    authentication_classes = [TokenAuthentication, SessionAuthentication]
+
+    def post(self, request):
+        from .models import CongeValide
+        n = CongeValide.objects.filter(notif_vue=False).update(notif_vue=True)
+        return Response({"marquees": n, "count": 0})
+
+
+class CongeValideSynchroniserAPIView(APIView):
+    """POST /api/presence/conges-valides/synchroniser/  (bouton « Synchroniser Access »)"""
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [TokenAuthentication, SessionAuthentication]
+
+    def post(self, request):
+        from .sync_conges import synchroniser_conges, SyncCongesError
+        try:
+            stats = synchroniser_conges()
+        except SyncCongesError as e:
+            return Response({"error": str(e)}, status=503)
+        except Exception as e:
+            logger.exception("Synchro congés Access")
+            return Response({"error": f"Synchro interrompue : {e}"}, status=500)
+        return Response(stats)
