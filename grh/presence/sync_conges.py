@@ -197,11 +197,15 @@ def synchroniser_conges(access_file=None, table=None, dry_run=False,
 
     existants = {c.cle_access: c for c in CongeValide.objects.all()}
     a_creer, a_maj = [], []
+    cles_motif = set()        # nouveaux congés ou motif modifié : à vérifier pour « OK »
     for cle, d in source.items():
         obj = existants.get(cle)
         if obj is None:
             a_creer.append(CongeValide(cle_access=cle, **d))
+            cles_motif.add(cle)
         elif any(getattr(obj, k) != v for k, v in d.items()):
+            if obj.motif != d['motif']:
+                cles_motif.add(cle)
             for k, v in d.items():
                 setattr(obj, k, v)
             a_maj.append(obj)
@@ -218,6 +222,7 @@ def synchroniser_conges(access_file=None, table=None, dry_run=False,
         'mises_a_jour': len(a_maj),
         'supprimees': len(cles_a_supprimer),
         'total_access': len(source),
+        'auto_valides': 0,
         'dry_run': dry_run,
     }
     if dry_run:
@@ -231,7 +236,24 @@ def synchroniser_conges(access_file=None, table=None, dry_run=False,
                 o.synchronise_le = timezone.now()
             CongeValide.objects.bulk_update(a_maj, CHAMPS_SOURCE + ['synchronise_le'],
                                             batch_size=1000)
+        # Congés validés : les CP de la présence suivent les modifications d'Access
+        from .conges_evenements import appliquer_cp, retirer_cp, motif_ok, valider_par_motif
+        for o in a_maj:
+            if o.valide:
+                appliquer_cp(o)
+        # Motif terminé par « OK » -> coché « Validé » automatiquement + CP
+        # (seulement congés nouveaux / motif modifié : un décochage manuel est respecté)
+        if cles_motif:
+            for o in CongeValide.objects.filter(cle_access__in=cles_motif, valide=False):
+                if motif_ok(o.motif):
+                    valider_par_motif(o)
+                    stats['auto_valides'] += 1
+        # + tous les congés « OK » déjà en base jamais décochés à la main
+        from .conges_evenements import valider_motifs_ok
+        stats['auto_valides'] += valider_motifs_ok()
         if cles_a_supprimer:
+            for o in CongeValide.objects.filter(cle_access__in=cles_a_supprimer, valide=True):
+                retirer_cp(o)
             CongeValide.objects.filter(cle_access__in=cles_a_supprimer).delete()
 
     return stats

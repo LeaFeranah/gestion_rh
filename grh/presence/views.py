@@ -4257,6 +4257,13 @@ class CongeValideListAPIView(APIView):
 
     def get(self, request):
         from .models import CongeValide
+        from .conges_evenements import valider_motifs_ok
+
+        # Motif terminé par « OK » -> coché « Validé » (+ CP) dès l'ouverture de la page
+        try:
+            valider_motifs_ok()
+        except Exception:
+            logger.exception("Validation automatique des motifs OK")
 
         qp = request.query_params
         annee, mois = qp.get('annee'), qp.get('mois')
@@ -4272,6 +4279,13 @@ class CongeValideListAPIView(APIView):
 
         qs = CongeValide.objects.all()
         periode = None
+        conge_id = str(qp.get('id', '')).strip()
+        if conge_id:
+            # Un seul congé (clic sur une notification) : les autres filtres sont ignorés
+            if not conge_id.isdigit():
+                return Response({"error": "id doit être un nombre"}, status=400)
+            qs = qs.filter(pk=int(conge_id))
+            annee = mois = q = section_filter = statut = None
         if annee and mois:
             try:
                 annee, mois = int(annee), int(mois)
@@ -4386,15 +4400,23 @@ class CongeValideValiderAPIView(APIView):
 
         conge.valide = valide
         conge.valide_par = request.user.get_username() if valide else None
-        conge.valide_le = timezone.now() if valide else None
+        # Date gardée aussi au décochage : un congé décoché à la main
+        # n'est plus recoché automatiquement par son motif « OK »
+        conge.valide_le = timezone.now()
         if valide:
             conge.nouveau = False          # validé => plus dans la notification
             conge.notif_vue = True
-        conge.save(update_fields=['valide', 'valide_par', 'valide_le', 'nouveau', 'notif_vue'])
+        from django.db import transaction
+        from .conges_evenements import synchroniser_evenement
+        with transaction.atomic():
+            conge.save(update_fields=['valide', 'valide_par', 'valide_le', 'nouveau', 'notif_vue'])
+            # Durée >= 1 jour : CP posé du départ au retour (retiré si on décoche)
+            jours_cp = synchroniser_evenement(conge)
         return Response({
             "id": conge.id, "valide": conge.valide,
             "valide_par": conge.valide_par, "valide_le": conge.valide_le,
             "nouveau": conge.nouveau,
+            "jours_cp": jours_cp,
         })
 
 
