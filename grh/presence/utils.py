@@ -87,17 +87,36 @@ def calculer_sortie_anticipee(heure_reelle, heure_prevue, tolerance_minutes=5):
         return 0, heure_reelle
 
 
-def calculer_heures_travaillees(heure_entree, heure_sortie, pause_minutes=60):
+# def calculer_heures_travaillees(heure_entree, heure_sortie, pause_minutes=60):
+#     if heure_entree is None or heure_sortie is None:
+#         return Decimal('0')
+#     try:
+#         today = datetime.today().date()
+#         dt_entree = datetime.combine(today, heure_entree)
+#         dt_sortie = datetime.combine(today, heure_sortie)
+#         if dt_sortie <= dt_entree:
+#             return Decimal('0')
+#         diff = dt_sortie - dt_entree
+#         minutes_totales = diff.total_seconds() / 60
+def duree_minutes(heure_entree, heure_sortie, travail_nuit=False):
+    """Durée en minutes. Si sortie < entrée (ex 17:30 → 06:00), la sortie est le lendemain (+24h)."""
+    if heure_entree is None or heure_sortie is None:
+        return 0.0
+    ref = datetime(2000, 1, 1).date()
+    dt_entree = datetime.combine(ref, heure_entree.replace(second=0, microsecond=0))
+    dt_sortie = datetime.combine(ref, heure_sortie.replace(second=0, microsecond=0))
+    if dt_sortie < dt_entree:
+        dt_sortie += timedelta(days=1)
+    return (dt_sortie - dt_entree).total_seconds() / 60.0
+
+
+def calculer_heures_travaillees(heure_entree, heure_sortie, pause_minutes=60, travail_nuit=False):
     if heure_entree is None or heure_sortie is None:
         return Decimal('0')
     try:
-        today = datetime.today().date()
-        dt_entree = datetime.combine(today, heure_entree)
-        dt_sortie = datetime.combine(today, heure_sortie)
-        if dt_sortie <= dt_entree:
+        minutes_totales = duree_minutes(heure_entree, heure_sortie, travail_nuit)
+        if minutes_totales <= 0:
             return Decimal('0')
-        diff = dt_sortie - dt_entree
-        minutes_totales = diff.total_seconds() / 60
         minutes_travaillees = minutes_totales - pause_minutes
         if minutes_travaillees < 0:
             return Decimal('0')

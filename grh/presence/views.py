@@ -1008,6 +1008,7 @@ class PresenceMoisDetailCalculeeAPIView(APIView):
                 'section': a.section,
                 'etat': a.etat,
                 'synchronise_le': a.synchronise_le,
+                'travail_nuit': a.travail_nuit,
             }
 
         # 7. Événements pour la page courante
@@ -1119,7 +1120,11 @@ class PresenceMoisDetailCalculeeAPIView(APIView):
                         'retard_minutes': 0,
                         'sortie_anticipee_minutes': 0,
                         'heures_travaillees': float(
-                            calculer_heures_travaillees(heure_rectifiee_entree, heure_rectifiee_sortie)
+                            #calculer_heures_travaillees(heure_rectifiee_entree, heure_rectifiee_sortie)
+                            calculer_heures_travaillees(
+                                heure_rectifiee_entree, heure_rectifiee_sortie,
+                                travail_nuit=anomalie_corrigee.get('travail_nuit', False),
+                            )
                         ) if heure_rectifiee_entree and heure_rectifiee_sortie else 0.0,
                         'heures_prevues': float(
                             calculer_heures_travaillees(heure_entree_prevue, heure_sortie_prevue)
@@ -1153,6 +1158,7 @@ class PresenceMoisDetailCalculeeAPIView(APIView):
                     "est_vendredi": est_vendredi,
                     "est_jour_paiement": est_jour_paiement,
                     "est_anomalie_corrigee": anomalie_corrigee is not None,
+                    "travail_nuit": bool(anomalie_corrigee and anomalie_corrigee.get('travail_nuit')),
                     "anomalie_etat": anomalie_corrigee.get('etat') if anomalie_corrigee else None,
                     "synchronise_le": str(synchronise_le) if synchronise_le else None,
                     "present": present,
@@ -2459,6 +2465,10 @@ class ModifierHeuresManuellementAPIView(APIView):
             heure_entree_str = request.data.get('heure_entree')
             heure_sortie_str = request.data.get('heure_sortie')
             commentaire = request.data.get('commentaire', '')
+            travail_nuit = request.data.get('travail_nuit', False)
+            if isinstance(travail_nuit, str):
+                travail_nuit = travail_nuit.strip().lower() in ('1', 'true', 'oui', 'on')
+            travail_nuit = bool(travail_nuit)
 
             # Validation des paramètres obligatoires
             if not userid or not date_str:
@@ -2587,6 +2597,7 @@ class ModifierHeuresManuellementAPIView(APIView):
                             'heure_reelle_sortie': heure_reelle_sortie,
                             'heure_rectifiee_entree': heure_entree,
                             'heure_rectifiee_sortie': heure_sortie,
+                            'travail_nuit': travail_nuit,
                             'commentaire': commentaire,
                         }
                     )
@@ -2966,15 +2977,21 @@ class HeuresTravailAPIView(APIView):
     #     ref = date.today()
     #     delta_minutes = (datetime.combine(ref, sortie) - datetime.combine(ref, entree)).total_seconds() / 60
     @staticmethod
-    def _calculer_ht_et_hs(entree, sortie, est_samedi, type_evenement):
+    # def _calculer_ht_et_hs(entree, sortie, est_samedi, type_evenement):
+    #     if not entree or not sortie:
+    #         return 0.0, 0.0
+
+    #     entree = entree.replace(second=0, microsecond=0)
+    #     sortie = sortie.replace(second=0, microsecond=0)
+
+    #     ref = date.today()
+    #     delta_minutes = (datetime.combine(ref, sortie) - datetime.combine(ref, entree)).total_seconds() / 60
+    def _calculer_ht_et_hs(entree, sortie, est_samedi, type_evenement, travail_nuit=False):
         if not entree or not sortie:
             return 0.0, 0.0
 
-        entree = entree.replace(second=0, microsecond=0)
-        sortie = sortie.replace(second=0, microsecond=0)
-
-        ref = date.today()
-        delta_minutes = (datetime.combine(ref, sortie) - datetime.combine(ref, entree)).total_seconds() / 60
+        from .utils import duree_minutes
+        delta_minutes = duree_minutes(entree, sortie, travail_nuit)
         duree_heures = delta_minutes / 60.0
         if duree_heures <= 0:
             return 0.0, 0.0
@@ -3200,8 +3217,12 @@ class HeuresTravailAPIView(APIView):
 
                 if entree and sortie:
                     est_samedi = (date_jour.weekday() == 5)
+                    # ht, hs = self._calculer_ht_et_hs(
+                    #     entree, sortie, est_samedi, type_evenement
+                    # )
                     ht, hs = self._calculer_ht_et_hs(
-                        entree, sortie, est_samedi, type_evenement
+                        entree, sortie, est_samedi, type_evenement,
+                        travail_nuit=bool(anomalie and anomalie.travail_nuit),
                     )
                     par_semaine[semaine]['ht'] += ht
                     par_semaine[semaine]['hs'] += hs
@@ -3312,14 +3333,20 @@ class IndemniteRepasAPIView(APIView):
     #     ref = date.today()
     #     delta_minutes = (datetime.combine(ref, sortie) - datetime.combine(ref, entree)).total_seconds() / 60
     @staticmethod
-    def _heures_travaillees(entree, sortie, est_samedi, type_evenement):
+    # def _heures_travaillees(entree, sortie, est_samedi, type_evenement):
+    #     """Retourne les heures travaillées (HT) en décimal selon les règles existantes."""
+    #     if not entree or not sortie:
+    #         return 0.0
+    #     entree = entree.replace(second=0, microsecond=0)
+    #     sortie = sortie.replace(second=0, microsecond=0)
+    #     ref = date.today()
+    #     delta_minutes = (datetime.combine(ref, sortie) - datetime.combine(ref, entree)).total_seconds() / 60
+    def _heures_travaillees(entree, sortie, est_samedi, type_evenement, travail_nuit=False):
         """Retourne les heures travaillées (HT) en décimal selon les règles existantes."""
         if not entree or not sortie:
             return 0.0
-        entree = entree.replace(second=0, microsecond=0)
-        sortie = sortie.replace(second=0, microsecond=0)
-        ref = date.today()
-        delta_minutes = (datetime.combine(ref, sortie) - datetime.combine(ref, entree)).total_seconds() / 60
+        from .utils import duree_minutes
+        delta_minutes = duree_minutes(entree, sortie, travail_nuit)
         duree_heures = delta_minutes / 60.0
         if duree_heures <= 0:
             return 0.0
@@ -3475,7 +3502,11 @@ class IndemniteRepasAPIView(APIView):
                 ht = 0.0
                 if entree and sortie:
                     est_samedi = (date_jour.weekday() == 5)
-                    ht = self._heures_travaillees(entree, sortie, est_samedi, type_evenement)
+                    # ht = self._heures_travaillees(entree, sortie, est_samedi, type_evenement)
+                    ht = self._heures_travaillees(
+                        entree, sortie, est_samedi, type_evenement,
+                        travail_nuit=bool(anomalie and anomalie.travail_nuit),
+                    )
 
                 indemnite = ht > 3.83
                 if indemnite:
@@ -3604,12 +3635,8 @@ class AbsencesMoisAPIView(APIView):
         #     ).total_seconds() / 3600.
         # ── Durée et HT ───────────────────────────────────────────────────────
         if entree and sortie:
-            entree = entree.replace(second=0, microsecond=0)
-            sortie = sortie.replace(second=0, microsecond=0)
-            ref = d_cls.today()
-            duree = (
-                dt_cls.combine(ref, sortie) - dt_cls.combine(ref, entree)
-            ).total_seconds() / 3600.0
+            from .utils import duree_minutes
+            duree = duree_minutes(entree, sortie) / 60.0
             ht = max(0.0, duree if duree < 6 else duree - 0.5)
             pres = True
         else:

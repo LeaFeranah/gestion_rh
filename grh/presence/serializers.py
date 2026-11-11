@@ -432,6 +432,7 @@ class AnomalieSerializer(serializers.ModelSerializer):
             # Heures rectifiées (modifiables)
             'heure_rectifiee_entree',
             'heure_rectifiee_sortie',
+            'travail_nuit',
             'evenement',
             'evenement_commentaire',
             'etat',
