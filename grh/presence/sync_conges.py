@@ -249,8 +249,12 @@ def synchroniser_conges(access_file=None, table=None, dry_run=False,
                     valider_par_motif(o)
                     stats['auto_valides'] += 1
         # + tous les congés « OK » déjà en base jamais décochés à la main
-        from .conges_evenements import valider_motifs_ok
+        # from .conges_evenements import valider_motifs_ok
+        # stats['auto_valides'] += valider_motifs_ok()
+        from .conges_evenements import valider_motifs_ok, rattraper_cp_sans_duree
         stats['auto_valides'] += valider_motifs_ok()
+        # Congés validés sans durée mais départ -> retour >= 1 jour : CP manquants
+        rattraper_cp_sans_duree()
         if cles_a_supprimer:
             for o in CongeValide.objects.filter(cle_access__in=cles_a_supprimer, valide=True):
                 retirer_cp(o)

@@ -4292,6 +4292,14 @@ class CongeValideListAPIView(APIView):
         except Exception:
             logger.exception("Validation automatique des motifs OK")
 
+
+        # Congés validés sans durée (départ -> retour >= 1 jour) : CP manquants
+        try:
+            from .conges_evenements import rattraper_cp_sans_duree
+            rattraper_cp_sans_duree()
+        except Exception:
+            logger.exception("Rattrapage des CP des congés sans durée")
+
         qp = request.query_params
         annee, mois = qp.get('annee'), qp.get('mois')
         q = qp.get('q', '').strip()

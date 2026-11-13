@@ -68,8 +68,30 @@ def duree_en_jours(conge):
     return valeur
 
 
+# def est_eligible_cp(conge):
+#     """True si le congé dure au moins 1 jour (en jours, pas en heures)."""
+#     d = duree_en_jours(conge)
+#     return d is not None and d >= DUREE_MIN
+
+def duree_vide(conge):
+    return not str(conge.duree or '').strip()
+
+
+def ecart_jours(conge):
+    """Nombre de jours entre date de départ et date de retour (retour - départ)."""
+    if conge.date_depart and conge.date_retour:
+        return (conge.date_retour - conge.date_depart).days
+    return None
+
+
 def est_eligible_cp(conge):
-    """True si le congé dure au moins 1 jour (en jours, pas en heures)."""
+    """
+    True si le congé dure au moins 1 jour (en jours, pas en heures).
+    Durée vide : éligible si date_retour - date_depart >= 1 jour.
+    """
+    if duree_vide(conge):
+        ecart = ecart_jours(conge)
+        return ecart is not None and ecart >= 1
     d = duree_en_jours(conge)
     return d is not None and d >= DUREE_MIN
 
@@ -196,6 +218,34 @@ def valider_motifs_ok():
             valider_par_motif(c)
     return len(candidats)
 
+
+
+def rattraper_cp_sans_duree():
+    """
+    Pose les CP des congés déjà validés dont la durée est vide mais dont
+    l'écart départ -> retour est >= 1 jour (ils étaient ignorés auparavant).
+    Ne traite que les congés qui n'ont encore aucun CP posé.
+    """
+    from django.db import transaction
+    from django.db.models import F, Q
+    from .models import CongeValide, Evenement
+
+    candidats = (CongeValide.objects
+                 .filter(valide=True, date_depart__isnull=False, date_retour__isnull=False,
+                         date_retour__gt=F('date_depart'))
+                 .filter(Q(duree__isnull=True) | Q(duree__regex=r'^\s*$')))
+    candidats = [c for c in candidats if duree_vide(c)]
+    if not candidats:
+        return 0
+    deja = set(Evenement.objects.filter(
+        type_evenement=TYPE_CP,
+        commentaire__in=[marqueur(c.id) for c in candidats],
+    ).values_list('commentaire', flat=True))
+    a_traiter = [c for c in candidats if marqueur(c.id) not in deja]
+    with transaction.atomic():
+        for c in a_traiter:
+            appliquer_cp(c)
+    return len(a_traiter)
 
 def synchroniser_evenement(conge):
     """Applique ou retire les CP selon l'état « Validé » du congé."""
